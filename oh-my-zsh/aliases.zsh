@@ -1,0 +1,8 @@
+alias n="nvim"
+alias fdev="uv run fastapi dev"
+alias ud="uv add $1"
+alias ur="uv run $1"
+alias ut="uv tree"
+alias ls="eza --color=always --long --git --no-filesize --icons=always --no-time --no-user --no-permissions"
+alias cd="z"
+alias pg="pass generate -c $1 $2"
