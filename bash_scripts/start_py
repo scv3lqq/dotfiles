@@ -1,0 +1,25 @@
+#!/bin/zsh
+
+# It creates basic python project
+# With uv, pyrightconfig and git basic
+
+echo -n "Enter name of project -> "
+read NAME
+
+uv init --app $NAME
+cd $NAME
+rm main.py
+
+curl -fLw '\n' https://www.toptal.com/developers/gitignore/api/python > .gitignore
+
+echo '
+{
+  "venvPath": ".",
+  "venv": ".venv",
+  "typeCheckingMode": "recommended",
+  "exclude": ["node_modules", ".git", "__pycache__", "venv", "dist", "build"]
+}
+' > pyrightconfig.json
+
+$SHELL # moves to this directory
+
