@@ -1,0 +1,29 @@
+[general]
+import = [
+    "~/.config/alacritty/themes/themes/gruvbox_material_medium_dark.toml"
+]
+
+[env]
+TERM = "xterm-256color"
+
+[window]
+
+padding.x = 2
+padding.y = 2
+
+decorations = "Buttonless"
+
+option_as_alt = "Both"
+
+opacity = 0.5
+
+
+[font]
+normal.family = "JetBrainsMono Nerd Font"
+
+size = 10
+
+
+[selection]
+
+save_to_clipboard = true
