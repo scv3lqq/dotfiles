@@ -7,3 +7,4 @@ alias ls="eza --color=always --long --git --no-filesize --icons=always --no-time
 alias cd="z"
 alias pg="pass generate -c $1 $2"
 alias doc="docker compose"
+alias dex="docker exec"
