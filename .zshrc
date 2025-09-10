@@ -89,7 +89,6 @@ plugins=(
   git-prompt
   history
   docker
-  docker-compose
 )
 
 source $ZSH/oh-my-zsh.sh
