@@ -162,3 +162,14 @@ _fzf_comprun() {
     *)            fzf --preview "$show_file_or_dir_preview" "$@" ;;
   esac
 }
+
+setopt PROMPT_SUBST
+
+precmd() {
+    local prompt_text="$(print -P '%~')"
+    local prompt_length=${#prompt_text}
+    local padding=$(( (COLUMNS - prompt_length) / 2 ))
+    
+    PROMPT="%F{cyan}${(l:$padding:: :)}%~%f
+$ "
+}
