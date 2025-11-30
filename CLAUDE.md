@@ -15,108 +15,171 @@ This is a macOS dotfiles repository containing configuration files for a develop
 - **Python**: uv (Python package manager and environment tool)
 - **Container**: Docker via Colima (Docker Desktop alternative)
 
-## Configuration Structure
+## Configuration Architecture
 
 ### Shell Configuration (.zshrc)
-Located at `.zshrc` in this directory. Key aspects:
-- Uses Powerlevel10k theme
-- Oh My Zsh custom directory: `$HOME/.config/oh-my-zsh`
-- Active plugins: git, poetry, poetry-env, z, fzf, eza, colored-man-pages, gitignore, git-prompt, history, docker
-- Custom aliases defined in `oh-my-zsh/aliases.zsh`
-- Docker host: `unix:///$HOME/.colima/docker.sock`
-- FZF integration with eza and bat for file previews
+
+The ZSH configuration uses Oh My Zsh with a custom directory at `$HOME/.config/oh-my-zsh` (set via `ZSH_CUSTOM`). While `.zshrc` declares `ZSH_THEME="robbyrussell"`, it's overridden at line 124 by sourcing Powerlevel10k from Homebrew.
+
+**Critical plugins loaded** (.zshrc:80-92):
+- git, poetry, poetry-env, z, fzf, eza, colored-man-pages, gitignore, git-prompt, history, docker
+
+**Additional ZSH enhancements** (.zshrc:128-129):
+- zsh-autosuggestions (Homebrew)
+- zsh-syntax-highlighting (Homebrew)
+
+**Environment configuration**:
+- `DOCKER_HOST=unix:///$HOME/.colima/docker.sock` - Colima socket instead of Docker Desktop
+- `GPG_TTY=$(tty)` - Required for GPG signing
+- PATH additions: `~/.local/bin` (pipx), `~/.cargo/bin` (Rust), `/usr/local/go/bin` (Go), `/opt/homebrew/opt/libpq/bin` (PostgreSQL)
+- UV shell completions: `uv generate-shell-completion zsh` and `uvx --generate-shell-completion zsh`
+
+**FZF integration** (.zshrc:149-164):
+- Ctrl+T preview: Uses eza for directories, bat for files
+- Alt+C preview: eza tree view
+- Custom completion for cd, ssh, export/unset commands
+- Requires bat and eza to be installed
+
+**Custom prompt** (.zshrc:166-175):
+- Overrides Powerlevel10k with centered directory path in cyan
+- Uses `precmd()` hook to dynamically calculate padding based on terminal width
 
 ### Custom Shell Aliases (oh-my-zsh/aliases.zsh)
+
+**Development shortcuts**:
 - `n` → nvim
 - `fdev` → uv run fastapi dev
-- `ud` → uv add (add dependency)
-- `ur` → uv run (run command)
-- `ut` → uv tree (show dependency tree)
-- `ls` → eza with icons and git info
+- `ud` → uv add $1
+- `ur` → uv run $1
+- `ut` → uv tree
+
+**Navigation and tools**:
+- `ls` → eza with icons, git info, long format (no filesize, time, user, permissions)
 - `cd` → z (smart directory jumper)
-- `pg` → pass generate -c (password manager)
+- `pg` → pass generate -c (password manager with clipboard)
+
+**Docker**:
 - `doc` → docker compose
 - `dex` → docker exec
 - `lzd` → lazydocker
 
 ### Neovim Configuration (nvim/)
-Structure:
-- Entry point: `nvim/init.lua` → loads `scv3lqq.core` and `scv3lqq.lazy`
-- Plugin manager: Lazy.nvim
-- Plugins directory: `nvim/lua/scv3lqq/plugins/`
-- Core config: `nvim/lua/scv3lqq/core/` (keymaps, options)
-- LSP config: `nvim/lua/scv3lqq/plugins/lsp/` (mason, lspconfig)
-- Leader key: Space
 
-Key plugins installed:
-- blink-cmp (completion)
-- conform-nvim (formatting)
-- nvim-linting (linting)
-- telescope (fuzzy finder)
-- treesitter (syntax highlighting)
-- lazygit (git integration)
-- nvim-tree (file explorer)
-- trouble (diagnostics)
-- gitsigns (git signs)
-- vim-tmux-navigator (tmux integration)
+**Module structure**:
+- Entry point: `nvim/init.lua` loads two modules: `scv3lqq.core` and `scv3lqq.lazy`
+- All configuration uses the `scv3lqq` namespace
+- Plugins: `nvim/lua/scv3lqq/plugins/*.lua` (each plugin has its own file)
+- LSP: `nvim/lua/scv3lqq/plugins/lsp/` subdirectory
 
-### AeroSpace (aerospace/aerospace.toml)
-i3-like tiling window manager for macOS:
-- Leader: Alt key
-- Navigation: Alt + h/j/k/l (vim-style)
-- Move windows: Alt + Shift + h/j/k/l
-- Workspaces: 1-9 and named workspaces (w=web, t=terminal, s=spotify, m=messenger, o=obsidian, g=chrome)
-- Service mode: Alt + Shift + ; (for layout management)
-- App launcher shortcuts:
-  - Alt + Enter → Alacritty
-  - Alt + b → Vivaldi browser
-  - Alt + c → Spotify
-  - Alt + z → Obsidian
-- Auto-assignment: Apps automatically move to designated workspaces on launch
+**Key plugins** (nvim/lua/scv3lqq/plugins/):
+- blink-cmp.lua - Completion engine
+- conform-nvim.lua - Code formatting
+- linting.lua - Linting
+- telescope.lua - Fuzzy finder
+- treesitter.lua - Syntax highlighting
+- lazygit.lua - Git UI integration
+- nvim-tree.lua - File explorer
+- trouble.lua - Diagnostics viewer
+- gitsigns.lua - Git change indicators
+- vim-tmux-navigator.lua - Seamless tmux/vim navigation
+- colorscheme.lua - Theme configuration
+- lualine.lua - Status line
+- bufferline.lua - Buffer/tab line
 
-### Alacritty (alacritty/alacritty.toml)
-- Theme: Gruvbox Material Medium Dark
-- Font: JetBrainsMono Nerd Font (size 10)
-- Opacity: 0.5
-- Option key as Alt on both sides
+**LSP directory**: Contains mason.lua and lspconfig.lua for language server management.
+
+### AeroSpace Window Manager (aerospace/aerospace.toml)
+
+i3-like tiling window manager configuration for macOS.
+
+**Layout settings**:
+- Default layout: tiles
+- Orientation: auto (horizontal for wide monitors, vertical for tall)
+- Gaps: 5px inner, 0px outer
+- Accordion padding: 10px
+- Container normalization enabled
+
+**Keybindings** (Alt as modifier):
+- Navigation: h/j/k/l (vim-style)
+- Move windows: Shift + h/j/k/l
+- Layouts: `/` (tiles horizontal/vertical), `,` (accordion)
+- Resize: Shift + `-` (shrink), Shift + `=` (grow)
+- Workspaces: 1-9, w, t, s, m, o, g
+- Move to workspace: Shift + [workspace key]
+- Service mode: Shift + `;`
+
+**App launchers**:
+- Enter → Alacritty
+- b → Vivaldi
+- c → Spotify
+- z → Obsidian
+
+**Workspace auto-assignment** (aerospace/aerospace.toml:209-232):
+- Alacritty → workspace t
+- Vivaldi → workspace w (note: app-id has trailing quote bug at line 215)
+- Spotify → workspace s
+- Telegram → workspace m
+- Obsidian → workspace o
+- Chrome → workspace g
+
+**Monitor assignment** (aerospace/aerospace.toml:166-191):
+- Workspaces 1-5: main monitor only
+- Workspaces 6-9, t, w, s: secondary monitor (fallback to main)
+
+**Service mode bindings** (aerospace/aerospace.toml:195-207):
+- Esc → reload config
+- r → flatten workspace tree (reset layout)
+- f → toggle floating/tiling
+- Backspace → close all windows except current
+- Shift + h/j/k/l → join window with direction
+
+### Alacritty Terminal (alacritty/alacritty.toml)
+
+- Theme: Gruvbox Material Medium Dark (imported from `~/.config/alacritty/themes/themes/`)
+- Font: JetBrainsMono Nerd Font, size 10
+- Window: Buttonless decorations, 2px padding, 0.5 opacity
+- Option key: Both left and right act as Alt
+- Selection: Auto-copy to clipboard
+- TERM: xterm-256color
 
 ## Utility Scripts (bash_scripts/)
 
 ### ppkg
-Creates an empty Python package with `__init__.py` in a new directory, then spawns a new shell in that directory.
+Creates Python package structure:
+```zsh
+mkdir $1
+cd $1
+touch __init__.py
+$SHELL  # spawns new shell in package directory
+```
 
 ### start_py
-Scaffolds a complete Python project with:
-- uv initialization (app mode)
-- .gitignore from toptal.com/developers/gitignore
-- pyrightconfig.json with recommended type checking
-- Removes default main.py
+Scaffolds Python project with uv:
+1. Prompts for project name
+2. Runs `uv init --app $NAME`
+3. Removes default `main.py`
+4. Downloads .gitignore from toptal.com/developers/gitignore
+5. Creates pyrightconfig.json with:
+   - venvPath: "."
+   - venv: ".venv"
+   - typeCheckingMode: "recommended"
+   - Standard excludes: node_modules, .git, __pycache__, venv, dist, build
+6. Spawns new shell in project directory
 
-Usage: Run `start_py`, then enter project name when prompted.
+## Important Notes for Modifications
 
-## Workflow Notes
+### When editing .zshrc:
+- Custom directory is `$HOME/.config/oh-my-zsh`, not default `~/.oh-my-zsh`
+- Powerlevel10k overrides ZSH_THEME setting
+- Custom precmd() function overrides default prompt
+- FZF previews depend on bat and eza being installed
 
-### Python Development
-- Primary tool: `uv` for dependency management and running commands
-- FastAPI development: Use `fdev` alias (uv run fastapi dev)
-- Type checking: Pyright is configured via pyrightconfig.json
-- Docker runs via Colima (not Docker Desktop)
+### When editing aerospace/aerospace.toml:
+- Fix Vivaldi app-id at line 215 (has trailing quote: `com.vivaldi.Vivaldi"` should be `com.vivaldi.Vivaldi`)
+- Workspace-to-monitor assignments affect multi-monitor setups
+- Service mode must be exited to return to main mode
 
-### Git Workflow
-- Currently on `main` branch
-- Recent commits show focus on Docker aliases and aerospace configuration
-- Has uncommitted changes to `aerospace/aerospace.toml`
-
-### Navigation
-- Use `z` for smart directory jumping (aliased to `cd`)
-- FZF is configured with bat/eza previews for files and directories
-- Nvim and tmux are integrated with vim-tmux-navigator
-
-## File Locations Reference
-
-- Zsh config: `.zshrc`
-- Zsh aliases: `oh-my-zsh/aliases.zsh`
-- Neovim config: `nvim/init.lua`
-- Alacritty config: `alacritty/alacritty.toml`
-- AeroSpace config: `aerospace/aerospace.toml`
-- Utility scripts: `bash_scripts/`
+### When editing Neovim configs:
+- All modules must use `scv3lqq` namespace
+- Plugin files in `nvim/lua/scv3lqq/plugins/` are auto-loaded by Lazy.nvim
+- LSP configs are separate in `nvim/lua/scv3lqq/plugins/lsp/`
