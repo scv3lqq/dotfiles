@@ -1,3 +1,4 @@
 /backups
 .stow-local-ignore
 /htop
+.claude/settings.local.json
