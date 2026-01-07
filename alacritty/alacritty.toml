@@ -1,6 +1,6 @@
 [general]
 import = [
-    "~/.config/alacritty/themes/themes/gruvbox_material_medium_dark.toml"
+    "~/.config/alacritty/themes/themes/alabaster_dark.toml"
 ]
 
 [env]
@@ -15,14 +15,25 @@ decorations = "Buttonless"
 
 option_as_alt = "Both"
 
-opacity = 0.5
+startup_mode = "Maximized"
+
+opacity = 1
 
 
 [font]
 normal.family = "JetBrainsMono Nerd Font"
+bold.family = "JetBrainsMono Nerd Font"
+italic.family = "JetBrainsMono Nerd Font"
 
-size = 10
+size = 20
 
+[cursor]
+style.shape = "Block"
+style.blinking = "Off"
+vi_mode_style.shape = "Block"
+
+[mouse]
+hide_when_typing = true
 
 [selection]
 
