@@ -126,6 +126,7 @@ alt-s = 'workspace s'
 alt-m = 'workspace m'
 alt-o = 'workspace o'
 alt-g = 'workspace g'
+alt-p = 'workspace p'
 
 
 # See: https://nikitabobko.github.io/AeroSpace/commands#move-node-to-workspace
@@ -143,6 +144,7 @@ alt-shift-w = 'move-node-to-workspace w'
 alt-shift-m = 'move-node-to-workspace m'
 alt-shift-s = 'move-node-to-workspace s'
 alt-shift-o = 'move-node-to-workspace o'
+alt-shift-p = 'move-node-to-workspace p'
 
 
 
@@ -189,6 +191,9 @@ w = ['secondary', 'main']
 
 s = ['secondary', 'main']
 
+o = ['secondary', 'main']
+
+p = ['secondary', 'main']
 
 # 'service' binding mode declaration.
 # See: https://nikitabobko.github.io/AeroSpace/guide#binding-modes
