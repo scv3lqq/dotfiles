@@ -2,6 +2,24 @@
 
 Personal macOS dotfiles managed with GNU Stow.
 
+## Quick Start
+
+```bash
+# Clone and stow
+git clone <repository-url> ~/.config
+brew install stow
+cd ~ && stow -d ~/.config -t ~ .
+
+# Install essentials
+brew install powerlevel10k zsh-autosuggestions eza bat fzf uv colima docker tmux
+brew install --cask font-jetbrains-mono-nerd-font
+
+# Setup tmux plugins
+git clone https://github.com/tmux-plugins/tpm ~/.tmux/plugins/tpm
+```
+
+Then restart your terminal and configure Powerlevel10k with `p10k configure`.
+
 ## Installation
 
 This repository uses [GNU Stow](https://www.gnu.org/software/stow/) to symlink configuration files to their proper locations.
@@ -25,12 +43,23 @@ stow -d ~/.config -t ~ .
 ## What's Included
 
 - **Shell**: Zsh with Oh My Zsh and Powerlevel10k theme
-- **Terminal**: Alacritty with Gruvbox Material theme
+- **Terminal**: Alacritty with Alabaster Dark theme
+- **Terminal Multiplexer**: Tmux with vim-tmux-navigator and Gruvbox theme
 - **Window Manager**: AeroSpace (i3-like tiling for macOS)
 - **Editor**: Neovim with Lazy.nvim plugin manager
-- **Python**: uv for package management
-- **Docker**: Colima setup (Docker Desktop alternative)
-- **Utility Scripts**: Python project scaffolding tools
+- **Python**: uv for package management and project scaffolding
+- **Container**: Colima (Docker Desktop alternative)
+- **Utility Scripts**: Python project scaffolding and package creation tools
+
+## Key Features
+
+- **Vim-style Navigation**: Consistent vim keybindings across tmux, Neovim, and AeroSpace
+- **Modern CLI Tools**: eza (ls), bat (cat), fzf (fuzzy finder), z (smart cd)
+- **Python Development**: Pre-configured uv workflows with FastAPI support
+- **Smart Completions**: Context-aware FZF previews with file/directory awareness
+- **Tiling Window Manager**: i3-like workspace management with multi-monitor support
+- **Session Persistence**: Tmux sessions with automatic save/restore capability
+- **Developer Aliases**: Shortcuts for common tasks (uv, docker, git, etc.)
 
 ## Requirements
 
@@ -54,18 +83,45 @@ stow -d ~/.config -t ~ .
 
 After stowing the dotfiles:
 
-1. Install Oh My Zsh if not already installed
-2. Install Powerlevel10k theme for Oh My Zsh
+1. Install Oh My Zsh if not already installed:
+   ```bash
+   sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)"
+   ```
+
+2. Install Powerlevel10k theme via Homebrew:
+   ```bash
+   brew install powerlevel10k
+   ```
+
 3. Install zsh plugins via Homebrew:
    ```bash
-   brew install zsh-autosuggestions zsh-syntax-highlighting
+   brew install zsh-autosuggestions
    ```
-4. Install required tools:
+
+4. Install required CLI tools:
    ```bash
-   brew install eza bat fzf uv colima docker
+   brew install eza bat fzf uv colima docker tmux
    ```
-5. Open Neovim to automatically install plugins via Lazy.nvim
-6. Configure AeroSpace to start at login
+
+5. Install Tmux Plugin Manager (TPM):
+   ```bash
+   git clone https://github.com/tmux-plugins/tpm ~/.tmux/plugins/tpm
+   ```
+   Then open tmux and press `Ctrl+a` + `I` to install plugins
+
+6. Install JetBrainsMono Nerd Font:
+   ```bash
+   brew install --cask font-jetbrains-mono-nerd-font
+   ```
+
+7. Open Neovim to automatically install plugins via Lazy.nvim
+
+8. Configure AeroSpace to start at login
+
+9. (Optional) Run Powerlevel10k configuration wizard:
+   ```bash
+   p10k configure
+   ```
 
 ## Documentation
 
