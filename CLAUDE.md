@@ -19,14 +19,14 @@ This is a macOS dotfiles repository containing configuration files for a develop
 
 ### Shell Configuration (.zshrc)
 
-The ZSH configuration uses Oh My Zsh with a custom directory at `$HOME/.config/oh-my-zsh` (set via `ZSH_CUSTOM`). While `.zshrc` declares `ZSH_THEME="robbyrussell"`, it's overridden at line 124 by sourcing Powerlevel10k from Homebrew.
+The ZSH configuration uses Oh My Zsh with a custom directory at `$HOME/.config/oh-my-zsh` (set via `ZSH_CUSTOM`). ZSH_THEME is set to empty string as Powerlevel10k is sourced from Homebrew instead.
 
-**Critical plugins loaded** (.zshrc:80-92):
-- git, poetry, poetry-env, z, fzf, eza, colored-man-pages, gitignore, git-prompt, history, docker
+**Critical plugins loaded**:
+- git, poetry, poetry-env, z, fzf, eza, colored-man-pages, docker
+- fast-syntax-highlighting, zsh-completions, golang, python, httpie, kubectl, aliases
 
-**Additional ZSH enhancements** (.zshrc:128-129):
+**Additional ZSH enhancements** (loaded after Oh My Zsh):
 - zsh-autosuggestions (Homebrew)
-- zsh-syntax-highlighting (Homebrew)
 
 **Environment configuration**:
 - `DOCKER_HOST=unix:///$HOME/.colima/docker.sock` - Colima socket instead of Docker Desktop
@@ -34,15 +34,14 @@ The ZSH configuration uses Oh My Zsh with a custom directory at `$HOME/.config/o
 - PATH additions: `~/.local/bin` (pipx), `~/.cargo/bin` (Rust), `/usr/local/go/bin` (Go), `/opt/homebrew/opt/libpq/bin` (PostgreSQL)
 - UV shell completions: `uv generate-shell-completion zsh` and `uvx --generate-shell-completion zsh`
 
-**FZF integration** (.zshrc:149-164):
+**FZF integration**:
 - Ctrl+T preview: Uses eza for directories, bat for files
 - Alt+C preview: eza tree view
 - Custom completion for cd, ssh, export/unset commands
 - Requires bat and eza to be installed
 
-**Custom prompt** (.zshrc:166-175):
-- Overrides Powerlevel10k with centered directory path in cyan
-- Uses `precmd()` hook to dynamically calculate padding based on terminal width
+**Additional environment**:
+- `HOMEBREW_NO_ENV_HINTS=1` - Disables Homebrew environment hints
 
 ### Custom Shell Aliases (oh-my-zsh/aliases.zsh)
 
@@ -55,8 +54,8 @@ The ZSH configuration uses Oh My Zsh with a custom directory at `$HOME/.config/o
 
 **Navigation and tools**:
 - `ls` → eza with icons, git info, long format (no filesize, time, user, permissions)
-- `cd` → z (smart directory jumper)
 - `pg` → pass generate -c (password manager with clipboard)
+- Note: `z` plugin provides smart directory jumping without needing cd alias
 
 **Docker**:
 - `doc` → docker compose
@@ -104,7 +103,7 @@ i3-like tiling window manager configuration for macOS.
 - Move windows: Shift + h/j/k/l
 - Layouts: `/` (tiles horizontal/vertical), `,` (accordion)
 - Resize: Shift + `-` (shrink), Shift + `=` (grow)
-- Workspaces: 1-9, w, t, s, m, o, g
+- Workspaces: 1-9, w, t, s, m, o, g, p
 - Move to workspace: Shift + [workspace key]
 - Service mode: Shift + `;`
 
@@ -122,9 +121,9 @@ i3-like tiling window manager configuration for macOS.
 - Obsidian → workspace o
 - Chrome → workspace g
 
-**Monitor assignment** (aerospace/aerospace.toml:166-191):
+**Monitor assignment**:
 - Workspaces 1-5: main monitor only
-- Workspaces 6-9, t, w, s: secondary monitor (fallback to main)
+- Workspaces 6-9, t, w, s, o, p: secondary monitor (fallback to main)
 
 **Service mode bindings** (aerospace/aerospace.toml:195-207):
 - Esc → reload config
@@ -135,12 +134,46 @@ i3-like tiling window manager configuration for macOS.
 
 ### Alacritty Terminal (alacritty/alacritty.toml)
 
-- Theme: Gruvbox Material Medium Dark (imported from `~/.config/alacritty/themes/themes/`)
-- Font: JetBrainsMono Nerd Font, size 10
-- Window: Buttonless decorations, 2px padding, 0.5 opacity
+- Theme: Alabaster Dark (imported from `~/.config/alacritty/themes/themes/`)
+- Font: JetBrainsMono Nerd Font (normal, bold, italic), size 20
+- Window: Buttonless decorations, 2px padding, maximized startup, full opacity
+- Cursor: Block shape, non-blinking (in both normal and vi mode)
+- Mouse: Hidden when typing
 - Option key: Both left and right act as Alt
 - Selection: Auto-copy to clipboard
 - TERM: xterm-256color
+
+### Tmux Configuration (.tmux.conf)
+
+**Terminal settings**:
+- TERM: tmux-256color with RGB support
+- Prefix: Ctrl+a (with Ctrl+b unbound)
+
+**Options**:
+- Base index: 1 (windows and panes)
+- Mouse support enabled
+- Vi mode keybindings
+- Auto-renumber windows
+- Zero escape time
+- 50k line history
+- Focus events enabled
+
+**Keybindings**:
+- Prefix: Ctrl+a
+- Split horizontal: `|` (maintains current path)
+- Split vertical: `-` (maintains current path)
+- Resize panes: h/j/k/l (with repeat)
+- Maximize pane: m
+- Clear screen: Ctrl+l (since Ctrl+l is used by vim-tmux-navigator)
+- Reload config: r
+- Vi copy mode: v (begin), y (copy)
+
+**Plugins** (via TPM):
+- vim-tmux-navigator - Seamless vim/tmux pane navigation
+- tmux-resurrect - Save/restore sessions (captures pane contents)
+- tmux-continuum - Automatic session saving (auto-restore disabled)
+- tmux-sessionist - Session management utilities
+- tmux-gruvbox - Gruvbox dark theme
 
 ## Utility Scripts (bash_scripts/)
 
@@ -170,14 +203,27 @@ Scaffolds Python project with uv:
 
 ### When editing .zshrc:
 - Custom directory is `$HOME/.config/oh-my-zsh`, not default `~/.oh-my-zsh`
-- Powerlevel10k overrides ZSH_THEME setting
-- Custom precmd() function overrides default prompt
+- ZSH_THEME is empty; Powerlevel10k is sourced from Homebrew
+- Syntax highlighting uses fast-syntax-highlighting plugin, not zsh-syntax-highlighting
 - FZF previews depend on bat and eza being installed
+- Autosuggestions loaded after Oh My Zsh to avoid conflicts
 
 ### When editing aerospace/aerospace.toml:
 - Fix Vivaldi app-id at line 215 (has trailing quote: `com.vivaldi.Vivaldi"` should be `com.vivaldi.Vivaldi`)
 - Workspace-to-monitor assignments affect multi-monitor setups
 - Service mode must be exited to return to main mode
+
+### When editing alacritty/alacritty.toml:
+- Theme imports are relative to home directory
+- Font size is 20 (larger for readability)
+- Opacity is 1 (fully opaque) for better visibility
+- Window starts maximized by default
+
+### When editing .tmux.conf:
+- Prefix is Ctrl+a (not default Ctrl+b)
+- All comments are in English
+- Split commands maintain current path with -c flag
+- tmux-continuum auto-restore is disabled to prevent unwanted session restoration
 
 ### When editing Neovim configs:
 - All modules must use `scv3lqq` namespace
