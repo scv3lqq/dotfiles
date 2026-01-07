@@ -2,3 +2,4 @@
 .stow-local-ignore
 /htop
 .claude/settings.local.json
+oh-my-zsh/plugins/*
