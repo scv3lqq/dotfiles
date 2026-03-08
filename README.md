@@ -65,7 +65,14 @@ cd ~/dotfiles
 Configs that live in `~/.config/`:
 
 ```sh
-stow --target ~/.config nvim ghostty aerospace karabiner
+stow --target ~/.config ghostty aerospace karabiner
+```
+
+Neovim needs its own target directory:
+
+```sh
+mkdir -p ~/.config/nvim
+stow --target ~/.config/nvim nvim
 ```
 
 Zsh config — `ZDOTDIR` is set to `~/.config/zsh`, so stow there:
