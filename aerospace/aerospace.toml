@@ -158,11 +158,10 @@ alt-tab = 'workspace-back-and-forth'
 alt-shift-semicolon = 'mode service'
 
 # Open the apps
-alt-enter = 'exec-and-forget open -n /Applications/Alacritty.app'
+alt-enter = 'exec-and-forget open -n /Applications/Ghostty.app'
 
 alt-b = 'exec-and-forget open -n /Applications/Vivaldi.app'
 # alt-n = 'exec-and-forget open -n /Applications/Telegram.app'
-alt-c = 'exec-and-forget open -n /Applications/Spotify.app'
 alt-z = 'exec-and-forget open -n /Applications/Obsidian.app'
 
 [workspace-to-monitor-force-assignment]
@@ -212,7 +211,7 @@ alt-shift-k = ['join-with up', 'mode main']
 alt-shift-l = ['join-with right', 'mode main']
 
 [[on-window-detected]]
-if.app-id = 'org.alacritty'
+if.app-id = 'com.mitchellh.ghostty'
 run = 'move-node-to-workspace t'
 
 
