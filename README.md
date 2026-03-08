@@ -1,128 +1,137 @@
 # dotfiles
 
-Personal macOS dotfiles managed with GNU Stow.
+Personal macOS development environment managed with [GNU Stow](https://www.gnu.org/software/stow/).
 
-## Quick Start
+## What's included
 
-```bash
-# Clone and stow
-git clone <repository-url> ~/.config
-brew install stow
-cd ~ && stow -d ~/.config -t ~ .
+| Directory / File | Tool | Purpose |
+|---|---|---|
+| `zsh/` | Zsh | Shell config, aliases, plugins |
+| `nvim/` | Neovim | Editor with Lazy.nvim |
+| `ghostty/` | Ghostty | Terminal emulator |
+| `aerospace/` | AeroSpace | Tiling window manager |
+| `karabiner/` | Karabiner-Elements | Keyboard remapping |
+| `starship.toml` | Starship | Shell prompt |
+| `.tmux.conf` | tmux | Terminal multiplexer |
 
-# Install essentials
-brew install powerlevel10k zsh-autosuggestions eza bat fzf uv colima docker tmux
+---
+
+## Fresh macOS setup
+
+### 1. Install Xcode Command Line Tools
+
+```sh
+xcode-select --install
+```
+
+### 2. Install Homebrew
+
+```sh
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+```
+
+Follow the post-install instructions to add Homebrew to your PATH.
+
+### 3. Clone this repo
+
+```sh
+git clone https://github.com/<your-username>/dotfiles.git ~/dotfiles
+```
+
+### 4. Install packages
+
+```sh
+brew install stow neovim tmux starship fzf fd bat eza zsh-fast-syntax-highlighting zsh-autosuggestions zsh-completions lazygit lazydocker
+```
+
+```sh
+brew install --cask ghostty aerospace karabiner-elements
+```
+
+Install a Nerd Font (Ghostty config uses JetBrainsMono Nerd Font):
+
+```sh
 brew install --cask font-jetbrains-mono-nerd-font
-
-# Setup tmux plugins
-git clone https://github.com/tmux-plugins/tpm ~/.tmux/plugins/tpm
 ```
 
-Then restart your terminal and configure Powerlevel10k with `p10k configure`.
+### 5. Symlink configs with Stow
 
-## Installation
+Run from inside the `~/dotfiles` directory:
 
-This repository uses [GNU Stow](https://www.gnu.org/software/stow/) to symlink configuration files to their proper locations.
-
-```bash
-# Clone the repository to ~/.config
-git clone <repository-url> ~/.config
-
-# Install stow if not already installed
-brew install stow
-
-# Navigate to the parent directory
-cd ~
-
-# Use stow to create symlinks
-stow -d ~/.config -t ~ .
+```sh
+cd ~/dotfiles
 ```
 
-**Note**: Stow will create symlinks from `~/.config` to your home directory. Existing files may need to be backed up or removed before stowing.
+Configs that live in `~/.config/`:
 
-## What's Included
+```sh
+stow --target ~/.config nvim ghostty aerospace karabiner
+```
 
-- **Shell**: Zsh with Oh My Zsh and Powerlevel10k theme
-- **Terminal**: Alacritty with Alabaster Dark theme
-- **Terminal Multiplexer**: Tmux with vim-tmux-navigator and Gruvbox theme
-- **Window Manager**: AeroSpace (i3-like tiling for macOS)
-- **Editor**: Neovim with Lazy.nvim plugin manager
-- **Python**: uv for package management and project scaffolding
-- **Container**: Colima (Docker Desktop alternative)
-- **Utility Scripts**: Python project scaffolding and package creation tools
+Zsh config (lives in `~/`):
 
-## Key Features
+```sh
+stow --target ~ zsh
+```
 
-- **Vim-style Navigation**: Consistent vim keybindings across tmux, Neovim, and AeroSpace
-- **Modern CLI Tools**: eza (ls), bat (cat), fzf (fuzzy finder), z (smart cd)
-- **Python Development**: Pre-configured uv workflows with FastAPI support
-- **Smart Completions**: Context-aware FZF previews with file/directory awareness
-- **Tiling Window Manager**: i3-like workspace management with multi-monitor support
-- **Session Persistence**: Tmux sessions with automatic save/restore capability
-- **Developer Aliases**: Shortcuts for common tasks (uv, docker, git, etc.)
+Starship and tmux (live in `~/.config/` and `~/`):
 
-## Requirements
+```sh
+ln -s ~/dotfiles/starship.toml ~/.config/starship.toml
+ln -s ~/dotfiles/.tmux.conf ~/.tmux.conf
+```
 
-- macOS
-- [Homebrew](https://brew.sh/)
-- [Oh My Zsh](https://ohmyz.sh/)
-- [Powerlevel10k](https://github.com/romkatv/powerlevel10k)
-- [GNU Stow](https://www.gnu.org/software/stow/)
-- JetBrainsMono Nerd Font
+### 6. Set Zsh as default shell (if not already)
 
-## Key Tools
+```sh
+chsh -s /bin/zsh
+```
 
-- **Aerospace** https://github.com/nikitabobko/AeroSpace
-- **Alacritty** https://alacritty.org/
-- **Oh-my-zsh** https://ohmyz.sh/
-- **Tmux** https://github.com/tmux/tmux
-- **Neovim** https://neovim.io/
-- **uv** https://github.com/astral-sh/uv
+### 7. Restart your terminal
 
-## Post-Installation
+Open Ghostty. Neovim plugins will auto-install via Lazy.nvim on first launch:
 
-After stowing the dotfiles:
+```sh
+nvim
+```
 
-1. Install Oh My Zsh if not already installed:
-   ```bash
-   sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)"
-   ```
+---
 
-2. Install Powerlevel10k theme via Homebrew:
-   ```bash
-   brew install powerlevel10k
-   ```
+## AeroSpace keybindings (window manager)
 
-3. Install zsh plugins via Homebrew:
-   ```bash
-   brew install zsh-autosuggestions
-   ```
+| Key | Action |
+|---|---|
+| `Alt + h/j/k/l` | Focus window left/down/up/right |
+| `Alt + Shift + h/j/k/l` | Move window |
+| `Alt + 1-9` | Switch workspace |
+| `Alt + Shift + 1-9` | Move window to workspace |
+| `Alt + /` | Toggle tiles layout |
+| `Alt + ,` | Toggle accordion layout |
+| `Alt + Tab` | Switch to previous workspace |
+| `Alt + Shift + Tab` | Move workspace to next monitor |
+| `Alt + Enter` | Open Ghostty |
+| `Alt + b` | Open Vivaldi |
+| `Alt + z` | Open Obsidian |
+| `Alt + Shift + ;` | Enter service mode |
 
-4. Install required CLI tools:
-   ```bash
-   brew install eza bat fzf uv colima docker tmux
-   ```
+Apps are auto-assigned to workspaces: Ghostty → `t`, Vivaldi → `w`, Spotify → `s`, Telegram → `m`, Obsidian → `o`, Chrome → `g`.
 
-5. Install Tmux Plugin Manager (TPM):
-   ```bash
-   git clone https://github.com/tmux-plugins/tpm ~/.tmux/plugins/tpm
-   ```
-   Then open tmux and press `Ctrl+a` + `I` to install plugins
+---
 
-6. Install JetBrainsMono Nerd Font:
-   ```bash
-   brew install --cask font-jetbrains-mono-nerd-font
-   ```
+## Zsh aliases
 
-7. Open Neovim to automatically install plugins via Lazy.nvim
+| Alias | Command |
+|---|---|
+| `n` | `nvim` |
+| `nf` | Open file in nvim via fzf |
+| `lzd` | `lazydocker` |
+| `gst` | `git status` |
+| `gcof` | Checkout git branch via fzf |
+| `fkill` | Kill process via fzf |
+| `ll` | `ls -lah` |
 
-8. Configure AeroSpace to start at login
+---
 
-9. (Optional) Run Powerlevel10k configuration wizard:
-   ```bash
-   p10k configure
-   ```
+## Updating configs
 
-## Documentation
-
-See [CLAUDE.md](./CLAUDE.md) for detailed configuration architecture and guidance when working with these dotfiles.
+After editing any dotfile, no re-stowing is needed — symlinks point directly to the repo files. To add a new config file to an existing stow package, just place it in the correct directory and re-run `stow` for that package.

@@ -1,9 +1,0 @@
-#!/bin/zsh
-
-# It creates an empty python package with __init__.py
-
-
-mkdir $1
-cd $1
-touch __init__.py
-$SHELL # moves to this directory
