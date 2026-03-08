@@ -68,17 +68,18 @@ Configs that live in `~/.config/`:
 stow --target ~/.config nvim ghostty aerospace karabiner
 ```
 
-Zsh config (lives in `~/`):
+Zsh config — `ZDOTDIR` is set to `~/.config/zsh`, so stow there:
 
 ```sh
-stow --target ~ zsh
+mkdir -p ~/.config/zsh
+stow --target ~/.config/zsh zsh
 ```
 
-Starship and tmux (live in `~/.config/` and `~/`):
+Starship and tmux:
 
 ```sh
-ln -s ~/dotfiles/starship.toml ~/.config/starship.toml
-ln -s ~/dotfiles/.tmux.conf ~/.tmux.conf
+ln -sf ~/dotfiles/starship.toml ~/.config/starship.toml
+ln -sf ~/dotfiles/.tmux.conf ~/.tmux.conf
 ```
 
 ### 6. Set Zsh as default shell (if not already)
@@ -134,4 +135,14 @@ Apps are auto-assigned to workspaces: Ghostty → `t`, Vivaldi → `w`, Spotify 
 
 ## Updating configs
 
-After editing any dotfile, no re-stowing is needed — symlinks point directly to the repo files. To add a new config file to an existing stow package, just place it in the correct directory and re-run `stow` for that package.
+Symlinks point directly into the repo, so after `git pull` changes are active immediately — no re-stowing needed.
+
+```sh
+cd ~/dotfiles && git pull
+```
+
+If you add a **new file** to an existing package, re-run stow for that package:
+
+```sh
+stow --target ~/.config nvim   # or whichever package
+```
