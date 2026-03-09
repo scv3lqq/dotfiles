@@ -67,6 +67,12 @@ stow --restow --target ~/.config/zsh zsh
 ln -sf "$DOTFILES/starship.toml" ~/.config/starship.toml
 ln -sf "$DOTFILES/.tmux.conf" ~/.tmux.conf
 
+# TPM (tmux plugin manager)
+if [[ ! -d ~/.tmux/plugins/tpm ]]; then
+  echo "Installing TPM..."
+  git clone https://github.com/tmux-plugins/tpm ~/.tmux/plugins/tpm
+fi
+
 # Tell zsh where to find its config
 echo 'export ZDOTDIR="$HOME/.config/zsh"' > ~/.zshenv
 
