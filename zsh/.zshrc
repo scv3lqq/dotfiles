@@ -75,6 +75,11 @@ export FZF_CTRL_T_OPTS="--preview 'bat --color=always --line-range :500 {}'"
 export FZF_ALT_C_OPTS="--preview 'eza --tree --level=2 --color=always {}'"
 
 # =============================================================================
+# Tool completions
+# =============================================================================
+command -v gopass &>/dev/null && source <(gopass completion zsh)
+
+# =============================================================================
 # Starship prompt
 # =============================================================================
 eval "$(starship init zsh)"
