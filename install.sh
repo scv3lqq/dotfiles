@@ -67,6 +67,9 @@ stow --restow --target ~/.config/zsh zsh
 ln -sf "$DOTFILES/starship.toml" ~/.config/starship.toml
 ln -sf "$DOTFILES/.tmux.conf" ~/.tmux.conf
 
+# Tell zsh where to find its config
+echo 'export ZDOTDIR="$HOME/.config/zsh"' > ~/.zshenv
+
 # =============================================================================
 # Default shell
 # =============================================================================
