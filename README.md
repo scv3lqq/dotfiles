@@ -68,6 +68,7 @@ Auto workspace assignment: Ghostty → `t`, Vivaldi → `w`, Spotify → `s`, Te
 | `n` | nvim |
 | `nf` | nvim via fzf |
 | `gst` | git status |
+| `gp` | git push |
 | `gcof` | checkout branch via fzf |
 | `lzd` | lazydocker |
 | `fkill` | kill process via fzf |
