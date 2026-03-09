@@ -2,6 +2,7 @@
 alias n='nvim'
 alias lzd='lazydocker'
 alias gst='git status'
+alias gp='git push'
 
 # fzf
 alias nf='nvim $(fzf --preview "bat --color=always {}")'
