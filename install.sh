@@ -20,8 +20,8 @@ if [[ "$OS" == "Darwin" ]]; then
     zsh-fast-syntax-highlighting zsh-autosuggestions zsh-completions \
     lazygit lazydocker
 
-  brew install --cask ghostty aerospace karabiner-elements \
-    font-jetbrains-mono-nerd-font
+  brew install --cask ghostty karabiner-elements font-jetbrains-mono-nerd-font
+  brew install --cask nikitabobko/tap/aerospace
 
 elif [[ "$OS" == "Linux" ]]; then
   echo "Installing packages (Linux)..."
