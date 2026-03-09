@@ -1,10 +1,32 @@
 # dotfiles
 
-Personal macOS development environment: Ghostty · Neovim · AeroSpace · Zsh · Starship · tmux · Karabiner.
+macOS development environment + Linux server configs: Neovim · tmux · Zsh · Starship.
+
+## Setup
+
+### macOS
+
+> Requires Xcode Command Line Tools: `xcode-select --install`
+
+```sh
+git clone https://github.com/scv3lqq/dotfiles.git ~/dotfiles
+cd ~/dotfiles && ./install.sh
+```
+
+`install.sh` installs Homebrew, all CLI tools, and macOS apps automatically.
+
+### Linux server
+
+```sh
+git clone https://github.com/scv3lqq/dotfiles.git ~/dotfiles
+cd ~/dotfiles && ./install.sh
+```
+
+`install.sh` detects Linux and installs only server-relevant tools (neovim, tmux, starship, zsh, stow) via apt/dnf. macOS-only configs (Ghostty, AeroSpace, Karabiner) are skipped.
 
 ## Requirements
 
-**macOS apps** (install manually):
+### macOS apps (install manually)
 
 | App | Purpose |
 |---|---|
@@ -16,21 +38,27 @@ Personal macOS development environment: Ghostty · Neovim · AeroSpace · Zsh ·
 | [Telegram](https://telegram.org) | Messenger |
 | [Spotify](https://spotify.com) | Music |
 
-**CLI tools** (via Homebrew):
+### macOS CLI tools (via Homebrew, handled by install.sh)
 
 ```sh
-brew install neovim starship tmux fzf lazydocker
-brew install font-jetbrains-mono-nerd-font
+brew install neovim starship tmux fzf fd bat eza lazygit lazydocker \
+  zsh-fast-syntax-highlighting zsh-autosuggestions zsh-completions
+brew install --cask font-jetbrains-mono-nerd-font
 ```
 
-## Setup
+### Linux server (handled by install.sh)
 
 ```sh
-git clone https://github.com/scv3lqq/dotfiles.git ~/dotfiles
-cd ~/dotfiles && ./install.sh
-```
+# apt-based (Ubuntu/Debian)
+sudo apt-get install -y stow zsh tmux curl git
 
-> Requires Xcode Command Line Tools: `xcode-select --install`
+# Neovim (latest)
+curl -LO https://github.com/neovim/neovim/releases/latest/download/nvim-linux-x86_64.tar.gz
+sudo tar -C /usr/local -xzf nvim-linux-x86_64.tar.gz --strip-components=1
+
+# Starship
+curl -sS https://starship.rs/install.sh | sh
+```
 
 ## Updating
 
