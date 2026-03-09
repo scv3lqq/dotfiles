@@ -16,7 +16,7 @@ SAVEHIST=50000
 # =============================================================================
 # Path
 # =============================================================================
-eval "$(/opt/homebrew/bin/brew shellenv)"
+[[ -x /opt/homebrew/bin/brew ]] && eval "$(/opt/homebrew/bin/brew shellenv)"
 export PATH="$HOME/.local/bin:$PATH"
 
 # =============================================================================
@@ -40,7 +40,7 @@ bindkey '^[[B' history-search-forward
 # =============================================================================
 # Completion
 # =============================================================================
-FPATH="/opt/homebrew/share/zsh-completions:$FPATH"
+[[ -d /opt/homebrew/share/zsh-completions ]] && FPATH="/opt/homebrew/share/zsh-completions:$FPATH"
 autoload -Uz compinit
 compinit -d "$HOME/.cache/zsh/zcompdump"
 
@@ -50,9 +50,23 @@ zstyle ':completion:*' matcher-list 'm:{a-z}={A-Z}'
 # =============================================================================
 # Plugins
 # =============================================================================
-source /opt/homebrew/opt/zsh-fast-syntax-highlighting/share/zsh-fast-syntax-highlighting/fast-syntax-highlighting.plugin.zsh
-source /opt/homebrew/opt/zsh-autosuggestions/share/zsh-autosuggestions/zsh-autosuggestions.zsh
-eval "$(fzf --zsh)"
+# zsh-fast-syntax-highlighting
+_fsh_paths=(
+  /opt/homebrew/opt/zsh-fast-syntax-highlighting/share/zsh-fast-syntax-highlighting/fast-syntax-highlighting.plugin.zsh
+  /usr/share/zsh-fast-syntax-highlighting/fast-syntax-highlighting.plugin.zsh
+)
+for _p in $_fsh_paths; do [[ -f "$_p" ]] && source "$_p" && break; done
+unset _fsh_paths _p
+
+# zsh-autosuggestions
+_zas_paths=(
+  /opt/homebrew/opt/zsh-autosuggestions/share/zsh-autosuggestions/zsh-autosuggestions.zsh
+  /usr/share/zsh-autosuggestions/zsh-autosuggestions.zsh
+)
+for _p in $_zas_paths; do [[ -f "$_p" ]] && source "$_p" && break; done
+unset _zas_paths _p
+
+command -v fzf &>/dev/null && eval "$(fzf --zsh)"
 
 export FZF_DEFAULT_COMMAND="fd --type f --hidden --exclude .git"
 export FZF_CTRL_T_COMMAND="$FZF_DEFAULT_COMMAND"
