@@ -2,6 +2,27 @@
 
 Personal macOS development environment: Ghostty · Neovim · AeroSpace · Zsh · Starship · tmux · Karabiner.
 
+## Requirements
+
+**macOS apps** (install manually):
+
+| App | Purpose |
+|---|---|
+| [Ghostty](https://ghostty.org) | Terminal |
+| [AeroSpace](https://github.com/nikitabobko/AeroSpace) | Window manager |
+| [Karabiner-Elements](https://karabiner-elements.pqrs.org) | Keyboard remapping |
+| [Vivaldi](https://vivaldi.com) | Browser |
+| [Obsidian](https://obsidian.md) | Notes |
+| [Telegram](https://telegram.org) | Messenger |
+| [Spotify](https://spotify.com) | Music |
+
+**CLI tools** (via Homebrew):
+
+```sh
+brew install neovim starship tmux fzf lazydocker
+brew install font-jetbrains-mono-nerd-font
+```
+
 ## Setup
 
 ```sh
