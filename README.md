@@ -24,6 +24,12 @@ cd ~/dotfiles && ./install.sh
 
 `install.sh` detects Linux and installs only server-relevant tools (neovim, tmux, starship, zsh, stow) via apt/dnf. macOS-only configs (Ghostty, AeroSpace, Karabiner) are skipped.
 
+**After install:**
+
+1. Reconnect to the server so zsh becomes the default shell
+2. Install tmux plugins — open tmux, then press `Ctrl+a` then `Shift+i`
+3. Install nvim plugins — run `nvim`, lazy.nvim will install everything automatically
+
 ## Requirements
 
 ### macOS apps (install manually)
