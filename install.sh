@@ -26,6 +26,9 @@ cd "$DOTFILES"
 mkdir -p ~/.config/nvim
 mkdir -p ~/.config/zsh
 
+# Remove Karabiner-managed dir so stow can create a symlink
+rm -rf ~/.config/karabiner
+
 stow --restow --target ~/.config ghostty aerospace karabiner
 stow --restow --target ~/.config/nvim nvim
 stow --restow --target ~/.config/zsh zsh
