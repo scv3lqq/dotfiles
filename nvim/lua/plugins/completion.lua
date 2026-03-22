@@ -9,6 +9,7 @@ return {
             default = { "lsp", "path", "snippets", "buffer" },
         },
         completion = {
+            accept = { auto_brackets = { enabled = true } },
             documentation = {
                 auto_show = true,
                 auto_show_delay_ms = 100,
