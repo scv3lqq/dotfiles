@@ -33,6 +33,21 @@ return {
                 },
             })
 
+            vim.lsp.config("basedpyright", {
+                settings = {
+                    basedpyright = {
+                        analysis = {
+                            autoSearchPaths = true,
+                            useLibraryCodeForTypes = true,
+                        },
+                    },
+                    python = {
+                        venvPath = ".",
+                        venv = ".venv",
+                    },
+                },
+            })
+
             vim.lsp.config("lua_ls", {
                 settings = {
                     Lua = { diagnostics = { globals = { "vim" } } },
