@@ -41,10 +41,6 @@ return {
                             useLibraryCodeForTypes = true,
                         },
                     },
-                    python = {
-                        venvPath = ".",
-                        venv = ".venv",
-                    },
                 },
             })
 
