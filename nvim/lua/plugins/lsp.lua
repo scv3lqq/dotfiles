@@ -29,6 +29,8 @@ return {
                         analyses = { unusedparams = true },
                         staticcheck = true,
                         gofumpt = true,
+                        usePlaceholders = true,
+                        completeUnimported = true,
                     },
                 },
             })
