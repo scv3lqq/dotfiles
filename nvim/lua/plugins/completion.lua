@@ -3,7 +3,11 @@ return {
     version = "1.*",
     dependencies = { "rafamadriz/friendly-snippets" },
     opts = {
-        keymap = { preset = "default" },
+        keymap = {
+            preset = "default",
+            ["<Tab>"] = { "accept", "fallback" },
+            ["<C-y>"] = {},
+        },
         appearance = { nerd_font_variant = "mono" },
         sources = {
             default = { "lsp", "path", "snippets", "buffer" },
