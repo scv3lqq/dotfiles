@@ -80,7 +80,11 @@ return {
                     python = { "ruff_organize_imports", "ruff_format" },
                     lua = { "stylua" },
                 },
-                format_on_save = { timeout_ms = 1000, lsp_fallback = false },
+                format_on_save = function(bufnr)
+                    local ft = vim.bo[bufnr].filetype
+                    if ft == "go" then return nil end
+                    return { timeout_ms = 1000, lsp_fallback = false }
+                end,
             })
             vim.keymap.set("n", "<leader>fo", function()
                 require("conform").format({ async = true })
