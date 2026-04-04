@@ -58,14 +58,6 @@ vim.api.nvim_create_autocmd("TextYankPost", {
     callback = function() vim.highlight.on_yank() end,
 })
 
--- Compatibility shim: nvim-treesitter v1.x removed ft_to_lang
-if not vim.treesitter.ft_to_lang then
-    vim.treesitter.ft_to_lang = function(ft)
-        local ok, lang = pcall(vim.treesitter.language.get_lang, ft)
-        return ok and lang or ft
-    end
-end
-
 -- Bootstrap lazy.nvim
 local lazypath = vim.fn.stdpath("data") .. "/lazy/lazy.nvim"
 if not (vim.uv or vim.loop).fs_stat(lazypath) then
