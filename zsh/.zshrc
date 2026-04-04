@@ -18,6 +18,7 @@ SAVEHIST=50000
 # =============================================================================
 [[ -x /opt/homebrew/bin/brew ]] && eval "$(/opt/homebrew/bin/brew shellenv)"
 export PATH="$HOME/.local/bin:$PATH"
+export PATH="$PATH:$(go env GOPATH)/bin"
 
 # =============================================================================
 # Aliases
