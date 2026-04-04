@@ -29,7 +29,7 @@ return {
                         analyses = { unusedparams = true },
                         staticcheck = true,
                         gofumpt = true,
-                        usePlaceholders = true,
+                        usePlaceholders = false,
                         completeUnimported = true,
                     },
                 },
