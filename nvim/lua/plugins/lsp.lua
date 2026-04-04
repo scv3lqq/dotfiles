@@ -80,7 +80,11 @@ return {
                     python = { "ruff_organize_imports", "ruff_format" },
                     lua = { "stylua" },
                 },
-                format_on_save = { timeout_ms = 1000, lsp_fallback = true },
+                format_on_save = function(bufnr)
+                    local errors = vim.diagnostic.get(bufnr, { severity = vim.diagnostic.severity.ERROR })
+                    if #errors > 0 then return end
+                    return { timeout_ms = 1000, lsp_fallback = true }
+                end,
             })
             vim.keymap.set("n", "<leader>fo", function()
                 require("conform").format({ async = true })
