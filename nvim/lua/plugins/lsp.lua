@@ -31,6 +31,7 @@ return {
                         gofumpt = true,
                         usePlaceholders = false,
                         completeUnimported = true,
+                        ["local"] = "",
                     },
                 },
             })
@@ -69,6 +70,17 @@ return {
                     map("[d", vim.diagnostic.goto_prev, "Prev diagnostic")
                 end,
             })
+
+            -- Organize Go imports on save via gopls code action
+            vim.api.nvim_create_autocmd("BufWritePre", {
+                pattern = "*.go",
+                callback = function()
+                    vim.lsp.buf.code_action({
+                        context = { only = { "source.organizeImports" } },
+                        apply = true,
+                    })
+                end,
+            })
         end,
     },
     {
@@ -76,15 +88,10 @@ return {
         config = function()
             require("conform").setup({
                 formatters_by_ft = {
-                    go = { "gofumpt" },
                     python = { "ruff_organize_imports", "ruff_format" },
                     lua = { "stylua" },
                 },
-                format_on_save = function(bufnr)
-                    local ft = vim.bo[bufnr].filetype
-                    if ft == "go" then return nil end
-                    return { timeout_ms = 1000, lsp_fallback = false }
-                end,
+                format_on_save = { timeout_ms = 1000, lsp_fallback = true },
             })
             vim.keymap.set("n", "<leader>fo", function()
                 require("conform").format({ async = true })
