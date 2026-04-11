@@ -5,6 +5,7 @@ alias gst='git status'
 alias gp='git push'
 alias gpl='git pull'
 alias gl='git log --graph --decorate --pretty=format:"%C(yellow)%h%C(reset) %C(auto)%d%C(reset) %s%n%w(0,4,4)%b"'
+alias md='mkdir -p'
 
 # fzf
 alias nf='nvim $(fzf --preview "bat --color=always {}")'
