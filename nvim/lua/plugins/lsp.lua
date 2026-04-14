@@ -91,10 +91,9 @@ return {
                     python = { "ruff_organize_imports", "ruff_format" },
                     lua = { "stylua" },
                 },
-                format_on_save = { timeout_ms = 1000, lsp_fallback = true },
             })
             vim.keymap.set("n", "<leader>fo", function()
-                require("conform").format({ async = true })
+                require("conform").format({ async = true, lsp_format = "fallback" })
             end, { desc = "Format" })
         end,
     },
