@@ -5,7 +5,8 @@ return {
     opts = {
         keymap = {
             preset = "default",
-            ["<Tab>"] = { "accept", "fallback" },
+            ["<Tab>"] = { "snippet_forward", "accept", "fallback" },
+            ["<S-Tab>"] = { "snippet_backward", "fallback" },
             ["<C-y>"] = {},
         },
         appearance = { nerd_font_variant = "mono" },
