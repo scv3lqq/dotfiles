@@ -1,0 +1,7 @@
+{
+  "Short variable declaration": {
+    "prefix": "vv",
+    "body": "${1:name} := ${2:value}",
+    "description": "Short variable declaration (:=)"
+  }
+}
