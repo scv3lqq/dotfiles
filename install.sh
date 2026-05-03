@@ -16,7 +16,7 @@ if [[ "$OS" == "Darwin" ]]; then
   fi
 
   echo "Installing packages (macOS)..."
-  brew install stow neovim tmux starship fzf fd bat eza \
+  brew install stow neovim tmux starship fzf fd bat eza yazi \
     zsh-fast-syntax-highlighting zsh-autosuggestions zsh-completions \
     lazygit lazydocker
 
@@ -55,6 +55,7 @@ cd "$DOTFILES"
 
 mkdir -p ~/.config/nvim
 mkdir -p ~/.config/zsh
+mkdir -p ~/.config/yazi
 
 if [[ "$OS" == "Darwin" ]]; then
   rm -rf ~/.config/karabiner
@@ -63,6 +64,7 @@ fi
 
 stow --restow --target ~/.config/nvim nvim
 stow --restow --target ~/.config/zsh zsh
+stow --restow --target ~/.config/yazi yazi
 
 ln -sf "$DOTFILES/starship.toml" ~/.config/starship.toml
 ln -sf "$DOTFILES/.tmux.conf" ~/.tmux.conf
