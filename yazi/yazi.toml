@@ -5,7 +5,6 @@ edit = [
 
 [open]
 rules = [
-  { name = "*/", use = "folder" },
   { mime = "text/*", use = "edit" },
   { mime = "application/json", use = "edit" },
   { mime = "application/toml", use = "edit" },
