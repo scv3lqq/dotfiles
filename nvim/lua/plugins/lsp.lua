@@ -90,6 +90,9 @@ return {
                 formatters_by_ft = {
                     python = { "ruff_organize_imports", "ruff_format" },
                     lua = { "stylua" },
+                    json = { "prettier" },
+                    jsonc = { "prettier" },
+                    yaml = { "prettier" },
                 },
             })
             vim.keymap.set("n", "<leader>fo", function()
