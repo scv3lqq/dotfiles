@@ -93,6 +93,7 @@ return {
                     json = { "prettier" },
                     jsonc = { "prettier" },
                     yaml = { "prettier" },
+                    proto = { "buf" },
                 },
             })
             vim.keymap.set("n", "<leader>fo", function()
