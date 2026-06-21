@@ -2,7 +2,7 @@
 # Font
 # =============================================================================
 font-family = JetBrainsMono Nerd Font
-font-size = 20
+font-size = 14
 
 # =============================================================================
 # Window
@@ -32,11 +32,11 @@ copy-on-select = true
 # =============================================================================
 # Theme — Alabaster Dark
 # =============================================================================
-background = #0E1415
+background = #000000
 foreground = #CECECE
 
 # Normal colors
-palette = 0=#0E1415
+palette = 0=#000000
 palette = 1=#e25d56
 palette = 2=#73ca50
 palette = 3=#e9bf57
