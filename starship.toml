@@ -17,6 +17,9 @@ format = '(via [$symbol($version(-$name) )]($style))'
 [cmake]
 format = '(via [$symbol($version )]($style))'
 
+[cmd_duration]
+disabled = true
+
 [cobol]
 format = '(via [$symbol($version )]($style))'
 
@@ -31,6 +34,9 @@ format = '(via [$symbol($version )]($style))'
 
 [deno]
 format = '(via [$symbol($version )]($style))'
+
+[docker_context]
+disabled = true
 
 [dotnet]
 format = '(via [$symbol($version )(🎯 $tfm )]($style))'
@@ -88,6 +94,7 @@ format = '(via [$symbol($version )]($style))'
 
 [package]
 format = '(is [$symbol$version]($style) )'
+disabled = true
 
 [perl]
 format = '(via [$symbol($version )]($style))'
@@ -100,6 +107,7 @@ format = '(via [$symbol($version )]($style))'
 
 [python]
 format = '(via [${symbol}${pyenv_prefix}(${version} )(\($virtualenv\) )]($style))'
+disabled = true
 
 [quarto]
 format = '(via [$symbol($version )]($style))'
