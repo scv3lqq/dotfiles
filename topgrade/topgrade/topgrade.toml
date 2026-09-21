@@ -1,0 +1,16 @@
+[misc]
+assume_yes = true
+ask_retry = false
+# system: needs sudo; vim: Lazy sync would rewrite nvim/lazy-lock.json daily;
+# containers, colima: fail whenever the runtime is not running;
+# git_repos: would pull ~/dotfiles, whose worktree is live via symlinks
+disable = ["system", "vim", "containers", "git_repos", "colima"]
+cleanup = true
+notify_end = "on_failure"
+
+[brew]
+# no greedy_cask: Ghostty and other auto_updates casks update themselves
+autoremove = true
+
+[post_commands]
+"Brewfile" = "brew bundle dump --global --force"

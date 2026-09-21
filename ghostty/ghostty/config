@@ -39,3 +39,10 @@ theme = Ayu
 # Explicit so the terminal bg matches the tmux status bar 1:1
 background = #0B0E14
 foreground = #BFBDB6
+
+# =============================================================================
+# Updates
+# =============================================================================
+# Cask is auto_updates, so brew/topgrade skip it: Ghostty updates itself
+auto-update = download
+auto-update-channel = stable
