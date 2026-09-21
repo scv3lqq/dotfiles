@@ -8,7 +8,7 @@ return {
         dependencies = { "mason-org/mason.nvim", "neovim/nvim-lspconfig" },
         config = function()
             require("mason-lspconfig").setup({
-                ensure_installed = { "gopls", "basedpyright", "ruff", "lua_ls" },
+                ensure_installed = { "gopls", "basedpyright", "ruff", "lua_ls", "yamlls" },
                 automatic_enable = true,
             })
         end,
@@ -50,6 +50,14 @@ return {
             vim.lsp.config("lua_ls", {
                 settings = {
                     Lua = { diagnostics = { globals = { "vim" } } },
+                },
+            })
+
+            vim.lsp.config("yamlls", {
+                settings = {
+                    yaml = {
+                        schemaStore = { enable = true, url = "" },
+                    },
                 },
             })
 
