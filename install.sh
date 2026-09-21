@@ -16,7 +16,7 @@ if [[ "$OS" == "Darwin" ]]; then
   fi
 
   echo "Installing packages (macOS)..."
-  brew install stow neovim tmux starship fzf fd bat eza yazi \
+  brew install stow neovim tmux starship fzf fd bat eza yazi jq \
     zsh-fast-syntax-highlighting zsh-autosuggestions zsh-completions \
     lazygit lazydocker
 
@@ -27,9 +27,9 @@ elif [[ "$OS" == "Linux" ]]; then
   echo "Installing packages (Linux)..."
   if command -v apt-get &>/dev/null; then
     sudo apt-get update -q
-    sudo apt-get install -y stow zsh curl git
+    sudo apt-get install -y stow zsh curl git jq
   elif command -v dnf &>/dev/null; then
-    sudo dnf install -y stow zsh curl git
+    sudo dnf install -y stow zsh curl git jq
   fi
 
   if ! command -v nvim &>/dev/null; then
