@@ -18,7 +18,7 @@ if [[ "$OS" == "Darwin" ]]; then
   echo "Installing packages (macOS)..."
   brew install stow neovim tmux starship fzf fd bat eza yazi jq \
     zsh-fast-syntax-highlighting zsh-autosuggestions zsh-completions \
-    lazygit lazydocker
+    lazygit lazydocker topgrade
 
   brew install --cask ghostty karabiner-elements font-jetbrains-mono-nerd-font
   brew install --cask nikitabobko/tap/aerospace
@@ -59,7 +59,7 @@ mkdir -p ~/.config/yazi
 
 if [[ "$OS" == "Darwin" ]]; then
   rm -rf ~/.config/karabiner
-  stow --restow --target ~/.config ghostty aerospace karabiner
+  stow --restow --target ~/.config ghostty aerospace karabiner topgrade
 fi
 
 stow --restow --target ~/.config/nvim nvim
