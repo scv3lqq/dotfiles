@@ -33,6 +33,13 @@ mouse-hide-while-typing = true
 copy-on-select = true
 
 # =============================================================================
+# Notifications
+# =============================================================================
+# Ignore OSC 9/777 from programs: the only desktop alert is the Claude Code
+# Stop hook (terminal-notifier), which does not go through the terminal
+desktop-notifications = false
+
+# =============================================================================
 # Theme: Ayu dark
 # =============================================================================
 theme = Ayu
