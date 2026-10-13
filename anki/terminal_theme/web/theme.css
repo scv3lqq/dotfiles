@@ -1,0 +1,543 @@
+/*
+ * Terminal Theme for Anki - Ghostty (Ayu dark) + tmux dotbar.
+ *
+ * Everything colour-related lives in the :root block below. Nothing else in
+ * this add-on hardcodes a colour: theme.css owns the palette, statusbar.js and
+ * qt.qss read it from here (qt.qss via {{token}} substitution in __init__.py).
+ */
+
+/* ------------------------------------------------------------------ */
+/* Palette: Ghostty `theme = Ayu` as resolved from the Ghostty bundle   */
+/* ------------------------------------------------------------------ */
+
+:root,
+:root.night-mode {
+  --tt-bg: #0b0e14;
+  --tt-fg: #bfbdb6;
+  --tt-cursor: #e6b450;
+  --tt-cursor-text: #0b0e14;
+  --tt-sel-bg: #409fff;
+  --tt-sel-fg: #0b0e14;
+
+  --tt-black: #11151c;
+  --tt-red: #ea6c73;
+  --tt-green: #7fd962;
+  --tt-yellow: #f9af4f;
+  --tt-blue: #53bdfa;
+  --tt-magenta: #cda1fa;
+  --tt-cyan: #90e1c6;
+  --tt-white: #c7c7c7;
+
+  --tt-bright-black: #686868;
+  --tt-bright-red: #f07178;
+  --tt-bright-green: #aad94c;
+  --tt-bright-yellow: #ffb454;
+  --tt-bright-blue: #59c2ff;
+  --tt-bright-magenta: #d2a6ff;
+  --tt-bright-cyan: #95e6cb;
+  --tt-bright-white: #ffffff;
+
+  /* tmux-dotbar */
+  --tt-bar-bg: #0b0e14;
+  --tt-bar-fg: #475266;
+  --tt-bar-fg-current: #bfbdb6;
+  --tt-bar-fg-session: #565b66;
+  --tt-bar-accent: #95e6cb;
+  --tt-bar-zoom: #39bae6;
+
+  /* Answer buttons */
+  --tt-again: var(--tt-bright-red);
+  --tt-hard: var(--tt-bright-yellow);
+  --tt-good: var(--tt-bright-green);
+  --tt-easy: var(--tt-bright-blue);
+
+  /* Overridden per-webview from config.json by __init__.py */
+  --tt-font-family: "JetBrainsMono Nerd Font", "JetBrains Mono", Menlo, monospace;
+  --tt-font-size: 15px;
+}
+
+/* ------------------------------------------------------------------ */
+/* Remap Anki's own design tokens so untouched widgets follow along     */
+/* ------------------------------------------------------------------ */
+
+:root,
+:root.night-mode {
+  --fg: var(--tt-fg);
+  --fg-subtle: var(--tt-bar-fg-session);
+  --fg-disabled: var(--tt-bright-black);
+  --fg-faint: var(--tt-bar-fg);
+  --fg-link: var(--tt-bright-blue);
+
+  --canvas: var(--tt-bg);
+  --canvas-elevated: var(--tt-bg);
+  --canvas-inset: var(--tt-black);
+  --canvas-overlay: var(--tt-black);
+  --canvas-code: var(--tt-black);
+  --canvas-glass: var(--tt-bg);
+
+  --border: var(--tt-bar-fg);
+  --border-subtle: #1c222c;
+  --border-strong: var(--tt-bar-fg-current);
+  --border-focus: var(--tt-cursor);
+  --focus-color: var(--tt-cursor);
+
+  --button-bg: var(--tt-bg);
+  --button-gradient-start: var(--tt-black);
+  --button-gradient-end: var(--tt-black);
+  --button-hover-border: var(--tt-bar-accent);
+  --button-disabled: var(--tt-black);
+  --button-primary-bg: var(--tt-bg);
+  --button-primary-gradient-start: var(--tt-black);
+  --button-primary-gradient-end: var(--tt-black);
+  --button-primary-disabled: var(--tt-black);
+
+  --scrollbar-bg: #1c222c;
+  --scrollbar-bg-hover: var(--tt-bar-fg);
+  --scrollbar-bg-active: var(--tt-bar-fg-session);
+
+  --shadow: transparent;
+  --shadow-inset: transparent;
+  --shadow-subtle: transparent;
+  --shadow-focus: transparent;
+
+  --accent-card: var(--tt-bright-blue);
+  --accent-note: var(--tt-bright-green);
+  --accent-danger: var(--tt-bright-red);
+
+  --state-new: var(--tt-bright-blue);
+  --state-learn: var(--tt-bright-red);
+  --state-review: var(--tt-bright-green);
+  --state-buried: var(--tt-bright-yellow);
+  --state-suspended: var(--tt-yellow);
+  --state-marked: var(--tt-bright-magenta);
+
+  --flag-1: var(--tt-bright-red);
+  --flag-2: var(--tt-bright-yellow);
+  --flag-3: var(--tt-bright-green);
+  --flag-4: var(--tt-bright-blue);
+  --flag-5: var(--tt-bright-magenta);
+  --flag-6: var(--tt-bright-cyan);
+  --flag-7: var(--tt-magenta);
+
+  --highlight-bg: var(--tt-sel-bg);
+  --highlight-fg: var(--tt-sel-fg);
+  --selected-bg: var(--tt-sel-bg);
+  --selected-fg: var(--tt-sel-fg);
+
+  --font-size: var(--tt-font-size);
+  --border-radius: 0;
+  --border-radius-medium: 0;
+  --border-radius-large: 0;
+  --blur: 0px;
+
+  color-scheme: dark;
+}
+
+/* ------------------------------------------------------------------ */
+/* Flat, monospace, no chrome                                           */
+/* ------------------------------------------------------------------ */
+
+html,
+body {
+  background: var(--tt-bg);
+  color: var(--tt-fg);
+  font-family: var(--tt-font-family);
+  font-size: var(--tt-font-size);
+}
+
+body,
+button,
+input,
+select,
+textarea,
+td,
+th,
+a {
+  font-family: var(--tt-font-family);
+}
+
+*,
+*::before,
+*::after {
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  text-shadow: none !important;
+  backdrop-filter: none !important;
+}
+
+::selection {
+  background: var(--tt-sel-bg);
+  color: var(--tt-sel-fg);
+}
+
+a {
+  color: var(--tt-bright-blue);
+}
+
+/* Generic buttons: flat outline, inverted on hover */
+button {
+  background: transparent !important;
+  color: var(--tt-fg);
+  border: 1px solid var(--tt-bar-fg) !important;
+  font-weight: normal;
+  padding: 4px 10px;
+  transition: none;
+}
+
+button:hover {
+  background: var(--tt-bar-fg-current) !important;
+  color: var(--tt-bg) !important;
+  border-color: var(--tt-bar-fg-current) !important;
+}
+
+button:active {
+  background: var(--tt-bar-accent) !important;
+  color: var(--tt-bg) !important;
+  border-color: var(--tt-bar-accent) !important;
+}
+
+button:focus {
+  outline: 1px solid var(--tt-cursor) !important;
+  outline-offset: -2px;
+}
+
+/* ------------------------------------------------------------------ */
+/* Top toolbar                                                          */
+/* ------------------------------------------------------------------ */
+
+.header {
+  background: var(--tt-bar-bg);
+  border-bottom: 1px solid var(--tt-bar-fg) !important;
+}
+
+.toolbar {
+  background: transparent !important;
+}
+
+.hitem {
+  font-weight: normal;
+  color: var(--tt-bar-fg);
+  padding: 4px 10px;
+  border: 1px solid transparent !important;
+}
+
+.hitem:hover {
+  text-decoration: none;
+  color: var(--tt-bg);
+  background: var(--tt-bar-fg-current);
+}
+
+/* Anki's own bottom bar shares #header with the toolbar */
+#header {
+  border-top: 1px solid var(--tt-bar-fg);
+  border-bottom: 0;
+}
+
+/* ------------------------------------------------------------------ */
+/* Deck browser                                                         */
+/* ------------------------------------------------------------------ */
+
+tr.deck td,
+th {
+  border-bottom: 1px solid var(--tt-bar-fg) !important;
+  padding: 3px 12px;
+}
+
+th {
+  color: var(--tt-bar-fg-session);
+  font-weight: normal;
+  text-transform: lowercase;
+}
+
+a.deck {
+  color: var(--tt-fg);
+}
+
+a.deck:hover {
+  text-decoration: none;
+  color: var(--tt-bar-accent);
+}
+
+.current td,
+tr:hover:not(.top-level-drag-row) td {
+  background: #151a23 !important;
+}
+
+.current a.deck {
+  color: var(--tt-bar-accent);
+}
+
+.collapse {
+  color: var(--tt-bar-fg);
+}
+
+.filtered {
+  color: var(--tt-bright-magenta) !important;
+}
+
+.gears {
+  filter: none !important;
+  opacity: 0.6;
+}
+
+#studiedToday {
+  color: var(--tt-bar-fg-session);
+}
+
+.callout {
+  background: var(--tt-black) !important;
+  border: 1px solid var(--tt-bar-fg);
+}
+
+/* ------------------------------------------------------------------ */
+/* Deck overview                                                        */
+/* ------------------------------------------------------------------ */
+
+h1,
+h2,
+h3 {
+  font-weight: normal;
+  color: var(--tt-fg);
+}
+
+.descfont {
+  color: var(--tt-bar-fg-session);
+}
+
+.smallLink {
+  color: var(--tt-bar-fg);
+}
+
+#study {
+  background: transparent !important;
+  color: var(--tt-bar-accent) !important;
+  border: 1px solid var(--tt-bar-accent) !important;
+  padding: 6px 18px;
+}
+
+#study:hover {
+  background: var(--tt-bar-accent) !important;
+  color: var(--tt-bg) !important;
+}
+
+/* ------------------------------------------------------------------ */
+/* Reviewer: card area                                                  */
+/* ------------------------------------------------------------------ */
+
+#qa {
+  line-height: 1.6;
+}
+
+hr,
+hr#answer {
+  background-color: var(--tt-bar-fg) !important;
+  border: none;
+  height: 1px;
+}
+
+#typeans {
+  background: var(--tt-black);
+  color: var(--tt-fg);
+  border: 1px solid var(--tt-bar-fg);
+  padding: 4px 6px;
+}
+
+.typeGood {
+  background: transparent;
+  color: var(--tt-bright-green);
+}
+
+.typeBad {
+  background: transparent;
+  color: var(--tt-bright-red);
+}
+
+.typeMissed {
+  background: transparent;
+  color: var(--tt-bar-fg);
+}
+
+#_mark {
+  color: var(--tt-cursor);
+  -webkit-text-stroke-width: 0;
+}
+
+#_flag {
+  -webkit-text-stroke-width: 0;
+}
+
+/* ------------------------------------------------------------------ */
+/* Reviewer: bottom answer bar                                          */
+/* ------------------------------------------------------------------ */
+
+#outer {
+  border-top: 1px solid var(--tt-bar-fg) !important;
+  background: var(--tt-bar-bg);
+}
+
+.stat,
+.stat2 {
+  color: var(--tt-bar-fg-session);
+}
+
+.nobold,
+.stattxt {
+  color: var(--tt-bar-fg-session);
+  font-size: 11px;
+}
+
+#ansbut {
+  color: var(--tt-bar-accent);
+  border-color: var(--tt-bar-accent) !important;
+}
+
+#ansbut:hover {
+  background: var(--tt-bar-accent) !important;
+  color: var(--tt-bg) !important;
+}
+
+#middle button {
+  min-width: 90px;
+  margin: 9px 4px;
+}
+
+#middle button[data-ease="1"] {
+  color: var(--tt-again);
+  border-color: var(--tt-again) !important;
+}
+
+#middle button[data-ease="2"] {
+  color: var(--tt-hard);
+  border-color: var(--tt-hard) !important;
+}
+
+#middle button[data-ease="3"] {
+  color: var(--tt-good);
+  border-color: var(--tt-good) !important;
+}
+
+#middle button[data-ease="4"] {
+  color: var(--tt-easy);
+  border-color: var(--tt-easy) !important;
+}
+
+#middle button[data-ease="1"]:hover,
+#middle button[data-ease="1"]:active {
+  background: var(--tt-again) !important;
+  color: var(--tt-bg) !important;
+}
+
+#middle button[data-ease="2"]:hover,
+#middle button[data-ease="2"]:active {
+  background: var(--tt-hard) !important;
+  color: var(--tt-bg) !important;
+}
+
+#middle button[data-ease="3"]:hover,
+#middle button[data-ease="3"]:active {
+  background: var(--tt-good) !important;
+  color: var(--tt-bg) !important;
+}
+
+#middle button[data-ease="4"]:hover,
+#middle button[data-ease="4"]:active {
+  background: var(--tt-easy) !important;
+  color: var(--tt-bg) !important;
+}
+
+#defease {
+  border-width: 1px !important;
+  border-style: solid !important;
+  position: relative;
+}
+
+/* Marker for the default answer, in place of Anki's raised look */
+#defease::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -3px;
+  height: 1px;
+  background: currentColor;
+}
+
+/* ------------------------------------------------------------------ */
+/* tmux status bar (injected into the reviewer webview by statusbar.js) */
+/* ------------------------------------------------------------------ */
+
+body.tt-has-statusbar {
+  padding-bottom: 28px;
+}
+
+#tt-statusbar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1ch;
+  padding: 0 1ch;
+  background: var(--tt-bar-bg);
+  color: var(--tt-bar-fg);
+  font-family: var(--tt-font-family);
+  font-size: 12px;
+  line-height: 24px;
+  white-space: nowrap;
+  overflow: hidden;
+  -webkit-user-select: none;
+  z-index: 100;
+}
+
+#tt-statusbar .tt-left,
+#tt-statusbar .tt-right {
+  flex: 0 0 auto;
+}
+
+/* Centred like tmux `status-justify absolute-centre` */
+#tt-statusbar .tt-windows {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+}
+
+#tt-statusbar .tt-session {
+  color: var(--tt-bar-accent);
+}
+
+#tt-statusbar .tt-edge {
+  color: var(--tt-bar-accent);
+}
+
+#tt-statusbar .tt-session-name {
+  background: var(--tt-bar-accent);
+  color: var(--tt-bar-bg);
+  font-weight: bold;
+  padding: 0 1px;
+}
+
+#tt-statusbar .tt-window {
+  color: var(--tt-bar-fg);
+}
+
+#tt-statusbar .tt-window.tt-current {
+  color: var(--tt-bar-fg-current);
+}
+
+#tt-statusbar .tt-sep {
+  color: var(--tt-bar-fg);
+  padding: 0 1ch;
+}
+
+#tt-statusbar .tt-right {
+  color: var(--tt-bar-fg-session);
+}
+
+#tt-statusbar .tt-zoom {
+  color: var(--tt-bar-zoom);
+}

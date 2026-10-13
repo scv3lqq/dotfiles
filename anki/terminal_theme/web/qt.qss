@@ -1,0 +1,171 @@
+/*
+ * Optional Qt stylesheet for native windows (Browse, Add, Preferences).
+ * Enabled with "qt_styling": true in config.json.
+ *
+ * {{token}} placeholders are substituted in __init__.py (QSS_TOKENS); Qt
+ * stylesheets have no CSS custom properties, so the palette cannot be shared
+ * with theme.css directly.
+ */
+
+QWidget {
+    background: {{bg}};
+    color: {{fg}};
+    font-family: "{{font-family}}";
+    font-size: {{font-size}};
+}
+
+QMainWindow,
+QDialog {
+    background: {{bg}};
+}
+
+QMenuBar,
+QMenu {
+    background: {{bg}};
+    color: {{fg}};
+    border: 1px solid {{border}};
+}
+
+QMenuBar::item:selected,
+QMenu::item:selected {
+    background: {{accent}};
+    color: {{bg}};
+}
+
+QLineEdit,
+QPlainTextEdit,
+QTextEdit,
+QSpinBox,
+QDoubleSpinBox,
+QComboBox {
+    background: {{black}};
+    color: {{fg}};
+    border: 1px solid {{border}};
+    border-radius: 0;
+    padding: 2px 4px;
+    selection-background-color: {{sel-bg}};
+    selection-color: {{sel-fg}};
+}
+
+QLineEdit:focus,
+QPlainTextEdit:focus,
+QTextEdit:focus,
+QComboBox:focus {
+    border: 1px solid {{cursor}};
+}
+
+QComboBox QAbstractItemView {
+    background: {{black}};
+    color: {{fg}};
+    border: 1px solid {{border}};
+    selection-background-color: {{accent}};
+    selection-color: {{bg}};
+}
+
+QPushButton {
+    background: transparent;
+    color: {{fg}};
+    border: 1px solid {{border}};
+    border-radius: 0;
+    padding: 4px 12px;
+}
+
+QPushButton:hover {
+    background: {{fg}};
+    color: {{bg}};
+}
+
+QPushButton:pressed,
+QPushButton:default {
+    border-color: {{accent}};
+    color: {{accent}};
+}
+
+QPushButton:disabled {
+    color: {{subtle}};
+    border-color: {{subtle}};
+}
+
+QTableView,
+QTreeView,
+QListView {
+    background: {{bg}};
+    alternate-background-color: {{black}};
+    color: {{fg}};
+    border: 1px solid {{border}};
+    gridline-color: {{border}};
+    selection-background-color: {{sel-bg}};
+    selection-color: {{sel-fg}};
+    outline: none;
+}
+
+QHeaderView::section {
+    background: {{bg}};
+    color: {{subtle}};
+    border: none;
+    border-bottom: 1px solid {{border}};
+    padding: 4px;
+}
+
+QTabWidget::pane {
+    border: 1px solid {{border}};
+}
+
+QTabBar::tab {
+    background: {{bg}};
+    color: {{subtle}};
+    border: 1px solid {{border}};
+    border-radius: 0;
+    padding: 4px 12px;
+}
+
+QTabBar::tab:selected {
+    color: {{fg}};
+    border-bottom-color: {{accent}};
+}
+
+QSplitter::handle,
+QScrollBar {
+    background: {{bg}};
+}
+
+QScrollBar:vertical,
+QScrollBar:horizontal {
+    border: none;
+}
+
+QScrollBar::handle {
+    background: {{border}};
+    border-radius: 0;
+}
+
+QScrollBar::add-line,
+QScrollBar::sub-line {
+    height: 0;
+    width: 0;
+}
+
+QGroupBox {
+    border: 1px solid {{border}};
+    border-radius: 0;
+    margin-top: 1ex;
+}
+
+QGroupBox::title {
+    color: {{subtle}};
+    subcontrol-origin: margin;
+    left: 8px;
+}
+
+QCheckBox,
+QRadioButton,
+QLabel {
+    background: transparent;
+    color: {{fg}};
+}
+
+QToolTip {
+    background: {{black}};
+    color: {{fg}};
+    border: 1px solid {{border}};
+}
