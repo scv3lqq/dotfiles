@@ -350,7 +350,7 @@ sessionist, **gruvbox dark**.
 | `Alt + Tab`                | Back-and-forth                          |
 | `Alt + Shift + Tab`        | Перенести workspace на след. монитор    |
 | `Alt + Enter`              | Открыть Ghostty                         |
-| `Alt + b`                  | Открыть Vivaldi                         |
+| `Alt + b`                  | Открыть Zen                             |
 | `Alt + z`                  | Открыть Obsidian                        |
 | `Alt + Shift + ;`          | Войти в **service mode**                |
 
@@ -364,7 +364,7 @@ Service mode (после `Alt+Shift+;`):
 | `<BS>`     | Закрыть все окна, кроме текущего                   |
 | `Alt+Shift+h/j/k/l` | Join с соседним контейнером               |
 
-Автораспределение по workspaces: Ghostty → `t`, Vivaldi → `w`,
+Автораспределение по workspaces: Ghostty → `t`, Zen → `w`,
 Spotify → `s`, Telegram → `m`, Obsidian → `o`, Chrome → `g`.
 
 ---
