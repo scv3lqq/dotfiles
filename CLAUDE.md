@@ -4,8 +4,8 @@ Claude Code (PLANNER/REVIEWER) is the thinking partner; a separate agent (the
 implementer) writes the code. Roles are configuration — change a name below and
 the workflow is unchanged.
 
-- PLANNER / REVIEWER: Claude Code, Opus 4.8 (`claude-opus-4-8`), xhigh effort.
-- IMPLEMENTER: Claude Sonnet 5 (`claude-sonnet-5`); may also be Codex
+- PLANNER / REVIEWER: Claude Code, Opus 5.5 (`opus[1m]` in settings), xhigh effort.
+- IMPLEMENTER: Claude Haiku 5.5 (`claude-haiku-5-5`), medium effort; may also be Codex
   (`AGENTS.md` is the implementer contract — do not contradict it).
 
 PLANNER must:
@@ -41,11 +41,20 @@ No database, no migrations, no service/API, no CI, no test suite.
 - `nvim/lua/plugins/*.lua` — per-plugin specs and config.
 - `nvim/lazy-lock.json` — lazy.nvim-managed lock (do not hand-edit).
 - `nvim/snippets/` — user snippets (e.g. `go.json`).
-- `zsh/.zshrc`, `zsh/aliases.zsh` — shell config and aliases.
+- `zsh/.zshrc`, `zsh/aliases.zsh`: shell config and aliases. `zsh/.zprofile`:
+  PATH for login shells (launchd); `ZDOTDIR` makes `~/.zprofile` dead. Probe
+  with `env -i HOME=$HOME /bin/zsh -lc '...'`, a plain `zsh -lc` inherits PATH.
+- `topgrade/`: macOS Stow package; its launchd agent lives outside the repo,
+  see `plans/topgrade-autoupdate.md`.
 - `.tmux.conf`, `starship.toml` — directly linked configs.
 - `aerospace/`, `ghostty/`, `karabiner/`, `yazi/` — Stow packages.
+- `anki/`: Anki add-on source and card templates, symlinked into `addons21`;
+  edits and checks: `anki-addon` skill.
 - `plans/` — PLANNER's implementation plans (`<task-name>.md`).
 - `notes/` — personal reference notes, not workflow docs.
+- `everything.md`: Russian cheatsheet of the whole stack and keymaps, derived
+  from the configs, so it lags them. Root `plan.md` is a stale pre-`plans/`
+  leftover, not an active plan.
 - `AGENTS.md` — implementer contract; obey alongside this file.
 - `README.md` — user-facing setup.
 
@@ -66,7 +75,7 @@ Plan template:
 ## Target behavior — what changes; compatibility to preserve
 ## Relevant files — per file: path, why it matters, edit vs read-only
 ## Constraints — what must not change (paths, Stow layout, keybindings, OS branching)
-## Implementation steps — task IDs (T0, T1...) with owner (orchestrator/implementer), exact files, gates; the `implementer` agent runs one ID per call
+## Implementation steps — task IDs (T0, T1...) with owner (orchestrator/implementer), exact files, gates; the `implementer` agent runs one ID per call (~20K tokens of baseline context each), so fold edits totalling under ~15 lines into a single ID
 ## Tests / verification — exact commands from "Verification commands"
 ## Edge cases — macOS vs Linux, missing tools, dirty worktree, first run
 ## Rollback / migration notes — symlink/config impact, how to revert
@@ -111,7 +120,9 @@ necessary.
 # Verification commands
 
 - `bash -n install.sh` — installer syntax check.
-- `zsh -n zsh/.zshrc zsh/aliases.zsh` — zsh syntax check.
+- `zsh -n zsh/.zshrc zsh/.zprofile zsh/aliases.zsh`: zsh syntax check.
+- `ghostty +validate-config`: Ghostty config check; run it as its own Bash
+  call, it swallows the output of commands chained before it.
 - `find nvim -name '*.lua' -print0 | xargs -0 -n1 luac -p` — Lua parse check.
 - `find nvim karabiner -name '*.json' -print0 | xargs -0 -n1 jq empty` — JSON
   shape check.
