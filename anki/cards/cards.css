@@ -1,0 +1,175 @@
+/*
+ * Terminal card style: Ghostty (Ayu dark) + JetBrainsMono Nerd Font.
+ *
+ * Standalone by design. It carries its own copy of the palette so it also
+ * works on AnkiDroid, where the desktop add-on is not present. Keep the :root
+ * block in sync with anki/terminal_theme/web/theme.css when the palette moves.
+ */
+
+:root {
+  --tt-bg: #0b0e14;
+  --tt-fg: #bfbdb6;
+  --tt-dim: #565b66;
+  --tt-faint: #475266;
+  --tt-cursor: #e6b450;
+  --tt-prompt: #95e6cb;
+  --tt-accent: #59c2ff;
+  --tt-green: #aad94c;
+  --tt-red: #f07178;
+  --tt-yellow: #ffb454;
+  --tt-magenta: #d2a6ff;
+  --tt-font: "JetBrainsMono Nerd Font", "JetBrains Mono", "DejaVu Sans Mono",
+    Menlo, monospace;
+}
+
+/* AnkiDroid paints the page background behind .card */
+html,
+body {
+  background-color: #0b0e14;
+}
+
+.card {
+  background-color: var(--tt-bg);
+  color: var(--tt-fg);
+  font-family: var(--tt-font);
+  font-size: 18px;
+  line-height: 1.6;
+  text-align: left;
+  padding: 16px 12px;
+}
+
+/* Night-mode classes: .nightMode on desktop, .night_mode on AnkiDroid.
+   The palette is dark either way, so both just reassert it. */
+.card.nightMode,
+.card.night_mode,
+.nightMode .card,
+.night_mode .card {
+  background-color: var(--tt-bg);
+  color: var(--tt-fg);
+}
+
+.tt-shell {
+  max-width: 44em;
+  margin: 0 auto;
+}
+
+.tt-line {
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.tt-prompt {
+  color: var(--tt-prompt);
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.tt-cmd {
+  color: var(--tt-fg);
+}
+
+.tt-cursor {
+  display: inline-block;
+  width: 0.6em;
+  height: 1.1em;
+  vertical-align: text-bottom;
+  margin-left: 0.15em;
+  background-color: var(--tt-cursor);
+  animation: tt-blink 1s step-end infinite;
+}
+
+@keyframes tt-blink {
+  0%,
+  49% {
+    opacity: 1;
+  }
+  50%,
+  100% {
+    opacity: 0;
+  }
+}
+
+/* Command output: the answer */
+.tt-output {
+  margin: 0.6em 0 0.9em 0;
+  padding-left: 1.2em;
+  border-left: 1px solid var(--tt-faint);
+  color: var(--tt-fg);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.tt-output b,
+.tt-output strong {
+  color: var(--tt-yellow);
+  font-weight: bold;
+}
+
+.tt-output i,
+.tt-output em {
+  color: var(--tt-magenta);
+  font-style: italic;
+}
+
+.tt-output a {
+  color: var(--tt-accent);
+  text-decoration: none;
+}
+
+.tt-output code,
+.tt-output pre {
+  font-family: var(--tt-font);
+  color: var(--tt-green);
+}
+
+.tt-output ul,
+.tt-output ol {
+  margin: 0.2em 0;
+  padding-left: 1.4em;
+}
+
+.tt-output img {
+  max-width: 100%;
+  border: 1px solid var(--tt-faint);
+}
+
+/* Optional metadata line, e.g. {{Tags}} rendered as a shell comment */
+.tt-comment {
+  color: var(--tt-dim);
+  font-size: 0.8em;
+  margin-top: 1.2em;
+}
+
+.tt-comment:empty {
+  display: none;
+}
+
+/* Type-in answers */
+input#typeans {
+  font-family: var(--tt-font);
+  background-color: #11151c;
+  color: var(--tt-fg);
+  border: 1px solid var(--tt-faint);
+  border-radius: 0;
+  padding: 4px 6px;
+}
+
+.typeGood {
+  background: transparent;
+  color: var(--tt-green);
+}
+
+.typeBad {
+  background: transparent;
+  color: var(--tt-red);
+}
+
+.typeMissed {
+  background: transparent;
+  color: var(--tt-dim);
+}
+
+/* Anki draws <hr id=answer> between front and back; the shell needs no rule */
+hr#answer {
+  display: none;
+}

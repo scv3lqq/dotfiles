@@ -3,3 +3,4 @@
 /htop
 .claude/settings.local.json
 oh-my-zsh/plugins/*
+__pycache__/
