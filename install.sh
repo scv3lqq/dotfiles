@@ -18,7 +18,7 @@ if [[ "$OS" == "Darwin" ]]; then
   echo "Installing packages (macOS)..."
   brew install stow neovim tmux starship fzf fd bat eza yazi jq \
     zsh-fast-syntax-highlighting zsh-autosuggestions zsh-completions \
-    lazygit lazydocker topgrade
+    lazygit lazydocker topgrade terminal-notifier
 
   brew install --cask ghostty karabiner-elements font-jetbrains-mono-nerd-font
   brew install --cask nikitabobko/tap/aerospace
@@ -77,6 +77,37 @@ fi
 
 # Tell zsh where to find its config
 echo 'export ZDOTDIR="$HOME/.config/zsh"' > ~/.zshenv
+
+# =============================================================================
+# Claude Code notifications (macOS)
+# =============================================================================
+# The Stop hook is the only alert source: the built-in channel and gopass
+# alerts are turned off, Ghostty drops terminal OSC notifications.
+if [[ "$OS" == "Darwin" ]]; then
+  echo "Setting up Claude Code notifications..."
+  mkdir -p ~/.claude/hooks
+  ln -sf "$DOTFILES/claude/hooks/notify.sh" ~/.claude/hooks/notify.sh
+
+  settings="$HOME/.claude/settings.json"
+  [[ -f "$settings" ]] || echo '{}' > "$settings"
+  if ! jq -e '[.hooks.Stop[]?.hooks[]?.command] | any(test("notify\\.sh"))' "$settings" >/dev/null; then
+    tmp="$(mktemp)"
+    jq '.hooks.Stop += [{"hooks": [{"type": "command", "command": "~/.claude/hooks/notify.sh", "timeout": 10}]}]' \
+      "$settings" > "$tmp" && mv "$tmp" "$settings"
+  fi
+
+  # A global config key: the same key in settings.json does not override it
+  [[ -f ~/.claude.json ]] || echo '{}' > ~/.claude.json
+  if ! jq -e '.preferredNotifChannel == "notifications_disabled"' ~/.claude.json >/dev/null; then
+    tmp="$(mktemp)"
+    jq '.preferredNotifChannel = "notifications_disabled"' ~/.claude.json > "$tmp" && mv "$tmp" ~/.claude.json
+  fi
+
+  # Without an existing config gopass would start its interactive setup
+  if command -v gopass &>/dev/null && [[ -f ~/.config/gopass/config ]]; then
+    gopass config core.notifications false >/dev/null
+  fi
+fi
 
 # =============================================================================
 # Default shell

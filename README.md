@@ -32,6 +32,8 @@ AeroSpace, Karabiner, topgrade) are skipped.
 1. Open a new shell (or reconnect to the server) so zsh becomes the default shell
 2. Install tmux plugins: open tmux, then press `Ctrl+a` then `Shift+i`
 3. Install nvim plugins: run `nvim`, lazy.nvim installs everything automatically
+4. macOS: restart Claude Code (it may rewrite `~/.claude.json` from memory) and
+   allow `terminal-notifier` in System Settings → Notifications on the first alert
 
 The checkout must live at `$HOME/dotfiles`: every symlink and Stow call assumes it.
 
@@ -81,6 +83,7 @@ curl -sS https://starship.rs/install.sh | sh
 | `starship.toml` | `~/.config/starship.toml` | prompt |
 | `.tmux.conf` | `~/.tmux.conf` | TPM cloned into `~/.tmux/plugins/tpm` |
 | `anki/terminal_theme/` | `Anki2/addons21/terminal_theme` | Anki add-on; symlinked by hand, not by `install.sh` (`anki/cards/` holds card templates) |
+| `claude/hooks/notify.sh` | `~/.claude/hooks/notify.sh` | macOS only; Claude Code Stop hook, `install.sh` also wires it into `~/.claude/settings.json` |
 | `notes/`, `plans/`, `everything.md` | | personal notes, implementation plans, Russian cheatsheet |
 
 Symlinks point directly into the repo: edits are live.
