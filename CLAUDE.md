@@ -63,7 +63,8 @@ No database, no migrations, no service/API, no CI, no test suite.
 
 # Planning for the implementer
 
-For non-trivial tasks (multi-file, behavioral change, new tool, refactor):
+For non-trivial tasks (behavioral change, new tool, refactor); a mechanical
+rename or value swap across files skips the plan and goes straight to edit:
 
 1. Read the relevant configs first — never guess Neovim/Stow/shell behavior.
 2. State current behavior in one or two sentences.
@@ -131,6 +132,8 @@ necessary.
   shape check.
 - `tmux source-file ~/.tmux.conf` applies and validates `.tmux.conf`; errors
   print, then confirm with `tmux show -g <option>`.
+- `aerospace reload-config --dry-run` validates `aerospace.toml`; drop
+  `--dry-run` to apply (edits are live via the symlink).
 - Do not run `./install.sh` as a routine check; it mutates `$HOME`.
 
 # External research tools
@@ -177,8 +180,7 @@ Rules:
 # Documentation gaps
 
 - No architecture, testing, local-development, or agent-workflow docs.
-- No documented reload/validation matrix for AeroSpace, Ghostty, Karabiner,
-  Starship, or Yazi.
+- No documented reload/validation for Karabiner, Starship, or Yazi.
 - No documented lazy.nvim lockfile update workflow.
 
 # Maintaining this file
