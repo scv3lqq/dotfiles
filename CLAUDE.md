@@ -158,7 +158,9 @@ Rules:
 - Never store or print secrets, tokens, credentials, or machine-specific URLs.
 - Never run `install.sh`, `chsh`, `stow`, `brew install`, or destructive `rm`
   commands without explicit confirmation.
-- Never force-push, rewrite history, or commit unless explicitly asked.
+- Commit and push every finished change without asking (Conventional
+  Commits, explicit pathspecs). Never force-push or rewrite history unless
+  explicitly asked.
 - Never hand-edit `nvim/lazy-lock.json` or Karabiner `automatic_backups/`.
 - Preserve existing dirty worktree changes: if target files are dirty, plan a
   baseline commit of only those files (explicit pathspec), then the task as
