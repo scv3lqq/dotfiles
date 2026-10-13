@@ -32,7 +32,10 @@ AeroSpace, Karabiner, topgrade) are skipped.
 1. Open a new shell (or reconnect to the server) so zsh becomes the default shell
 2. Install tmux plugins: open tmux, then press `Ctrl+a` then `Shift+i`
 3. Install nvim plugins: run `nvim`, lazy.nvim installs everything automatically
-4. macOS: restart Claude Code (it may rewrite `~/.claude.json` from memory) and
+4. Verified commits: `install.sh` signs commits in this repo with
+   `~/.ssh/id_ed25519.pub`; to register it on GitHub run
+   `gh auth refresh -h github.com -s admin:ssh_signing_key`, then `./install.sh` again
+5. macOS: restart Claude Code (it may rewrite `~/.claude.json` from memory) and
    allow `terminal-notifier` in System Settings → Notifications on the first alert
 
 The checkout must live at `$HOME/dotfiles`: every symlink and Stow call assumes it.

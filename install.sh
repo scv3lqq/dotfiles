@@ -110,6 +110,43 @@ if [[ "$OS" == "Darwin" ]]; then
 fi
 
 # =============================================================================
+# Commit signing for this repo
+# =============================================================================
+# Repo-local only: the global ~/.gitconfig may carry another identity. The
+# email comes from the last commit, so no address lives in the repo.
+signing_key="$HOME/.ssh/id_ed25519.pub"
+git_version="$(git --version | awk '{print $3}')"
+IFS=. read -r git_major git_minor _ <<<"$git_version"
+if [[ ! -f "$signing_key" ]]; then
+  echo "Skipping commit signing: $signing_key not found"
+elif (( git_major < 2 || (git_major == 2 && git_minor < 34) )); then
+  echo "Skipping commit signing: git $git_version has no SSH signing (needs 2.34+)"
+else
+  echo "Setting up commit signing..."
+  email="$(git -C "$DOTFILES" log -1 --format=%ae)"
+  git -C "$DOTFILES" config user.email "$email"
+  git -C "$DOTFILES" config gpg.format ssh
+  git -C "$DOTFILES" config user.signingkey "$signing_key"
+  git -C "$DOTFILES" config gpg.ssh.allowedSignersFile "$HOME/.ssh/allowed_signers"
+  git -C "$DOTFILES" config commit.gpgsign true
+  git -C "$DOTFILES" config tag.gpgsign true
+
+  signer="$email $(cut -d' ' -f1,2 "$signing_key")"
+  touch ~/.ssh/allowed_signers
+  grep -qxF "$signer" ~/.ssh/allowed_signers || echo "$signer" >> ~/.ssh/allowed_signers
+
+  # Listing signing keys needs the admin:ssh_signing_key scope
+  if command -v gh &>/dev/null && signing_keys="$(gh api user/ssh_signing_keys --jq '.[].key' 2>/dev/null)"; then
+    if ! grep -qF "$(cut -d' ' -f2 "$signing_key")" <<<"$signing_keys"; then
+      gh ssh-key add "$signing_key" --type signing --title "$(hostname -s) signing" ||
+        echo "Could not add the signing key to GitHub; commits will show Unverified"
+    fi
+  else
+    echo "To get Verified commits on GitHub run: gh auth refresh -h github.com -s admin:ssh_signing_key, then ./install.sh again"
+  fi
+fi
+
+# =============================================================================
 # Default shell
 # =============================================================================
 if [[ "$SHELL" != "$(command -v zsh)" ]]; then
