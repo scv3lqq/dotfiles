@@ -46,7 +46,7 @@ The checkout must live at `$HOME/dotfiles`: every symlink and Stow call assumes 
 
 | App | Purpose |
 |---|---|
-| [Vivaldi](https://vivaldi.com) | Browser |
+| [Zen](https://zen-browser.app) | Browser |
 | [Obsidian](https://obsidian.md) | Notes |
 | [Telegram](https://telegram.org) | Messenger |
 | [Spotify](https://spotify.com) | Music |
@@ -137,11 +137,11 @@ tmux-continuum, tmux-assistant-resurrect (restores AI assistant sessions).
 | `Alt + /` | Toggle tiles layout |
 | `Alt + ,` | Toggle accordion layout |
 | `Alt + Enter` | Open Ghostty |
-| `Alt + b` | Open Vivaldi |
+| `Alt + b` | Open Zen |
 | `Alt + z` | Open Obsidian |
 | `Alt + Shift + ;` | Service mode |
 
-Auto workspace assignment: Ghostty → `t`, Vivaldi → `w`, Spotify → `s`,
+Auto workspace assignment: Ghostty → `t`, Zen → `w`, Spotify → `s`,
 Telegram → `m`, Obsidian → `o`, Chrome → `g`.
 
 ## Shell

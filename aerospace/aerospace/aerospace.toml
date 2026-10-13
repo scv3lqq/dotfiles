@@ -160,7 +160,7 @@ alt-shift-semicolon = 'mode service'
 # Open the apps
 alt-enter = 'exec-and-forget open -n /Applications/Ghostty.app'
 
-alt-b = 'exec-and-forget open -n /Applications/Vivaldi.app'
+alt-b = 'exec-and-forget open -n /Applications/Zen.app'
 # alt-n = 'exec-and-forget open -n /Applications/Telegram.app'
 alt-z = 'exec-and-forget open -n /Applications/Obsidian.app'
 
@@ -216,7 +216,7 @@ run = 'move-node-to-workspace t'
 
 
 [[on-window-detected]]
-if.app-id = 'com.vivaldi.Vivaldi"'
+if.app-id = 'app.zen-browser.zen'
 run = 'move-node-to-workspace w'
 
 [[on-window-detected]]
