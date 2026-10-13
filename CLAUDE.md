@@ -50,6 +50,9 @@ No database, no migrations, no service/API, no CI, no test suite.
 - `aerospace/`, `ghostty/`, `karabiner/`, `yazi/` — Stow packages.
 - `anki/`: Anki add-on source and card templates, symlinked into `addons21`;
   edits and checks: `anki-addon` skill.
+- `claude/hooks/notify.sh`: Claude Code Stop hook (macOS alert), linked into
+  `~/.claude/hooks/` by `install.sh`, which also wires settings.json; see
+  `plans/claude-notify-in-dotfiles.md`.
 - `plans/` — PLANNER's implementation plans (`<task-name>.md`).
 - `notes/` — personal reference notes, not workflow docs.
 - `everything.md`: Russian cheatsheet of the whole stack and keymaps, derived
