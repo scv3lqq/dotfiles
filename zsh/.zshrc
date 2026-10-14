@@ -24,7 +24,7 @@ export VISUAL=nvim
 # =============================================================================
 [[ -x /opt/homebrew/bin/brew ]] && eval "$(/opt/homebrew/bin/brew shellenv)"
 export PATH="$HOME/.local/bin:$PATH"
-export PATH="$PATH:$(go env GOPATH)/bin"
+command -v go &>/dev/null && export PATH="$PATH:$(go env GOPATH)/bin"
 
 # =============================================================================
 # Aliases
@@ -49,6 +49,7 @@ bindkey '^[[B' history-search-forward
 # =============================================================================
 [[ -d /opt/homebrew/share/zsh-completions ]] && FPATH="/opt/homebrew/share/zsh-completions:$FPATH"
 autoload -Uz compinit
+[[ -d "$HOME/.cache/zsh" ]] || mkdir -p "$HOME/.cache/zsh"
 compinit -u -d "$HOME/.cache/zsh/zcompdump"
 
 zstyle ':completion:*' menu select
@@ -73,13 +74,26 @@ _zas_paths=(
 for _p in $_zas_paths; do [[ -f "$_p" ]] && source "$_p" && break; done
 unset _zas_paths _p
 
-command -v fzf &>/dev/null && eval "$(fzf --zsh)"
+if command -v fzf &>/dev/null; then
+  if _fzf_init="$(fzf --zsh 2>/dev/null)"; then
+    eval "$_fzf_init"
+  else
+    # fzf < 0.48 (Ubuntu 24.04, Debian 12) has no --zsh: use the packaged script
+    for _p in /usr/share/doc/fzf/examples/key-bindings.zsh /usr/share/fzf/shell/key-bindings.zsh; do
+      [[ -f "$_p" ]] && source "$_p" && break
+    done
+  fi
+  unset _fzf_init _p
+fi
 
-export FZF_DEFAULT_COMMAND="fd --type f --hidden --exclude .git"
-export FZF_CTRL_T_COMMAND="$FZF_DEFAULT_COMMAND"
-export FZF_ALT_C_COMMAND="fd --type d --hidden --exclude .git"
-export FZF_CTRL_T_OPTS="--preview 'bat --color=always --line-range :500 {}'"
-export FZF_ALT_C_OPTS="--preview 'eza --tree --level=2 --color=always {}'"
+# fd, bat and eza come from Homebrew; the Linux install has none of them
+if command -v fd &>/dev/null; then
+  export FZF_DEFAULT_COMMAND="fd --type f --hidden --exclude .git"
+  export FZF_CTRL_T_COMMAND="$FZF_DEFAULT_COMMAND"
+  export FZF_ALT_C_COMMAND="fd --type d --hidden --exclude .git"
+fi
+command -v bat &>/dev/null && export FZF_CTRL_T_OPTS="--preview 'bat --color=always --line-range :500 {}'"
+command -v eza &>/dev/null && export FZF_ALT_C_OPTS="--preview 'eza --tree --level=2 --color=always {}'"
 
 # =============================================================================
 # Tool completions
@@ -87,7 +101,7 @@ export FZF_ALT_C_OPTS="--preview 'eza --tree --level=2 --color=always {}'"
 command -v gopass &>/dev/null && source <(gopass completion zsh)
 
 # =============================================================================
-# Yazi — cd on exit
+# Yazi: cd on exit
 # =============================================================================
 function y() {
   local tmp="$(mktemp -t "yazi-cwd.XXXXXX")" cwd
