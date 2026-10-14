@@ -134,6 +134,9 @@ no password prompt from `chsh`), and sets up commit signing when
      nvim --headless "+Lazy! restore" +qa
      ```
 
+     `~/dotfiles/install.sh --update` performs the same fix, so running it
+     once after the first start is enough.
+
    - If a build failed because a tool was missing, install the tool and run
      `:Lazy build <plugin>`: lazy.nvim does not retry failed builds.
    - On Linux the markdown-preview.nvim build fails because yarn is not
@@ -265,15 +268,41 @@ Symlinks point directly into the repo: edits are live.
 ## Updating
 
 ```sh
-git -C ~/dotfiles pull
+~/dotfiles/install.sh --update
 ```
 
-- Re-run `./install.sh` when it changed. It is idempotent: installed packages
-  are skipped, links are re-made, `~/.zshenv` is rewritten.
-- After a pull that changed `nvim/lazy-lock.json`, run `:Lazy restore` in
-  Neovim (not `:Lazy sync`, which rewrites the lock file). The extra
-  `git checkout` from [First run](#first-run) is only needed after the very
-  first start.
+It runs `git pull --ff-only` in `~/dotfiles` and, when the pull fails
+(diverged branch, local changes in the way, no network), stops with an error
+before changing anything else. Then it runs the pulled `install.sh`, which
+does everything a plain run does (installs what is missing, re-links the
+configs, rewrites `~/.zshenv`) and also:
+
+- macOS: `brew update`, `brew upgrade` of the formulae listed in
+  [What gets installed](#what-gets-installed), and `brew upgrade --cask` of
+  the listed casks that `brew outdated --cask` reports. Casks installed by
+  hand and casks that update themselves (Ghostty) are left alone.
+- Linux, apt: the `apt-get install` of the listed packages already upgrades
+  them; nothing else on the system is upgraded.
+- Linux, dnf: `dnf upgrade` of the listed packages only.
+- Linux, outside the package manager: Neovim, the tree-sitter CLI and
+  Starship are replaced by their latest GitHub release when it is newer.
+  tree-sitter and Starship are touched only when they live in
+  `/usr/local/bin`, where `install.sh` puts them.
+- tmux: installs the plugins newly listed in `.tmux.conf` and updates all of
+  them. TPM runs against a private tmux server, so your sessions are not
+  touched.
+- Neovim: restores the plugins to the commits in `nvim/lazy-lock.json`
+  (headless `:Lazy restore`, including the lock fix from
+  [First run](#first-run)), updates the tree-sitter parsers and upgrades
+  outdated Mason packages. Skipped when the lock has local changes other
+  than the lazy.nvim line the first start rewrites. Plugins never move past
+  the lock: `:Lazy update` and committing the new lock stay a manual step.
+- Prints the pulled commit range and reminds you to open a new shell (or run
+  `tmux-reload`).
+
+It does not upgrade the rest of the system (`apt upgrade`, a full
+`dnf upgrade`, other brew formulae, macOS updates) or go.nvim's tools
+(`:GoUpdateBinaries`).
 
 On macOS `topgrade` upgrades brew/casks/rust/etc.; a launchd agent at
 `~/Library/LaunchAgents/local.topgrade.plist` runs it daily at 22:00.
