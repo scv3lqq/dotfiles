@@ -18,32 +18,60 @@ if [[ "$OS" == "Darwin" ]]; then
   echo "Installing packages (macOS)..."
   brew install stow neovim tmux starship fzf fd bat eza yazi jq \
     zsh-fast-syntax-highlighting zsh-autosuggestions zsh-completions \
-    lazygit lazydocker topgrade terminal-notifier
+    lazygit lazydocker topgrade terminal-notifier \
+    ripgrep tree-sitter-cli go node yarn gh
 
-  brew install --cask ghostty karabiner-elements font-jetbrains-mono-nerd-font
-  brew install --cask nikitabobko/tap/aerospace
+  # A copy installed outside brew (DMG app, hand-installed font) makes brew
+  # exit 1: keep it and go on
+  for cask in ghostty karabiner-elements font-jetbrains-mono-nerd-font nikitabobko/tap/aerospace; do
+    brew install --cask "$cask" || echo "Skipping $cask: brew could not install it (already installed by hand?)"
+  done
 
 elif [[ "$OS" == "Linux" ]]; then
   echo "Installing packages (Linux)..."
+  case "$(uname -m)" in
+    x86_64) nvim_arch=x86_64 ts_arch=x64 ;;
+    aarch64 | arm64) nvim_arch=arm64 ts_arch=arm64 ;;
+    *) echo "Unsupported architecture: $(uname -m)"; exit 1 ;;
+  esac
+
+  # Neovim, tree-sitter CLI (nvim-treesitter), make/gcc (plugin builds),
+  # go/npm/unzip/python venv (Mason servers) must exist before the first
+  # nvim start: lazy.nvim does not retry a failed build
   if command -v apt-get &>/dev/null; then
     sudo apt-get update -q
-    sudo apt-get install -y stow zsh curl git jq
+    sudo apt-get install -y stow zsh curl git jq tmux fzf ripgrep make gcc unzip \
+      python3-venv nodejs npm golang-go zsh-autosuggestions
   elif command -v dnf &>/dev/null; then
-    sudo dnf install -y stow zsh curl git jq
+    sudo dnf install -y stow zsh curl git jq tmux fzf ripgrep make gcc unzip \
+      python3 nodejs npm golang zsh-autosuggestions
+  else
+    echo "No apt-get or dnf: install the packages listed in README.md by hand"
+    exit 1
   fi
 
-  if ! command -v nvim &>/dev/null; then
-    curl -LO https://github.com/neovim/neovim/releases/latest/download/nvim-linux-x86_64.tar.gz
-    sudo tar -C /usr/local -xzf nvim-linux-x86_64.tar.gz --strip-components=1
-    rm nvim-linux-x86_64.tar.gz
+  # The config needs Neovim 0.11.3+; distro packages are older
+  nvim_version="$(nvim --version 2>/dev/null | sed -n '1s/^NVIM v\([0-9.]*\).*/\1/p')"
+  if [[ -z "$nvim_version" || "$(printf '%s\n' 0.11.3 "$nvim_version" | sort -V | head -1)" != 0.11.3 ]]; then
+    # --no-same-owner: as root tar would keep the archive's uid on /usr/local/{bin,lib,share}
+    curl -fsSL "https://github.com/neovim/neovim/releases/latest/download/nvim-linux-$nvim_arch.tar.gz" |
+      sudo tar -C /usr/local -xz --strip-components=1 --no-same-owner
+  fi
+
+  # Checks the version output, not the exit code: a failed or interrupted
+  # download leaves an empty file that bash runs as an empty script (exit 0)
+  if ! tree-sitter --version 2>/dev/null | grep -q '^tree-sitter '; then
+    curl -fsSL "https://github.com/tree-sitter/tree-sitter/releases/latest/download/tree-sitter-linux-$ts_arch.gz" |
+      gunzip | sudo tee /usr/local/bin/tree-sitter >/dev/null
+    sudo chmod 755 /usr/local/bin/tree-sitter
+    if ! /usr/local/bin/tree-sitter --version 2>/dev/null | grep -q '^tree-sitter '; then
+      sudo rm -f /usr/local/bin/tree-sitter
+      echo "Skipping tree-sitter CLI: download failed or the prebuilt binary needs glibc 2.39+, Neovim gets no tree-sitter highlighting"
+    fi
   fi
 
   if ! command -v starship &>/dev/null; then
     curl -sS https://starship.rs/install.sh | sh -s -- -y
-  fi
-
-  if ! command -v tmux &>/dev/null; then
-    sudo apt-get install -y tmux 2>/dev/null || sudo dnf install -y tmux
   fi
 fi
 
@@ -90,7 +118,7 @@ if [[ "$OS" == "Darwin" ]]; then
 
   settings="$HOME/.claude/settings.json"
   [[ -f "$settings" ]] || echo '{}' > "$settings"
-  if ! jq -e '[.hooks.Stop[]?.hooks[]?.command] | any(test("notify\\.sh"))' "$settings" >/dev/null; then
+  if ! jq -e '[.hooks.Stop[]?.hooks[]?.command // empty] | any(test("notify\\.sh"))' "$settings" >/dev/null; then
     tmp="$(mktemp)"
     jq '.hooks.Stop += [{"hooks": [{"type": "command", "command": "~/.claude/hooks/notify.sh", "timeout": 10}]}]' \
       "$settings" > "$tmp" && mv "$tmp" "$settings"
@@ -149,9 +177,16 @@ fi
 # =============================================================================
 # Default shell
 # =============================================================================
-if [[ "$SHELL" != "$(command -v zsh)" ]]; then
+if [[ "${SHELL##*/}" != zsh ]]; then
   echo "Setting zsh as default shell..."
-  chsh -s "$(command -v zsh)"
+  if [[ "$OS" == "Darwin" ]]; then
+    chsh -s "$(command -v zsh)"
+  else
+    # chsh asks for a password cloud users do not have; on Fedora
+    # `command -v zsh` is /usr/sbin/zsh, which /etc/shells does not list
+    zsh_path="$(grep -m1 '/zsh$' /etc/shells || command -v zsh)"
+    sudo usermod -s "$zsh_path" "$(id -un)"
+  fi
 fi
 
 echo "Done."
