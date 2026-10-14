@@ -68,6 +68,21 @@ clean-env and the inside-tmux dry-run resolve to
 - Re-enable: `launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/local.topgrade.plist`
 - Preview as launchd sees it: `env -i HOME=$HOME /bin/zsh -lc 'topgrade --dry-run'`
 
+## Health check
+
+The log lines carry a time but no date, so answer "did it run" like this:
+
+- Last run: `ls -l ~/Library/Logs/topgrade.log` (mtime) plus the trailing
+  `―― HH:MM:SS - Summary ――` block, which lists every step with OK / FAILED.
+- Run count: `grep -c ' - Summary ――' ~/Library/Logs/topgrade.log`, compare
+  with the days since the plist was created (`ls -l` on it). Equal count means
+  no missed day; a run starting later than 22:00 is a wake-up catch-up.
+- Past failures: `grep -nE 'FAILED' ~/Library/Logs/topgrade.log`. Brew Cask
+  download errors (Chrome, VS Code, codex) are transient CDN failures, not
+  config breakage.
+- `launchctl print gui/$(id -u)/local.topgrade` gives `runs` and
+  `last exit code`, but both reset on reboot: the log is the real history.
+
 ## Edge cases
 
 - Mac asleep at 22:00: launchd fires the missed job on wake; powered off: skipped.

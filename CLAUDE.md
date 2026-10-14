@@ -30,7 +30,6 @@ Main pieces:
   TPM clone, `~/.zshenv`, default-shell switch.
 - `nvim/` — Neovim config (lazy.nvim, plugins under `nvim/lua/plugins/`).
 - `zsh/`, `.tmux.conf`, `starship.toml` — shell, multiplexer, prompt.
-- `aerospace/`, `ghostty/`, `karabiner/`, `yazi/` — macOS-only tool configs.
 
 No database, no migrations, no service/API, no CI, no test suite.
 
@@ -47,7 +46,10 @@ No database, no migrations, no service/API, no CI, no test suite.
 - `topgrade/`: macOS Stow package; its launchd agent lives outside the repo,
   see `plans/topgrade-autoupdate.md`.
 - `.tmux.conf`, `starship.toml` — directly linked configs.
-- `aerospace/`, `ghostty/`, `karabiner/`, `yazi/` — Stow packages.
+- macOS Stow packages nest one level, the config lives at
+  `aerospace/aerospace/aerospace.toml`, `ghostty/ghostty/config`,
+  `karabiner/karabiner/karabiner.json`, `topgrade/topgrade/topgrade.toml`.
+  `yazi/yazi.toml`, `nvim/`, `zsh/` are flat (stowed into `~/.config/<tool>`).
 - `anki/`: Anki add-on source and card templates, symlinked into `addons21`;
   edits and checks: `anki-addon` skill.
 - `claude/hooks/notify.sh`: Claude Code Stop hook (macOS alert), linked into
