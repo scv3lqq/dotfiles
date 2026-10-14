@@ -5,6 +5,200 @@ DOTFILES="$HOME/dotfiles"
 
 OS="$(uname -s)"
 
+# README.md lists the same packages: change both together
+brew_formulae=(
+  stow neovim tmux starship fzf fd bat eza yazi jq
+  zsh-fast-syntax-highlighting zsh-autosuggestions zsh-completions
+  lazygit lazydocker topgrade terminal-notifier
+  ripgrep tree-sitter-cli go node yarn gh
+)
+brew_casks=(ghostty karabiner-elements font-jetbrains-mono-nerd-font nikitabobko/tap/aerospace)
+apt_packages=(
+  stow zsh curl git jq tmux fzf ripgrep make gcc unzip
+  python3-venv nodejs npm golang-go zsh-autosuggestions
+)
+dnf_packages=(
+  stow zsh curl git jq tmux fzf ripgrep make gcc unzip
+  python3 nodejs npm golang zsh-autosuggestions
+)
+
+# =============================================================================
+# Helpers
+# =============================================================================
+usage() {
+  cat <<'EOF'
+Usage: install.sh [--update]
+
+  (no flag)  install packages, link configs, set up the shell; safe to re-run
+  --update   git pull --ff-only, then the same as above, plus upgrade the
+             tools this repo installs and sync tmux and Neovim plugins
+EOF
+}
+
+version_lt() {
+  [[ "$1" != "$2" && "$(printf '%s\n' "$1" "$2" | sort -V | head -1)" == "$1" ]]
+}
+
+# The redirect of /releases/latest names the tag: no API token, no rate limit
+latest_release() {
+  local url
+  url="$(curl -fsSLI -o /dev/null -w '%{url_effective}' "https://github.com/$1/releases/latest" 2>/dev/null)" || return 0
+  [[ "$url" == */tag/* ]] || return 0
+  url="${url##*/tag/}"
+  echo "${url#v}"
+}
+
+# Downloads before touching the install, so a failed download leaves the old
+# Neovim working. The old runtime goes before extracting: files a release
+# dropped must not linger in the runtime path.
+install_nvim() {
+  local tarball
+  tarball="$(mktemp)"
+  curl -fsSL -o "$tarball" "https://github.com/neovim/neovim/releases/latest/download/nvim-linux-$1.tar.gz"
+  if [[ -e /usr/local/bin/nvim ]]; then
+    sudo rm -rf /usr/local/share/nvim/runtime /usr/local/lib/nvim
+  fi
+  # --no-same-owner: as root tar would keep the archive's uid on /usr/local/{bin,lib,share}
+  sudo tar -C /usr/local -xzf "$tarball" --strip-components=1 --no-same-owner
+  rm -f "$tarball"
+}
+
+# Checks the version output, not the exit code: a failed or interrupted
+# download leaves an empty file that bash runs as an empty script (exit 0).
+# The temporary name keeps a working binary in place when the new one fails.
+install_tree_sitter() {
+  local new=/usr/local/bin/tree-sitter.new
+  curl -fsSL "https://github.com/tree-sitter/tree-sitter/releases/latest/download/tree-sitter-linux-$1.gz" |
+    gunzip | sudo tee "$new" >/dev/null
+  sudo chmod 755 "$new"
+  if ! "$new" --version 2>/dev/null | grep -q '^tree-sitter '; then
+    sudo rm -f "$new"
+    return 1
+  fi
+  sudo mv -f "$new" /usr/local/bin/tree-sitter
+}
+
+# TPM asks a tmux server for its plugin path. With no server running it starts
+# one from ~/.tmux.conf, which loads every plugin (tmux-continuum then
+# restores the saved sessions); inside tmux it uses the live server. A private
+# server without a config avoids both.
+sync_tmux_plugins() {
+  local dir rc=1
+  dir="$(mktemp -d)"
+  if tmux -S "$dir/tmux" -f /dev/null new-session -d &&
+    tmux -S "$dir/tmux" set-environment -g TMUX_PLUGIN_MANAGER_PATH "$HOME/.tmux/plugins/"; then
+    rc=0
+    TMUX="$dir/tmux,0,0" ~/.tmux/plugins/tpm/bin/install_plugins || rc=1
+    TMUX="$dir/tmux,0,0" ~/.tmux/plugins/tpm/bin/update_plugins all || rc=1
+  fi
+  tmux -S "$dir/tmux" kill-server 2>/dev/null
+  rm -rf "$dir"
+  return "$rc"
+}
+
+# lazy.nvim bootstraps itself from its stable branch, so the first start
+# rewrites the "lazy.nvim" line of the lock. That line is reset; any other
+# change is the user's and is kept.
+sync_nvim_plugins() {
+  local lock=nvim/lazy-lock.json rc=0 lua
+
+  if git -C "$DOTFILES" diff --no-color -U0 -- "$lock" | grep -E '^[-+]' | grep -Ev '^(---|\+\+\+) ' |
+    grep -vq '"lazy.nvim":'; then
+    echo "Skipping Neovim plugins: nvim/lazy-lock.json has local changes (commit or discard them, then re-run)"
+    return 0
+  fi
+
+  echo "Restoring Neovim plugins to nvim/lazy-lock.json..."
+  git -C "$DOTFILES" checkout -- "$lock"
+  nvim --headless "+Lazy! restore" +qa || rc=1
+  if ! git -C "$DOTFILES" diff --quiet -- "$lock"; then
+    git -C "$DOTFILES" checkout -- "$lock"
+    nvim --headless "+Lazy! restore" +qa || rc=1
+  fi
+  if ! git -C "$DOTFILES" diff --quiet -- "$lock"; then
+    echo "Warning: nvim/lazy-lock.json still differs from the repo after the restore"
+    rc=1
+  fi
+
+  # Headless nvim exits 0 after a Lua error, hence pcall and cquit. A parser
+  # whose install was cut short (nvim quit while the config's async install
+  # ran) has no revision file and makes update() fail: reinstall those first.
+  lua="$(mktemp)"
+  cat >"$lua" <<'EOF'
+local ok, res = pcall(function()
+  local ts, config = require("nvim-treesitter"), require("nvim-treesitter.config")
+  local info_dir = config.get_install_dir("parser-info")
+  local broken = vim.tbl_filter(function(lang)
+    return not vim.uv.fs_stat(info_dir .. "/" .. lang .. ".revision")
+  end, config.get_installed("parsers"))
+  if #broken > 0 and not ts.install(broken, { force = true }):wait(1800000) then
+    return false
+  end
+  return ts.update(nil, { summary = true }):wait(1800000)
+end)
+if not ok then
+  io.stderr:write(tostring(res), "\n")
+end
+if not (ok and res) then
+  vim.cmd("cquit 1")
+end
+EOF
+  echo "Updating tree-sitter parsers..."
+  nvim --headless -c "luafile $lua" +qa || rc=1
+
+  cat >"$lua" <<'EOF'
+local ok, err = pcall(function()
+  local registry = require("mason-registry")
+  registry.refresh()
+  local outdated = {}
+  for _, pkg in ipairs(registry.get_installed_packages()) do
+    if pkg:get_installed_version() ~= pkg:get_latest_version() then
+      outdated[#outdated + 1] = pkg.name
+    end
+  end
+  if #outdated > 0 then
+    vim.cmd("MasonInstall " .. table.concat(outdated, " "))
+  end
+end)
+if not ok then
+  io.stderr:write(tostring(err), "\n")
+  vim.cmd("cquit 1")
+end
+EOF
+  echo "Updating Mason packages..."
+  nvim --headless -c MasonUpdate -c "luafile $lua" +qa || rc=1
+  rm -f "$lua"
+  return "$rc"
+}
+
+# =============================================================================
+# Arguments
+# =============================================================================
+case "$#:${1-}" in
+  0:) mode=install ;;
+  1:--update) mode=update ;;
+  1:-h | 1:--help)
+    usage
+    exit 0
+    ;;
+  *)
+    usage >&2
+    exit 2
+    ;;
+esac
+
+# git pull may rewrite this file while bash is still reading it: bash parses
+# the whole if block before running it, so the exec comes from the old text
+if [[ "$mode" == update && -z "${DOTFILES_PULLED-}" ]]; then
+  old_head="$(git -C "$DOTFILES" rev-parse HEAD)"
+  echo "Pulling $DOTFILES..."
+  if ! git -C "$DOTFILES" pull --ff-only; then
+    echo "git pull failed: fix it in $DOTFILES, then re-run install.sh --update"
+    exit 1
+  fi
+  DOTFILES_PULLED="$old_head" exec "$DOTFILES/install.sh" --update
+fi
+
 # =============================================================================
 # Package installation
 # =============================================================================
@@ -15,17 +209,32 @@ if [[ "$OS" == "Darwin" ]]; then
     eval "$(/opt/homebrew/bin/brew shellenv)"
   fi
 
+  if [[ "$mode" == update ]]; then
+    echo "Updating Homebrew..."
+    brew update || echo "Warning: brew update failed, upgrading from the current package index"
+  fi
+
   echo "Installing packages (macOS)..."
-  brew install stow neovim tmux starship fzf fd bat eza yazi jq \
-    zsh-fast-syntax-highlighting zsh-autosuggestions zsh-completions \
-    lazygit lazydocker topgrade terminal-notifier \
-    ripgrep tree-sitter-cli go node yarn gh
+  brew install "${brew_formulae[@]}"
 
   # A copy installed outside brew (DMG app, hand-installed font) makes brew
   # exit 1: keep it and go on
-  for cask in ghostty karabiner-elements font-jetbrains-mono-nerd-font nikitabobko/tap/aerospace; do
+  for cask in "${brew_casks[@]}"; do
     brew install --cask "$cask" || echo "Skipping $cask: brew could not install it (already installed by hand?)"
   done
+
+  if [[ "$mode" == update ]]; then
+    echo "Upgrading packages (macOS)..."
+    brew upgrade "${brew_formulae[@]}" || echo "Warning: brew could not upgrade every formula, see the errors above"
+    # A named cask is upgraded even when it updates itself (Ghostty); brew
+    # outdated leaves those out, and casks installed by hand too
+    outdated_casks="$(brew outdated --cask --quiet)" || outdated_casks=""
+    for cask in "${brew_casks[@]}"; do
+      if grep -qxF "${cask##*/}" <<<"$outdated_casks"; then
+        brew upgrade --cask "$cask" || echo "Skipping $cask: brew could not upgrade it"
+      fi
+    done
+  fi
 
 elif [[ "$OS" == "Linux" ]]; then
   echo "Installing packages (Linux)..."
@@ -40,11 +249,14 @@ elif [[ "$OS" == "Linux" ]]; then
   # nvim start: lazy.nvim does not retry a failed build
   if command -v apt-get &>/dev/null; then
     sudo apt-get update -q
-    sudo apt-get install -y stow zsh curl git jq tmux fzf ripgrep make gcc unzip \
-      python3-venv nodejs npm golang-go zsh-autosuggestions
+    # On an installed package apt-get install takes the newest candidate, so
+    # --update needs no extra apt command
+    sudo apt-get install -y "${apt_packages[@]}"
   elif command -v dnf &>/dev/null; then
-    sudo dnf install -y stow zsh curl git jq tmux fzf ripgrep make gcc unzip \
-      python3 nodejs npm golang zsh-autosuggestions
+    sudo dnf install -y "${dnf_packages[@]}"
+    if [[ "$mode" == update ]]; then
+      sudo dnf upgrade -y "${dnf_packages[@]}"
+    fi
   else
     echo "No apt-get or dnf: install the packages listed in README.md by hand"
     exit 1
@@ -52,26 +264,44 @@ elif [[ "$OS" == "Linux" ]]; then
 
   # The config needs Neovim 0.11.3+; distro packages are older
   nvim_version="$(nvim --version 2>/dev/null | sed -n '1s/^NVIM v\([0-9.]*\).*/\1/p')"
-  if [[ -z "$nvim_version" || "$(printf '%s\n' 0.11.3 "$nvim_version" | sort -V | head -1)" != 0.11.3 ]]; then
-    # --no-same-owner: as root tar would keep the archive's uid on /usr/local/{bin,lib,share}
-    curl -fsSL "https://github.com/neovim/neovim/releases/latest/download/nvim-linux-$nvim_arch.tar.gz" |
-      sudo tar -C /usr/local -xz --strip-components=1 --no-same-owner
+  if [[ -z "$nvim_version" ]] || version_lt "$nvim_version" 0.11.3; then
+    install_nvim "$nvim_arch"
+  elif [[ "$mode" == update ]]; then
+    nvim_latest="$(latest_release neovim/neovim)"
+    if [[ -z "$nvim_latest" ]]; then
+      echo "Could not check the latest Neovim release, keeping $nvim_version"
+    elif version_lt "$nvim_version" "$nvim_latest"; then
+      echo "Updating Neovim $nvim_version to $nvim_latest..."
+      install_nvim "$nvim_arch"
+    fi
   fi
 
-  # Checks the version output, not the exit code: a failed or interrupted
-  # download leaves an empty file that bash runs as an empty script (exit 0)
   if ! tree-sitter --version 2>/dev/null | grep -q '^tree-sitter '; then
-    curl -fsSL "https://github.com/tree-sitter/tree-sitter/releases/latest/download/tree-sitter-linux-$ts_arch.gz" |
-      gunzip | sudo tee /usr/local/bin/tree-sitter >/dev/null
-    sudo chmod 755 /usr/local/bin/tree-sitter
-    if ! /usr/local/bin/tree-sitter --version 2>/dev/null | grep -q '^tree-sitter '; then
-      sudo rm -f /usr/local/bin/tree-sitter
+    install_tree_sitter "$ts_arch" ||
       echo "Skipping tree-sitter CLI: download failed or the prebuilt binary needs glibc 2.39+, Neovim gets no tree-sitter highlighting"
+  elif [[ "$mode" == update && "$(command -v tree-sitter)" == /usr/local/bin/tree-sitter ]]; then
+    ts_version="$(tree-sitter --version | awk '{print $2}')"
+    ts_latest="$(latest_release tree-sitter/tree-sitter)"
+    if [[ -z "$ts_latest" ]]; then
+      echo "Could not check the latest tree-sitter release, keeping $ts_version"
+    elif version_lt "$ts_version" "$ts_latest"; then
+      echo "Updating tree-sitter CLI $ts_version to $ts_latest..."
+      install_tree_sitter "$ts_arch" ||
+        echo "Could not update tree-sitter CLI: download failed or the new binary does not run, keeping $ts_version"
     fi
   fi
 
   if ! command -v starship &>/dev/null; then
     curl -sS https://starship.rs/install.sh | sh -s -- -y
+  elif [[ "$mode" == update && "$(command -v starship)" == /usr/local/bin/starship ]]; then
+    starship_version="$(starship --version | awk 'NR == 1 {print $2}')"
+    starship_latest="$(latest_release starship/starship)"
+    if [[ -z "$starship_latest" ]]; then
+      echo "Could not check the latest Starship release, keeping $starship_version"
+    elif version_lt "$starship_version" "$starship_latest"; then
+      echo "Updating Starship $starship_version to $starship_latest..."
+      curl -sS https://starship.rs/install.sh | sh -s -- -y
+    fi
   fi
 fi
 
@@ -187,6 +417,25 @@ if [[ "${SHELL##*/}" != zsh ]]; then
     zsh_path="$(grep -m1 '/zsh$' /etc/shells || command -v zsh)"
     sudo usermod -s "$zsh_path" "$(id -un)"
   fi
+fi
+
+# =============================================================================
+# Plugins and summary (--update)
+# =============================================================================
+if [[ "$mode" == update ]]; then
+  echo "Updating tmux plugins..."
+  sync_tmux_plugins || echo "Warning: tmux plugins were not fully updated, see the output above"
+
+  if command -v nvim &>/dev/null; then
+    sync_nvim_plugins || echo "Warning: Neovim plugins were not fully updated, see the output above"
+  fi
+
+  if [[ "$(git -C "$DOTFILES" rev-parse HEAD)" == "$DOTFILES_PULLED" ]]; then
+    echo "Dotfiles already up to date ($(git -C "$DOTFILES" rev-parse --short HEAD))"
+  else
+    echo "Dotfiles: $(git -C "$DOTFILES" rev-parse --short "$DOTFILES_PULLED")..$(git -C "$DOTFILES" rev-parse --short HEAD) ($(git -C "$DOTFILES" rev-list --count "$DOTFILES_PULLED..HEAD") commits)"
+  fi
+  echo "Open a new shell (or run tmux-reload) to load zsh changes."
 fi
 
 echo "Done."
