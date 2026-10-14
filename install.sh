@@ -54,7 +54,7 @@ latest_release() {
 install_nvim() {
   local tarball
   tarball="$(mktemp)"
-  curl -fsSL -o "$tarball" "https://github.com/neovim/neovim/releases/latest/download/nvim-linux-$1.tar.gz"
+  curl -fsSL -o "$tarball" "https://github.com/neovim/neovim/releases/latest/download/nvim-linux-$1.tar.gz" || { rm -f "$tarball"; return 1; }
   if [[ -e /usr/local/bin/nvim ]]; then
     sudo rm -rf /usr/local/share/nvim/runtime /usr/local/lib/nvim
   fi
@@ -110,10 +110,13 @@ sync_nvim_plugins() {
 
   echo "Restoring Neovim plugins to nvim/lazy-lock.json..."
   git -C "$DOTFILES" checkout -- "$lock"
+  # Headless nvim ends its last message without a newline
   nvim --headless "+Lazy! restore" +qa || rc=1
+  echo
   if ! git -C "$DOTFILES" diff --quiet -- "$lock"; then
     git -C "$DOTFILES" checkout -- "$lock"
     nvim --headless "+Lazy! restore" +qa || rc=1
+    echo
   fi
   if ! git -C "$DOTFILES" diff --quiet -- "$lock"; then
     echo "Warning: nvim/lazy-lock.json still differs from the repo after the restore"
@@ -145,6 +148,7 @@ end
 EOF
   echo "Updating tree-sitter parsers..."
   nvim --headless -c "luafile $lua" +qa || rc=1
+  echo
 
   cat >"$lua" <<'EOF'
 local ok, err = pcall(function()
@@ -167,6 +171,7 @@ end
 EOF
   echo "Updating Mason packages..."
   nvim --headless -c MasonUpdate -c "luafile $lua" +qa || rc=1
+  echo
   rm -f "$lua"
   return "$rc"
 }
@@ -279,7 +284,8 @@ elif [[ "$OS" == "Linux" ]]; then
   if ! tree-sitter --version 2>/dev/null | grep -q '^tree-sitter '; then
     install_tree_sitter "$ts_arch" ||
       echo "Skipping tree-sitter CLI: download failed or the prebuilt binary needs glibc 2.39+, Neovim gets no tree-sitter highlighting"
-  elif [[ "$mode" == update && "$(command -v tree-sitter)" == /usr/local/bin/tree-sitter ]]; then
+  # -ef, not ==: Fedora links /usr/local/sbin to bin, and an sbin-first PATH finds the tool there
+  elif [[ "$mode" == update && "$(command -v tree-sitter)" -ef /usr/local/bin/tree-sitter ]]; then
     ts_version="$(tree-sitter --version | awk '{print $2}')"
     ts_latest="$(latest_release tree-sitter/tree-sitter)"
     if [[ -z "$ts_latest" ]]; then
@@ -293,7 +299,7 @@ elif [[ "$OS" == "Linux" ]]; then
 
   if ! command -v starship &>/dev/null; then
     curl -sS https://starship.rs/install.sh | sh -s -- -y
-  elif [[ "$mode" == update && "$(command -v starship)" == /usr/local/bin/starship ]]; then
+  elif [[ "$mode" == update && "$(command -v starship)" -ef /usr/local/bin/starship ]]; then
     starship_version="$(starship --version | awk 'NR == 1 {print $2}')"
     starship_latest="$(latest_release starship/starship)"
     if [[ -z "$starship_latest" ]]; then
