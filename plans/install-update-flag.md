@@ -1063,3 +1063,49 @@ report and logs, after both verdicts. Fix loop per the `/feature` workflow.
 - A test suite or harness inside the repo: the e2e scripts live in the
   scratchpad.
 - Push, merge into `main`, removing the worktree: the user does that.
+
+## Follow-up F1: non-blocking fixes after the validator PASS
+
+The acceptance validator passed AC1 to AC13 at `0dc1010` and listed three
+non-blocking fixes; all stay inside `install.sh`. Install-mode behavior and
+output stay as they are.
+
+### F1: install.sh (owner: implementer)
+
+Scope: `install.sh` only. Anchors verified at `0dc1010`.
+
+1. Line 57, in `install_nvim`: append ` || { rm -f "$tarball"; return 1; }`
+   to the `curl -fsSL -o "$tarball" ...` line. The callers stay simple
+   commands, so `set -e` still stops the run; only the stray temp file goes.
+2. Headless nvim ends its last message without a newline, so the next
+   M-line was glued to it (`Successfully updated 1 registry.Dotfiles already
+   up to date (...)`). In `sync_nvim_plugins`:
+   - right above line 113 (`  nvim --headless "+Lazy! restore" +qa || rc=1`)
+     add the comment line
+     `  # Headless nvim ends its last message without a newline`
+   - right below each of these four lines add an `echo` line with the same
+     indentation as the nvim line: 113 (two spaces), 116
+     (`    nvim --headless "+Lazy! restore" +qa || rc=1`, four spaces), 147
+     (`  nvim --headless -c "luafile $lua" +qa || rc=1`), 169
+     (`  nvim --headless -c MasonUpdate -c "luafile $lua" +qa || rc=1`).
+3. Fedora 42+ links `/usr/local/sbin` to `bin`; with sbin first in PATH,
+   `command -v` names the sbin path and the literal `==` skipped the update.
+   - Line 282: `"$(command -v tree-sitter)" == /usr/local/bin/tree-sitter`
+     becomes `"$(command -v tree-sitter)" -ef /usr/local/bin/tree-sitter`;
+     right above line 282 add, with two spaces of indentation,
+     `  # -ef, not ==: Fedora links /usr/local/sbin to bin, and an sbin-first PATH finds the tool there`
+   - Line 296: `"$(command -v starship)" == /usr/local/bin/starship` becomes
+     `"$(command -v starship)" -ef /usr/local/bin/starship` (no comment).
+
+Must not change: every other line of `install.sh`.
+
+Task gates: G1, G2, G4, G5 (install.sh), and
+`git -C $HOME/dotfiles-worktrees/install-update-flag diff --stat`
+lists `install.sh` only with 9 insertions and 3 deletions. Never run
+`install.sh` on the host.
+
+Definition of done: the three edits in place, every task gate passes.
+Verification by the orchestrator afterwards: G3, G6, G7 rerun at the new HEAD;
+the fedora xtrace log shows the `tree-sitter --version` call after the `-ef`
+test; no update log matches
+`grep -nE 'registry\.Dotfiles|\.\.\.Updating|parser(Updating|Warning)'`.
