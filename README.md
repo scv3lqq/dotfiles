@@ -285,24 +285,43 @@ configs, rewrites `~/.zshenv`) and also:
   them; nothing else on the system is upgraded.
 - Linux, dnf: `dnf upgrade` of the listed packages only.
 - Linux, outside the package manager: Neovim, the tree-sitter CLI and
-  Starship are replaced by their latest GitHub release when it is newer.
-  tree-sitter and Starship are touched only when they live in
-  `/usr/local/bin`, where `install.sh` puts them.
+  Starship are replaced by their latest GitHub release when it is newer,
+  and only when they live in `/usr/local/bin`, where `install.sh` puts them.
 - tmux: installs the plugins newly listed in `.tmux.conf` and updates all of
   them. TPM runs against a private tmux server, so your sessions are not
   touched.
 - Neovim: restores the plugins to the commits in `nvim/lazy-lock.json`
   (headless `:Lazy restore`, including the lock fix from
-  [First run](#first-run)), updates the tree-sitter parsers and upgrades
-  outdated Mason packages. Skipped when the lock has local changes other
-  than the lazy.nvim line the first start rewrites. Plugins never move past
-  the lock: `:Lazy update` and committing the new lock stay a manual step.
+  [First run](#first-run), which also runs before the pull), updates the
+  tree-sitter parsers and upgrades outdated Mason packages. Plugins never
+  move past the lock: `:Lazy update` and `:Lazy sync` rewrite
+  `nvim/lazy-lock.json`, so commit the new lock or discard it with
+  `git -C ~/dotfiles checkout nvim/lazy-lock.json`. Until then `--update`
+  skips this step, and a pull that changes the lock fails.
 - Prints the pulled commit range and reminds you to open a new shell (or run
   `tmux-reload`).
 
 It does not upgrade the rest of the system (`apt upgrade`, a full
 `dnf upgrade`, other brew formulae, macOS updates) or go.nvim's tools
 (`:GoUpdateBinaries`).
+
+A failed package install or Stow conflict stops the run. A failed upgrade or
+plugin step prints a `Warning:`, `Skipping` or `Could not` line and the run
+goes on to `Done.`, so read the output.
+
+On a checkout older than `--update` the old `install.sh` ignores its
+arguments and runs a plain install without pulling, so pull by hand once:
+
+```sh
+git -C ~/dotfiles pull --ff-only
+~/dotfiles/install.sh --update
+```
+
+On a Linux server set up before 2026-10-14 the old installer left
+`/usr/local/bin`, `/usr/local/lib` and `/usr/local/share` owned by uid 1001,
+and neither mode changes that. If `stat -c '%u:%g' /usr/local/bin` does not
+print `0:0`, run
+`sudo chown root:root /usr/local/bin /usr/local/lib /usr/local/share`.
 
 On macOS `topgrade` upgrades brew/casks/rust/etc.; a launchd agent at
 `~/Library/LaunchAgents/local.topgrade.plist` runs it daily at 22:00.
@@ -438,4 +457,4 @@ aerospace reload-config --dry-run                      # AeroSpace config
 - `tmux source-file` must run inside a tmux session.
 - `luac` is not installed by the script: `brew install lua`.
 - `./install.sh` mutates `$HOME`, so it is not a check: run it only to
-  provision.
+  provision or update (`--update`).
