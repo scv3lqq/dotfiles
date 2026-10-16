@@ -1129,12 +1129,14 @@ code) found one major and several minor gaps; fixed in one commit:
   reported instead of `sh` running an empty script; Neovim is upgraded only
   when `command -v nvim` is `/usr/local/bin/nvim` (`-ef`), like tree-sitter
   and Starship.
-- Update mode on macOS exports `HOMEBREW_NO_INSTALL_UPGRADE=1` after
-  `brew update`: `brew install` upgraded every outdated listed package and
-  any named cask, Ghostty included, which bypassed the `brew outdated`
-  filter (Homebrew `cmd/install.rb` calls `upgrade_casks!`,
-  `cask/upgrade.rb` uses `outdated?(greedy: true)` for named casks). Plain
-  mode keeps brew's default.
+- Update mode on macOS runs the cask `brew install` loop with
+  `HOMEBREW_NO_INSTALL_UPGRADE=1` (`env "${cask_env[@]}"`): `brew install`
+  upgraded any named installed cask, Ghostty included, which bypassed the
+  `brew outdated` filter (Homebrew `cmd/install.rb` calls `upgrade_casks!`,
+  `cask/upgrade.rb` uses `outdated?(greedy: true)` for named casks). The
+  formula line keeps brew's default: with the variable an outdated formula
+  prints `Error: ... is already installed` (`install/check.rb`, `onoe`, exit
+  0) before `brew upgrade` handles it. Plain mode keeps brew's default.
 - Plain mode parity with `46b8cb1`: a tree-sitter CLI that still fails after
   the download is removed from `/usr/local/bin`.
 - `exec bash "$DOTFILES/install.sh"`: a lost exec bit no longer breaks the
@@ -1144,4 +1146,4 @@ code) found one major and several minor gaps; fixed in one commit:
   `--update`, and `/usr/local` owned by uid 1001 on old Linux servers.
 
 Gates: G1, G4, G5; G6 with a lock-collision scenario and a
-`HOMEBREW_NO_INSTALL_UPGRADE` check added; G7.
+`HOMEBREW_NO_INSTALL_UPGRADE` check (cask installs only) added; G7.

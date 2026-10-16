@@ -225,13 +225,14 @@ if [[ "$OS" == "Darwin" ]]; then
     eval "$(/opt/homebrew/bin/brew shellenv)"
   fi
 
+  cask_env=()
   if [[ "$mode" == update ]]; then
     echo "Updating Homebrew..."
     brew update || echo "Warning: brew update failed, upgrading from the current package index"
-    # brew install would also upgrade every outdated listed package, and a
-    # named cask even when it updates itself (Ghostty): the upgrade steps
-    # below decide instead
-    export HOMEBREW_NO_INSTALL_UPGRADE=1
+    # brew install upgrades a named cask even when it updates itself
+    # (Ghostty): the brew outdated filter below decides instead. Formulae keep
+    # the default, with it an outdated one prints an Error: line
+    cask_env=(HOMEBREW_NO_INSTALL_UPGRADE=1)
   fi
 
   echo "Installing packages (macOS)..."
@@ -240,7 +241,7 @@ if [[ "$OS" == "Darwin" ]]; then
   # A copy installed outside brew (DMG app, hand-installed font) makes brew
   # exit 1: keep it and go on
   for cask in "${brew_casks[@]}"; do
-    brew install --cask "$cask" || echo "Skipping $cask: brew could not install it (already installed by hand?)"
+    env "${cask_env[@]}" brew install --cask "$cask" || echo "Skipping $cask: brew could not install it (already installed by hand?)"
   done
 
   if [[ "$mode" == update ]]; then
