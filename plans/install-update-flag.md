@@ -1109,3 +1109,39 @@ Verification by the orchestrator afterwards: G3, G6, G7 rerun at the new HEAD;
 the fedora xtrace log shows the `tree-sitter --version` call after the `-ef`
 test; no update log matches
 `grep -nE 'registry\.Dotfiles|\.\.\.Updating|parser(Updating|Warning)'`.
+
+## Follow-up F2: merge review fixes (owner: orchestrator)
+
+A pre-merge review of `main...359035d` (install.sh logic, README against the
+code) found one major and several minor gaps; fixed in one commit:
+
+- MAJOR: the first nvim start dirties the lazy.nvim line, and the pull ran
+  before the lock fix, so any upstream lock change made `--update` stop at
+  `git pull failed`. The lock test is now `lock_has_user_changes()`, used
+  by `sync_nvim_plugins` and, before the pull, to reset that line.
+- The lock test runs `git diff --no-ext-diff --no-textconv`: an external
+  diff tool printed no `+/-` lines and hid user edits.
+- A lock still dirty after the second restore (a plugin failed to install
+  and dropped out) is reset, so it does not block the next pull and sync.
+- Update mode: a failed Neovim download, listing or unpack warns and the run
+  goes on (`tar -tzf` runs before the old runtime is removed); the Starship
+  installer is downloaded with `curl -f` to a file, so a failed download is
+  reported instead of `sh` running an empty script; Neovim is upgraded only
+  when `command -v nvim` is `/usr/local/bin/nvim` (`-ef`), like tree-sitter
+  and Starship.
+- Update mode on macOS exports `HOMEBREW_NO_INSTALL_UPGRADE=1` after
+  `brew update`: `brew install` upgraded every outdated listed package and
+  any named cask, Ghostty included, which bypassed the `brew outdated`
+  filter (Homebrew `cmd/install.rb` calls `upgrade_casks!`,
+  `cask/upgrade.rb` uses `outdated?(greedy: true)` for named casks). Plain
+  mode keeps brew's default.
+- Plain mode parity with `46b8cb1`: a tree-sitter CLI that still fails after
+  the download is removed from `/usr/local/bin`.
+- `exec bash "$DOTFILES/install.sh"`: a lost exec bit no longer breaks the
+  re-exec; `latest_release` gets `--connect-timeout 10 --max-time 30`.
+- README: the Neovim bullet explains `:Lazy update` / `:Lazy sync` and the
+  skipped step; new paragraphs on failures, a checkout older than
+  `--update`, and `/usr/local` owned by uid 1001 on old Linux servers.
+
+Gates: G1, G4, G5; G6 with a lock-collision scenario and a
+`HOMEBREW_NO_INSTALL_UPGRADE` check added; G7.

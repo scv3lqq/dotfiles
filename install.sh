@@ -42,24 +42,25 @@ version_lt() {
 # The redirect of /releases/latest names the tag: no API token, no rate limit
 latest_release() {
   local url
-  url="$(curl -fsSLI -o /dev/null -w '%{url_effective}' "https://github.com/$1/releases/latest" 2>/dev/null)" || return 0
+  url="$(curl -fsSLI --connect-timeout 10 --max-time 30 -o /dev/null -w '%{url_effective}' "https://github.com/$1/releases/latest" 2>/dev/null)" || return 0
   [[ "$url" == */tag/* ]] || return 0
   url="${url##*/tag/}"
   echo "${url#v}"
 }
 
-# Downloads before touching the install, so a failed download leaves the old
-# Neovim working. The old runtime goes before extracting: files a release
-# dropped must not linger in the runtime path.
+# Downloads and lists the archive before touching the install, so a failed or
+# corrupt download leaves the old Neovim working. The old runtime goes before
+# extracting: files a release dropped must not linger in the runtime path.
 install_nvim() {
   local tarball
   tarball="$(mktemp)"
   curl -fsSL -o "$tarball" "https://github.com/neovim/neovim/releases/latest/download/nvim-linux-$1.tar.gz" || { rm -f "$tarball"; return 1; }
+  tar -tzf "$tarball" >/dev/null || { rm -f "$tarball"; return 1; }
   if [[ -e /usr/local/bin/nvim ]]; then
     sudo rm -rf /usr/local/share/nvim/runtime /usr/local/lib/nvim
   fi
   # --no-same-owner: as root tar would keep the archive's uid on /usr/local/{bin,lib,share}
-  sudo tar -C /usr/local -xzf "$tarball" --strip-components=1 --no-same-owner
+  sudo tar -C /usr/local -xzf "$tarball" --strip-components=1 --no-same-owner || { rm -f "$tarball"; return 1; }
   rm -f "$tarball"
 }
 
@@ -98,12 +99,17 @@ sync_tmux_plugins() {
 
 # lazy.nvim bootstraps itself from its stable branch, so the first start
 # rewrites the "lazy.nvim" line of the lock. That line is reset; any other
-# change is the user's and is kept.
+# change is the user's and is kept. An external diff tool prints no +/- lines
+# and would hide a user edit.
+lock_has_user_changes() {
+  git -C "$DOTFILES" diff --no-ext-diff --no-textconv --no-color -U0 -- nvim/lazy-lock.json |
+    grep -E '^[-+]' | grep -Ev '^(---|\+\+\+) ' | grep -vq '"lazy.nvim":'
+}
+
 sync_nvim_plugins() {
   local lock=nvim/lazy-lock.json rc=0 lua
 
-  if git -C "$DOTFILES" diff --no-color -U0 -- "$lock" | grep -E '^[-+]' | grep -Ev '^(---|\+\+\+) ' |
-    grep -vq '"lazy.nvim":'; then
+  if lock_has_user_changes; then
     echo "Skipping Neovim plugins: nvim/lazy-lock.json has local changes (commit or discard them, then re-run)"
     return 0
   fi
@@ -118,8 +124,11 @@ sync_nvim_plugins() {
     nvim --headless "+Lazy! restore" +qa || rc=1
     echo
   fi
+  # A plugin the restore could not install drops out of the lock; a dirty lock
+  # would block the next pull and the next sync
   if ! git -C "$DOTFILES" diff --quiet -- "$lock"; then
-    echo "Warning: nvim/lazy-lock.json still differs from the repo after the restore"
+    echo "Warning: nvim/lazy-lock.json still differs from the repo after the restore, resetting it"
+    git -C "$DOTFILES" checkout -- "$lock"
     rc=1
   fi
 
@@ -196,12 +205,14 @@ esac
 # the whole if block before running it, so the exec comes from the old text
 if [[ "$mode" == update && -z "${DOTFILES_PULLED-}" ]]; then
   old_head="$(git -C "$DOTFILES" rev-parse HEAD)"
+  # The lazy.nvim line would block a pull that changes the lock
+  lock_has_user_changes || git -C "$DOTFILES" checkout -- nvim/lazy-lock.json
   echo "Pulling $DOTFILES..."
   if ! git -C "$DOTFILES" pull --ff-only; then
     echo "git pull failed: fix it in $DOTFILES, then re-run install.sh --update"
     exit 1
   fi
-  DOTFILES_PULLED="$old_head" exec "$DOTFILES/install.sh" --update
+  DOTFILES_PULLED="$old_head" exec bash "$DOTFILES/install.sh" --update
 fi
 
 # =============================================================================
@@ -217,6 +228,10 @@ if [[ "$OS" == "Darwin" ]]; then
   if [[ "$mode" == update ]]; then
     echo "Updating Homebrew..."
     brew update || echo "Warning: brew update failed, upgrading from the current package index"
+    # brew install would also upgrade every outdated listed package, and a
+    # named cask even when it updates itself (Ghostty): the upgrade steps
+    # below decide instead
+    export HOMEBREW_NO_INSTALL_UPGRADE=1
   fi
 
   echo "Installing packages (macOS)..."
@@ -271,20 +286,25 @@ elif [[ "$OS" == "Linux" ]]; then
   nvim_version="$(nvim --version 2>/dev/null | sed -n '1s/^NVIM v\([0-9.]*\).*/\1/p')"
   if [[ -z "$nvim_version" ]] || version_lt "$nvim_version" 0.11.3; then
     install_nvim "$nvim_arch"
-  elif [[ "$mode" == update ]]; then
+  # Upgrades only the copies install.sh put in /usr/local/bin. -ef, not ==:
+  # Fedora links /usr/local/sbin to bin, and an sbin-first PATH finds them there
+  elif [[ "$mode" == update && "$(command -v nvim)" -ef /usr/local/bin/nvim ]]; then
     nvim_latest="$(latest_release neovim/neovim)"
     if [[ -z "$nvim_latest" ]]; then
       echo "Could not check the latest Neovim release, keeping $nvim_version"
     elif version_lt "$nvim_version" "$nvim_latest"; then
       echo "Updating Neovim $nvim_version to $nvim_latest..."
-      install_nvim "$nvim_arch"
+      install_nvim "$nvim_arch" ||
+        echo "Could not update Neovim: download or unpack failed, see the errors above"
     fi
   fi
 
   if ! tree-sitter --version 2>/dev/null | grep -q '^tree-sitter '; then
-    install_tree_sitter "$ts_arch" ||
+    # A broken binary left on PATH makes nvim-treesitter fail instead of skip
+    install_tree_sitter "$ts_arch" || {
+      sudo rm -f /usr/local/bin/tree-sitter
       echo "Skipping tree-sitter CLI: download failed or the prebuilt binary needs glibc 2.39+, Neovim gets no tree-sitter highlighting"
-  # -ef, not ==: Fedora links /usr/local/sbin to bin, and an sbin-first PATH finds the tool there
+    }
   elif [[ "$mode" == update && "$(command -v tree-sitter)" -ef /usr/local/bin/tree-sitter ]]; then
     ts_version="$(tree-sitter --version | awk '{print $2}')"
     ts_latest="$(latest_release tree-sitter/tree-sitter)"
@@ -306,7 +326,12 @@ elif [[ "$OS" == "Linux" ]]; then
       echo "Could not check the latest Starship release, keeping $starship_version"
     elif version_lt "$starship_version" "$starship_latest"; then
       echo "Updating Starship $starship_version to $starship_latest..."
-      curl -sS https://starship.rs/install.sh | sh -s -- -y
+      # Piped, a failed download would hand sh an empty script, which exits 0
+      starship_installer="$(mktemp)"
+      if ! curl -fsSL -o "$starship_installer" https://starship.rs/install.sh || ! sh "$starship_installer" -y; then
+        echo "Could not update Starship, keeping $starship_version"
+      fi
+      rm -f "$starship_installer"
     fi
   fi
 fi
