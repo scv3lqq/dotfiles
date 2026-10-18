@@ -6,7 +6,7 @@ the workflow is unchanged.
 
 - PLANNER / REVIEWER: Claude Code, Opus 5.5 (`opus[1m]` in settings), xhigh effort.
 - IMPLEMENTER: Claude Haiku 5.5 (`claude-haiku-5-5`), medium effort; may also be Codex
-  (`AGENTS.md` is the implementer contract — do not contradict it).
+  (`AGENTS.md` is its legacy contract; Claude sessions and agents skip it).
 
 PLANNER must:
 
@@ -60,7 +60,7 @@ No database, no migrations, no service/API, no CI, no test suite.
 - `everything.md`: Russian cheatsheet of the whole stack and keymaps, derived
   from the configs, so it lags them. Root `plan.md` is a stale pre-`plans/`
   leftover, not an active plan.
-- `AGENTS.md` — implementer contract; obey alongside this file.
+- `AGENTS.md`: legacy Codex contract; Claude sessions and agents skip it.
 - `README.md` — user-facing setup.
 
 # Planning for the implementer
