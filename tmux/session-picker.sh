@@ -119,7 +119,7 @@ main() {
     --color 'info:#565B66,footer:#565B66,ghost:#475266,spinner:#95E6CB' \
     --color 'scrollbar:#475266,gutter:#0B0E14,preview-bg:#0B0E14' \
     --preview "$self preview {1} {2}" \
-    --preview-window 'right,55%,follow,<100(down,45%,follow)' \
+    --preview-window 'right,55%,follow,<55(down,45%,follow)' \
     --bind "load:pos(${pos:-1})+unbind(load)" \
     --bind "right:transform($self right {1} {2})" \
     --bind "left:transform($self left {1} {2})" \
