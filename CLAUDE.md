@@ -72,7 +72,7 @@ rename or value swap across files skips the plan and goes straight to edit:
 2. State current behavior in one or two sentences.
 3. Write the plan to `plans/<task-name>.md` (or `PLAN.md` if `plans/` is
    missing). Reference exact paths, state what must not change, bound scope.
-4. Wait for the user to confirm before any edit.
+4. Wait for the user to confirm before any edit (`/feature` skips this).
 
 Plan template:
 
@@ -109,6 +109,19 @@ Output:
 
 Prioritize blocking issues. Suggest minimal fixes; no broad refactors unless
 necessary.
+
+# `/feature` in this repo
+
+Invoking `/feature` approves its whole cycle, no OK wait. Overrides here:
+
+- Plan: the command's sections plus the template's Edge cases replace the
+  template; edits under ~15 lines total make one task, even across files.
+- Its agents write and review the code, in their own report formats.
+- Branch: `git switch -c feat/<slug>` here, no worktree: gates read live paths.
+- Final PASS: `git switch main`, `git merge --ff-only feat/<slug>`,
+  `git push origin main`, `git branch -d feat/<slug>`, overriding "never
+  touch main" and "no remote operations". A refused merge or push, or a stop
+  condition: stop and report, the branch stays; no rebase, no force-push.
 
 # Architecture rules
 
@@ -172,12 +185,6 @@ Rules:
   one revertable commit; unrelated dirty/untracked files stay out of both.
 - Write backups of live configs to `~/.claude/backups/`, never inside the repo.
 - Prefer small, scoped changes over broad refactoring.
-
-# Docs references
-
-- Setup and usage: `README.md`
-- Implementer contract: `AGENTS.md`
-- Personal notes (not workflow): `notes/`
 
 # Documentation gaps
 
