@@ -16,7 +16,7 @@ PLANNER must:
   with scope bounded explicitly.
 - Review the implementer's diff; write a precise fix plan when needed.
 - Avoid broad rewrites unless explicitly requested.
-- Never implement unless the user explicitly asks Claude Code to code.
+- Never write code in the main session: agents implement and review (`/feature`).
 
 # Project context
 
@@ -72,7 +72,7 @@ rename or value swap across files skips the plan and goes straight to edit:
 2. State current behavior in one or two sentences.
 3. Write the plan to `plans/<task-name>.md` (or `PLAN.md` if `plans/` is
    missing). Reference exact paths, state what must not change, bound scope.
-4. Wait for the user to confirm before any edit (`/feature` skips this).
+4. No OK wait: start the `/feature` cycle on the plan right away.
 
 Plan template:
 
@@ -112,7 +112,8 @@ necessary.
 
 # `/feature` in this repo
 
-Invoking `/feature` approves its whole cycle, no OK wait. Overrides here:
+Every non-trivial task runs this cycle, `/feature` typed or not (follow
+`~/.claude/skills/feature/SKILL.md`), with no OK wait. Overrides here:
 
 - Plan: the command's sections plus the template's Edge cases replace the
   template; edits under ~15 lines total make one task, even across files.
