@@ -74,20 +74,6 @@ rename or value swap across files skips the plan and goes straight to edit:
    missing). Reference exact paths, state what must not change, bound scope.
 4. No OK wait: start the `/feature` cycle on the plan right away.
 
-Plan template:
-
-## Goal — outcome, user-visible change, non-goals
-## Current behavior — how it works now; relevant files, keybindings, data flow
-## Target behavior — what changes; compatibility to preserve
-## Relevant files — per file: path, why it matters, edit vs read-only
-## Constraints — what must not change (paths, Stow layout, keybindings, OS branching)
-## Implementation steps — task IDs (T0, T1...) with owner (orchestrator/implementer), exact files, gates; the `implementer` agent runs one ID per call (~20K tokens of baseline context each), so fold edits totalling under ~15 lines into a single ID
-## Tests / verification — exact commands from "Verification commands"
-## Edge cases — macOS vs Linux, missing tools, dirty worktree, first run
-## Rollback / migration notes — symlink/config impact, how to revert
-## Acceptance criteria — concrete, testable checklist
-## Notes for reviewer — risk areas, expected diff shape
-
 # Review after implementation
 
 Review the implementer's diff before approving, in this order:
@@ -100,13 +86,6 @@ Review the implementer's diff before approving, in this order:
    `karabiner/.../automatic_backups/`).
 6. Security: no secrets, tokens, machine-specific URLs, or weakened validation.
 
-Output:
-
-## Review summary — approved / needs changes + short reason
-## Blocking issues — issue, path, why it matters, exact fix
-## Non-blocking suggestions — suggestion + why
-## Fix plan — exact files/changes + checks to run (only if changes needed)
-
 Prioritize blocking issues. Suggest minimal fixes; no broad refactors unless
 necessary.
 
@@ -115,8 +94,8 @@ necessary.
 Every non-trivial task runs this cycle, `/feature` typed or not (follow
 `~/.claude/skills/feature/SKILL.md`), with no OK wait. Overrides here:
 
-- Plan: the command's sections plus the template's Edge cases replace the
-  template; edits under ~15 lines total make one task, even across files.
+- Plan: the command's sections plus Edge cases (macOS vs Linux, missing tools,
+  dirty worktree, first run); edits under ~15 lines total make one task.
 - Its agents write and review the code, in their own report formats.
 - Branch: `git switch -c feat/<slug>` here, no worktree: gates read live paths.
 - Final PASS: `git switch main`, `git merge --ff-only feat/<slug>`,
@@ -150,6 +129,10 @@ Every non-trivial task runs this cycle, `/feature` typed or not (follow
   print, then confirm with `tmux show -g <option>`.
 - `aerospace reload-config --dry-run` validates `aerospace.toml`; drop
   `--dry-run` to apply (edits are live via the symlink).
+- TUI scripts (fzf popups, tmux bindings): drive them on an isolated server,
+  `env -u TMUX tmux -L test -f /dev/null`, `send-keys` + `capture-pane -ep`.
+- Nerd Font glyphs (U+E000-U+F8FF) vanish when typed into Write/Edit: write
+  escapes (octal in awk/printf) and check the bytes with `od`.
 - Do not run `./install.sh` as a routine check; it mutates `$HOME`.
 
 # External research tools
