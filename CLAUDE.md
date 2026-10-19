@@ -135,6 +135,9 @@ Every non-trivial task runs this cycle, `/feature` typed or not (follow
   `env -u TMUX tmux -L test -f /dev/null`, `send-keys` + `capture-pane -ep`.
 - Nerd Font glyphs (U+E000-U+F8FF) vanish when typed into Write/Edit: write
   escapes (octal in awk/printf) and check the bytes with `od`.
+- Menu bar / GUI result: `screencapture -x $S/d1.png $S/d2.png` (one file
+  per display; the main display's bar can sit under a full-screen app), crop
+  with `sips -c <h> <w> --cropOffset 0 <x>`, Read the PNG before reporting.
 - Do not run `./install.sh` as a routine check; it mutates `$HOME`.
 
 # External research tools
