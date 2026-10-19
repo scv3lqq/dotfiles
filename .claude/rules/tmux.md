@@ -1,6 +1,7 @@
 ---
 paths:
   - ".tmux.conf"
+  - "tmux/**"
 ---
 
 # tmux config gotchas
@@ -19,3 +20,10 @@ paths:
 - Inspect sizes with `tmux list-panes -a -F '#{window_width}x#{window_height}
   #{pane_width}x#{pane_height} #{window_layout}'`; the layout string carries
   its own size, which is the ground truth after a resurrect restore.
+- Gates on a binding compare `tmux list-keys -T <table> <key>` output, not
+  the conf text: tmux normalizes flags (`display-popup -BE -h "80%"`).
+- fzf popups (`tmux/session-picker.sh`): proven fzf behavior and the test
+  harness design live in `plans/claude-activity-picker.md` (spike findings);
+  read them before a spike. Never a tracked reload (it drops keys).
+- A copied `/bin/bash` (fake `pane_current_command`) is SIGKILLed on macOS
+  until `codesign -s - -f <copy>`.
