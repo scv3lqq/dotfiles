@@ -203,7 +203,7 @@ Formulae:
 - `gh`: uploads the commit signing key.
 
 Casks: `ghostty`, `karabiner-elements`, `font-jetbrains-mono-nerd-font`,
-`nikitabobko/tap/aerospace`.
+`nikitabobko/tap/aerospace`, `claudebar` (Claude usage limits in the menu bar).
 
 ### Linux
 
