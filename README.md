@@ -261,6 +261,7 @@ available on servers, and the markdown-preview.nvim build error on the first
 | `.tmux.conf` | `~/.tmux.conf` | TPM cloned into `~/.tmux/plugins/tpm` |
 | `anki/terminal_theme/` | `Anki2/addons21/terminal_theme` | Anki add-on; symlinked by hand, not by `install.sh` (`anki/cards/` holds card templates) |
 | `claude/hooks/notify.sh` | `~/.claude/hooks/notify.sh` | macOS only; Claude Code Stop hook, `install.sh` also wires it into `~/.claude/settings.json` |
+| `claude/hooks/pane-state.sh` | `~/.claude/hooks/pane-state.sh` | macOS only; Claude Code hook that marks mid-turn panes for the `prefix + s` picker, `install.sh` also wires it into `~/.claude/settings.json` |
 | `notes/`, `plans/`, `everything.md` | | personal notes, implementation plans, Russian cheatsheet |
 
 Symlinks point directly into the repo: edits are live.
@@ -376,7 +377,7 @@ Prefix is `Ctrl+a`. The config needs tmux 3.3+.
 | `prefix` + <code>&#124;</code> / `-` | Split horizontally / vertically |
 | `prefix` + `h/j/k/l` | Resize pane (repeatable) |
 | `prefix` + `m` | Zoom pane |
-| `prefix` + `s` | Session tree popup (fzf): `→` expand, `←` collapse, `Enter` opens the session's first window or the focused window, `Ctrl+d` kills the session or window; tmux `choose-tree` when fzf < 0.71 |
+| `prefix` + `s` | Session tree popup (fzf): `→` expand, `←` collapse, `Enter` opens the session's first window or the focused window, `Ctrl+d` kills the session or window; Claude panes mid-turn (working, or waiting on you) are listed live at the bottom, `Enter` jumps to the pane; tmux `choose-tree` when fzf < 0.73 |
 | `prefix` + `r` | Reload `~/.tmux.conf` |
 | `prefix` + `C-l` | Clear screen (`Ctrl+l` itself is taken by vim-tmux-navigator) |
 | `Ctrl+h/j/k/l` | Move between nvim splits and tmux panes (vim-tmux-navigator) |

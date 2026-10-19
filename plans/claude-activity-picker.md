@@ -193,7 +193,8 @@ Run from `~/dotfiles`.
    `PATH=$S/spike-fzf/dl/0.73.0:$PATH tmux/session-picker.sh --supported; echo $?` -> `0`.
 5. `grep -c PICKER_LOG tmux/session-picker.sh` prints `0`.
 6. `tmux source-file ~/.tmux.conf && tmux list-keys -T prefix s` exits 0 and
-   prints a line containing `display-popup -B -E -w 85% -h 80%`.
+   prints a line containing `display-popup -BE -h "80%" -w "85%"` (tmux 3.8
+   normalizes the flags).
 7. `jq empty ~/.claude/settings.json` exits 0.
 8. `bash $S/hook-test.sh` ends with `FAILS=0`.
 9. `PICKER=$HOME/dotfiles/tmux/session-picker.sh bash $S/spike-fzf/harness.sh`
