@@ -377,6 +377,7 @@ if [[ "$OS" == "Darwin" ]]; then
   echo "Setting up Claude Code notifications..."
   mkdir -p ~/.claude/hooks
   ln -sf "$DOTFILES/claude/hooks/notify.sh" ~/.claude/hooks/notify.sh
+  ln -sf "$DOTFILES/claude/hooks/pane-state.sh" ~/.claude/hooks/pane-state.sh
 
   settings="$HOME/.claude/settings.json"
   [[ -f "$settings" ]] || echo '{}' > "$settings"
@@ -384,6 +385,20 @@ if [[ "$OS" == "Darwin" ]]; then
     tmp="$(mktemp)"
     jq '.hooks.Stop += [{"hooks": [{"type": "command", "command": "~/.claude/hooks/notify.sh", "timeout": 10}]}]' \
       "$settings" > "$tmp" && mv "$tmp" "$settings"
+  fi
+
+  # Turn state for the `prefix + s` picker: one entry per event, added where missing
+  pane_state_filter='reduce ("UserPromptSubmit", "PreToolUse", "PermissionRequest", "PostToolUse",
+    "PostToolUseFailure", "Notification", "Stop", "StopFailure",
+    "SessionStart", "SessionEnd") as $e (.;
+  if any(.hooks[$e][]?.hooks[]?.command; . == "~/.claude/hooks/pane-state.sh") then .
+  else .hooks[$e] += [(if $e == "Notification"
+      then {matcher: "permission_prompt|elicitation_dialog|idle_prompt"} else {} end)
+    + {hooks: [{type: "command", command: "~/.claude/hooks/pane-state.sh", timeout: 5}]}]
+  end)'
+  if [[ "$(jq "$pane_state_filter" "$settings")" != "$(jq . "$settings")" ]]; then
+    tmp="$(mktemp)"
+    jq "$pane_state_filter" "$settings" > "$tmp" && mv "$tmp" "$settings"
   fi
 
   # A global config key: the same key in settings.json does not override it
