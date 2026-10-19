@@ -12,7 +12,7 @@ brew_formulae=(
   lazygit lazydocker topgrade terminal-notifier
   ripgrep tree-sitter-cli go node yarn gh
 )
-brew_casks=(ghostty karabiner-elements font-jetbrains-mono-nerd-font nikitabobko/tap/aerospace)
+brew_casks=(ghostty karabiner-elements font-jetbrains-mono-nerd-font nikitabobko/tap/aerospace claudebar)
 apt_packages=(
   stow zsh curl git jq tmux fzf ripgrep make gcc unzip
   python3-venv nodejs npm golang-go zsh-autosuggestions
