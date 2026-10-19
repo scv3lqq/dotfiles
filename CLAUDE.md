@@ -45,16 +45,18 @@ No database, no migrations, no service/API, no CI, no test suite.
   with `env -i HOME=$HOME /bin/zsh -lc '...'`, a plain `zsh -lc` inherits PATH.
 - `topgrade/`: macOS Stow package; its launchd agent lives outside the repo,
   see `plans/topgrade-autoupdate.md`.
-- `.tmux.conf`, `starship.toml` — directly linked configs.
+- `.tmux.conf`, `starship.toml`: directly linked configs. `prefix + s` runs
+  `tmux/session-picker.sh` (fzf popup; design in `plans/tmux-session-tree-picker.md`
+  and `plans/claude-activity-picker.md`).
 - macOS Stow packages nest one level, the config lives at
   `aerospace/aerospace/aerospace.toml`, `ghostty/ghostty/config`,
   `karabiner/karabiner/karabiner.json`, `topgrade/topgrade/topgrade.toml`.
   `yazi/yazi.toml`, `nvim/`, `zsh/` are flat (stowed into `~/.config/<tool>`).
 - `anki/`: Anki add-on source and card templates, symlinked into `addons21`;
   edits and checks: `anki-addon` skill.
-- `claude/hooks/notify.sh`: Claude Code Stop hook (macOS alert), linked into
-  `~/.claude/hooks/` by `install.sh`, which also wires settings.json; see
-  `plans/claude-notify-in-dotfiles.md`.
+- `claude/hooks/`: `notify.sh` (Stop hook, macOS alert) and `pane-state.sh`
+  (turn state in pane options for the picker), linked into `~/.claude/hooks/` by
+  `install.sh`, which also wires settings.json; see `plans/claude-*.md`.
 - `plans/` — PLANNER's implementation plans (`<task-name>.md`).
 - `notes/` — personal reference notes, not workflow docs.
 - `everything.md`: Russian cheatsheet of the whole stack and keymaps, derived
