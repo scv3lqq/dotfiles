@@ -955,3 +955,81 @@ its backup), 9, 23, 24, 25, plus 28 to 32 (28 replaces 22, 31 replaces 26, 32 re
 32. A fresh `skill-dry-run` over the four files finds no CRITICAL or MAJOR issue that
     this plan introduced; pre-existing issues (present in the backups) are listed as
     follow-ups, not blockers.
+
+## Iteration 5: fixes (last allowed iteration)
+
+Fifth skill-dry-run: criterion 31 met. Criterion 32, NEW MAJOR: (1) the validator's
+red-baseline `rsync` copy keeps `.venv`, whose editable install and shebangs point at the
+repo, so a mutated copy still tests repo code (verified with uv: `1 passed` under the
+mutation, the archive copy fails correctly); (2) `plan-reviewer.md:20` excepts tests
+listed under the implementer's **Adapted**, but phase 5 never passes the implementer's
+report, so a widened test double reads as scope creep. NEW MINOR: a `plan correction`
+that only swaps a named mutation has no code change, so no commit and no reviewer run;
+relative dependencies (`replace => ../lib`, uv path deps) break both copies.
+
+SD1 and SD2 apply. Tasks I5-T1 to I5-T3 touch one file each and run in parallel.
+
+### I5-T1: plan-reviewer.md
+
+File: `~/.claude/agents/plan-reviewer.md`. Task gate: SD2 with its pair, plus criteria 1,
+2 (`6`) and 33. Definition of done: the edit applied, those criteria pass.
+
+Edit A. Replace the line
+
+```text
+   (tests the implementer lists under **Adapted** excepted).
+```
+
+with:
+
+```text
+   (a pre-existing test or test double widened only to accept the new contract excepted).
+```
+
+### I5-T2: acceptance-validator.md
+
+File: `~/.claude/agents/acceptance-validator.md`. Task gate: SD2 with its pair, plus
+criteria 7 (`3`), 30 and 34. Definition of done: the edit applied, those criteria pass.
+
+Edit A. Replace the line
+
+```text
+copy the working tree instead (`rsync -a --exclude .git <repo>/ <dir>/`).
+```
+
+with:
+
+```text
+copy the working tree instead, without its virtualenv:
+`rsync -a --exclude .git --exclude .venv --exclude node_modules <repo>/ <dir>/`.
+```
+
+### I5-T3: feature/SKILL.md
+
+File: `~/.claude/skills/feature/SKILL.md`. Task gate: SD2 with its pair, plus criteria 4
+(`6`), 29 and 35. Definition of done: the edit applied, those criteria pass.
+
+Edit A. Directly after the line
+`Fix list (items on the same files merge into one task) → back to phase 3.`
+insert a blank line and:
+
+```text
+A `plan correction` that changes only a named mutation (no code to change) skips phase 3:
+rerun the test task's @plan-reviewer on its existing commit SHA with the corrected plan.
+```
+
+### Edge cases, added
+
+- Relative dependencies outside the repo (Go `replace => ../lib`, uv path dependencies)
+  are missing from both copies, so the baseline stays red; the validator then rules on
+  that `Cannot verify` item by reading the tests against the plan's cases.
+
+### Iteration 5 acceptance criteria
+
+Effective set: everything in the Iteration 4 effective set, plus 33 to 36 (36 replaces 32).
+
+33. `grep -c 'widened only to accept the new contract excepted' $R` → `1`, and `grep -c 'Adapted' $R` → `0`
+34. `grep -c -- '--exclude .venv --exclude node_modules <repo>/ <dir>/' $V` → `1`, and `grep -c 'rsync -a --exclude .git <repo>/' $V` → `0`
+35. `grep -c 'changes only a named mutation' $S` → `1`
+36. A fresh `skill-dry-run` over the four files finds no CRITICAL or MAJOR issue marked
+    NEW (introduced by this plan); PRE-EXISTING ones are follow-ups.
