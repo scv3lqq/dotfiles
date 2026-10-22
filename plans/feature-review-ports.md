@@ -944,7 +944,7 @@ copy the working tree instead (`rsync -a --exclude .git <repo>/ <dir>/`).
 Effective set: 1, 2 (`6`), 3, 4 (`6`), 5, 7 (`3`), 8 (implementer excluded, it equals
 its backup), 9, 23, 24, 25, plus 28 to 32 (28 replaces 22, 31 replaces 26, 32 replaces 27).
 
-28. `grep -c -E '<dir>/<file> <old> <new>|span breaks the build, try another|baseline goes under .## Cannot verify.|n == 1 or sys.exit|you pick the exact old text in the committed source|Baseline first: the unmutated copy must exit 0' $R` → `6`, and `grep -c ' <file> <old>' $R` → `0`
+28. `grep -c -E '<dir>/<file> <old> <new>|span breaks the build, try another|baseline goes under .## Cannot verify.|n == 1 or sys.exit|you pick the exact old text in the committed source|Baseline first: the unmutated copy must exit 0' $R` → `5` (the first and fourth patterns share the SD5 line), and `grep -c ' <file> <old>' $R` → `0`
 29. `grep -c -E 'Its definition of done is the cases plus its task gates|the mutations are not part of it' $S` → `2`
 30. `grep -c -E 'restates the corrected plan text in full|to settle a red baseline' $V` → `2`, and `grep -c 'changes the plan section first' $V` → `0`
 31. Spike in a throwaway Go module under the scratchpad: with cwd = the repo, build the
