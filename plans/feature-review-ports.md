@@ -496,3 +496,184 @@ replaced by 13. New:
     (invalid, not caught).
 15. A fresh `skill-dry-run` over the four files finds no CRITICAL or MAJOR issue
     (replaces criterion 10 for this iteration).
+
+## Iteration 2: fixes
+
+Validator FAIL on criterion 15. Upheld MAJOR (`plan correction`): no baseline run, so a
+test that already fails on the archive copy (gitignored or `export-ignore` fixtures,
+submodules, LFS) "catches" every mutation. Upheld MINOR: `python3 -c` replace silently
+writes nothing when the old text is missing; the implementer may report DONE on an
+invalid mutation; the validator has no mutation form; Edge cases still describe `rsync`.
+Dropped: uncommitted source under the implementer copy (waves commit before the next
+wave, SKILL phase 3).
+
+Fix: a mutation is written in the plan as file, exact old text, new text; every mutation
+run starts with a baseline on the unmutated copy; mutations are applied by one shared
+one-liner that asserts a single match (SD3); a red baseline is `Cannot verify` for the
+reviewer and BLOCKED for the implementer; a build-breaking mutation on a green baseline
+stays `plan-mandated` for the reviewer and BLOCKED for the implementer.
+
+SD3. Mutation one-liner (reproduced verbatim in I2-T1 and I2-T3):
+
+```text
+`python3 -c 'import pathlib,sys; p=pathlib.Path(sys.argv[1]); t=p.read_text(); assert t.count(sys.argv[2]) == 1; p.write_text(t.replace(sys.argv[2], sys.argv[3]))' <file> <old> <new>`
+```
+
+SD1 and SD2 apply unchanged. Tasks I2-T1 to I2-T4 touch one file each, run in parallel.
+
+### I2-T1: plan-reviewer.md
+
+File: `~/.claude/agents/plan-reviewer.md`. Task gate: SD2 with its pair, plus criteria 2
+and 16. Definition of done: both edits applied, those criteria pass.
+
+Edit A. Replace:
+
+```text
+   - Run each mutation the plan names for the task on a mutation copy (below), one
+     mutation per run, with the plan's mutation command. A valid named mutation that
+     no test fails on is MAJOR. A named mutation that breaks the build is invalid:
+     MAJOR, labeled `plan-mandated` (the plan picks a buildable one).
+```
+
+with:
+
+```text
+   - Run each mutation the plan names for the task on a mutation copy (below), one
+     mutation per run, with the plan's mutation command. A valid named mutation that
+     no test fails on is MAJOR. A named mutation that breaks the build while the
+     baseline is green is invalid: MAJOR, labeled `plan-mandated` (the plan picks a
+     buildable one). A red baseline goes under `## Cannot verify` with its output.
+```
+
+Edit B. Replace:
+
+```text
+Mutation copy: extract the reviewed commit into a new
+directory under the scratchpad
+(`mkdir -p <dir> && git -C <repo> archive <commit> | tar -x -C <dir>`). Apply the
+mutation with `python3 -c` (read_text, replace, write_text: `sed -i` is blocked and you
+have no Edit tool), then run `(cd <dir> && <mutation command>)`, never with a repo path
+and never through `<repo>/.venv`. A mutation is caught only when the copy builds and the
+output names a failed test; a build or setup failure makes it invalid. Report which
+tests failed under which mutation, one copy per mutation.
+```
+
+with:
+
+```text
+Mutation copy: extract the reviewed commit into a new
+directory under the scratchpad
+(`mkdir -p <dir> && git -C <repo> archive <commit> | tar -x -C <dir>`), then run
+`(cd <dir> && <mutation command>)` there, never with a repo path and never through
+`<repo>/.venv`. Baseline first: the unmutated copy must exit 0, else no mutation counts.
+Then one fresh copy per mutation, applied with (`sed -i` is blocked, you have no Edit):
+`python3 -c 'import pathlib,sys; p=pathlib.Path(sys.argv[1]); t=p.read_text(); assert t.count(sys.argv[2]) == 1; p.write_text(t.replace(sys.argv[2], sys.argv[3]))' <file> <old> <new>`.
+A mutation is caught only when the copy builds and the output names a failed test.
+Report which tests failed under which mutation.
+```
+
+### I2-T2: feature/SKILL.md
+
+File: `~/.claude/skills/feature/SKILL.md`. Task gate: SD2 with its pair, plus criteria 4,
+5, 17. Definition of done: the edit applied, those criteria pass.
+
+Edit A. Replace the test-task paragraph:
+
+```text
+A test task lists its cases, each with literal expected values written in the plan
+(never "whatever the function returns") and the named mutation it must catch: the
+smallest production change that breaks the case and still builds (flip a comparison,
+drop a branch, return the zero value, skip a side effect). It also names one mutation
+command, the build check plus the test run, relative to the repo root with no repo path
+in it (`go vet ./internal/calc/ && go test ./internal/calc/`, `uv run pytest tests/x.py`).
+Definition of done: each named mutation, applied on a scratch copy, builds and makes a
+named test fail. The mutation stands in for TDD's red step: tests land after their
+source task.
+```
+
+with:
+
+```text
+A test task lists its cases, each with literal expected values written in the plan
+(never "whatever the function returns") and the named mutation it must catch: the
+smallest production change that breaks the case and still builds (flip a comparison,
+drop a branch, return the zero value, skip a side effect), written as file, exact old
+text (unique in that file, tabs included) and new text. It also names one mutation
+command, the build check plus the test run, relative to the repo root with no repo path
+in it (`go vet ./internal/calc/ && go test ./internal/calc/`, `uv run pytest tests/x.py`).
+Definition of done: the command passes on an unmutated copy, and each named mutation,
+applied on a fresh copy, builds and makes a named test fail. Tests land after their
+source task, so the mutation stands in for TDD's red step.
+```
+
+### I2-T3: implementer.md
+
+File: `~/.claude/agents/implementer.md`. Task gate: SD2 with its pair, plus criterion 18.
+Definition of done: the edit applied, criterion 18 passes.
+
+Edit A. Replace the whole mutation bullet (ten lines, from
+`- A mutation check in your definition of done never touches repo files. Build each copy`
+to `  mutation with its failing test, or "invalid: build fails".`) with:
+
+```text
+- A mutation check in your definition of done never touches repo files. Build each copy
+  from the last commit plus your own files, in a new directory under the scratchpad:
+  `mkdir -p <dir> && git -C <repo> archive HEAD | tar -x -C <dir>`, then `cp` every file
+  of your scope to its relative path under `<dir>`. Run the plan's mutation command from
+  the copy, `(cd <dir> && <mutation command>)`, never with a repo path and never through
+  `<repo>/.venv`. Baseline first: the unmutated copy must exit 0. Then one fresh copy per
+  mutation, applied with
+  `python3 -c 'import pathlib,sys; p=pathlib.Path(sys.argv[1]); t=p.read_text(); assert t.count(sys.argv[2]) == 1; p.write_text(t.replace(sys.argv[2], sys.argv[3]))' <file> <old> <new>`.
+  A mutation is caught only when the copy builds and the output names a failed test.
+  A red baseline or a mutation that breaks the build is a plan defect: report BLOCKED
+  with its output. A buildable named mutation that no test fails on means your tests
+  are not done. Under **Gates**, list each mutation with its failing test.
+```
+
+### I2-T4: acceptance-validator.md
+
+File: `~/.claude/agents/acceptance-validator.md`. Task gate: SD2 with its pair, plus
+criteria 7 and 19. Definition of done: the edit applied, those criteria pass.
+
+Edit A. Replace the line
+
+```text
+go in a throwaway copy under the scratchpad directory.
+```
+
+with:
+
+```text
+go in a throwaway copy under the scratchpad directory; a mutation run follows the
+"Mutation copy" paragraph of `~/.claude/agents/plan-reviewer.md` (baseline, asserted
+replace, `(cd <dir> && <mutation command>)`).
+```
+
+### Edge cases, revised
+
+Replaces the `rsync` and `git archive` bullets of "## Edge cases":
+
+- Both copies come from `git archive` (the implementer adds its own scope files):
+  gitignored and `export-ignore` files, submodules and LFS content are missing from them;
+  the baseline run turns that into `Cannot verify` (reviewer) or BLOCKED (implementer)
+  instead of a false "caught".
+- Python: the copy has no `.venv`; `uv run` in the copy rebuilds it.
+- An uncommitted source task under the implementer copy cannot happen: a test task waits
+  for the next wave, and each wave is committed first (SKILL phase 3).
+
+### Iteration 2 acceptance criteria
+
+Effective set: 1, 2 (`5`), 3, 4, 5, 7, 8, 9, plus 16 to 21 below (16 replaces 11, 17
+replaces 12, 18 replaces 13, 20 replaces 14, 21 replaces 15).
+
+16. `grep -c -E 'mkdir -p <dir> && git -C <repo> archive <commit>|Baseline first: the unmutated copy must exit 0|assert t.count\(sys.argv\[2\]\) == 1|red baseline goes under' $R` → `4`, and `grep -c 'build or setup failure' $R` → `0`
+17. `grep -c -E 'text \(unique in that file, tabs included\)|the command passes on an unmutated copy|builds and makes a named test fail|relative to the repo root with no repo path|Tasks, Seams, Not doing|the commit SHA, its task IDs' $S` → `6`, and `grep -c 'makes at least one test fail' $S` → `0`
+18. `grep -c -E 'never touches repo files|archive HEAD \| tar -x -C <dir>|Baseline first: the unmutated copy must exit 0|assert t.count\(sys.argv\[2\]\) == 1|is a plan defect: report BLOCKED' $I` → `5`, and `grep -c -E 'rsync|invalid: build fails' $I` → `0`
+19. `grep -c '"Mutation copy" paragraph' $V` → `1`
+20. Spike in a throwaway Go module under the scratchpad, documented forms only (archive
+    copy, SD3 one-liner, `(cd <dir> && go vet ./<pkg>/ && go test ./<pkg>/)`): the clean
+    copy prints `ok`; a flipped comparison prints `--- FAIL: Test...`; an unused-import
+    mutation fails in `go vet`; the SD3 one-liner with an old text that is not in the
+    file exits non-zero and leaves the file unchanged; a repo whose test needs a
+    gitignored fixture gives a red baseline on the copy.
+21. A fresh `skill-dry-run` over the four files finds no CRITICAL or MAJOR issue.
