@@ -841,3 +841,117 @@ Effective set: 1, 2 (`5`), 3, 4 (`6`), 5, 7, 8 (I excluded: it equals its backup
     missing from the file exits non-zero printing `old text found 0 times`, leaves the
     file unchanged, and does the same under `PYTHONOPTIMIZE=1`.
 27. A fresh `skill-dry-run` over the four files finds no CRITICAL or MAJOR issue.
+
+## Iteration 4: fixes
+
+Fourth skill-dry-run: criterion 26 met. Criterion 27: one new MAJOR, the SD4 `<file>`
+argument is not tied to the copy, so a reviewer whose cwd is the repo mutates the working
+tree (verified: `git status` showed ` M internal/calc/calc.go`, the copy printed `ok`).
+New MINOR: a build-breaking span the reviewer picked is graded `plan-mandated` with no
+retry; the test task's definition of done no longer says whether mutations are in it;
+the validator's "changes the plan section first" contradicts phase 6's Iteration delta;
+the validator's archive-only form cannot settle a red baseline. Pre-existing (present in
+the backups, out of this plan's scope, reported as follow-ups): reviewer gates run in the
+live tree while a sibling wave writes the same package; `implementer.md:18` says "gate
+commands listed in the plan" where SKILL hands task gates.
+
+SD5 replaces SD4 (only the file argument changes, to `<dir>/<file>`):
+
+```text
+`python3 -c 'import pathlib,sys; p=pathlib.Path(sys.argv[1]); t=p.read_text(); n=t.count(sys.argv[2]); n == 1 or sys.exit(f"old text found {n} times"); p.write_text(t.replace(sys.argv[2], sys.argv[3]))' <dir>/<file> <old> <new>`
+```
+
+SD1 and SD2 apply. Tasks I4-T1 to I4-T3 touch one file each and run in parallel.
+
+### I4-T1: plan-reviewer.md
+
+File: `~/.claude/agents/plan-reviewer.md`. Task gate: SD2 with its pair, plus criteria 2
+(now `6`) and 28. Definition of done: both edits applied, those criteria pass.
+
+Edit A. In the SD4 line (line 64, starts with `` `python3 -c 'import pathlib``), replace
+the substring `sys.argv[3]))' <file> <old> <new>` with
+`sys.argv[3]))' <dir>/<file> <old> <new>`. Nothing else on that line changes.
+
+Edit B. Replace:
+
+```text
+     named mutation that no test fails on is MAJOR, labeled `plan-mandated` when the
+     plan's own cases cannot catch it (an equivalent mutant, a missing case). A named
+     mutation that breaks the build on a green baseline is MAJOR, labeled
+     `plan-mandated`. A red baseline goes under `## Cannot verify` with its output.
+```
+
+with:
+
+```text
+     named mutation that no test fails on is MAJOR, labeled `plan-mandated` when the
+     plan's own cases cannot catch it (an equivalent mutant, a missing case). If your
+     span breaks the build, try another; only when no correct form of the described
+     change builds on a green baseline is it MAJOR, labeled `plan-mandated`. A red
+     baseline goes under `## Cannot verify` with its output.
+```
+
+### I4-T2: feature/SKILL.md
+
+File: `~/.claude/skills/feature/SKILL.md`. Task gate: SD2 with its pair, plus criteria 4,
+23 and 29. Definition of done: the edit applied, those criteria pass.
+
+Edit A. Replace the line (end of the test-task paragraph)
+
+```text
+stands in for TDD's red step.
+```
+
+with:
+
+```text
+stands in for TDD's red step. Its definition of done is the cases plus its task gates;
+the mutations are not part of it.
+```
+
+### I4-T3: acceptance-validator.md
+
+File: `~/.claude/agents/acceptance-validator.md`. Task gate: SD2 with its pair, plus
+criteria 7, 25 and 30. Definition of done: both edits applied, those criteria pass.
+
+Edit A. Replace the line
+
+```text
+   list marked `plan correction`: the fix changes the plan section first.
+```
+
+with:
+
+```text
+   list marked `plan correction`: its fix task restates the corrected plan text in full.
+```
+
+Edit B. Replace the line
+
+```text
+count-checked replace, `(cd <dir> && <mutation command>)`).
+```
+
+with:
+
+```text
+count-checked replace, `(cd <dir> && <mutation command>)`); to settle a red baseline,
+copy the working tree instead (`rsync -a --exclude .git <repo>/ <dir>/`).
+```
+
+### Iteration 4 acceptance criteria
+
+Effective set: 1, 2 (`6`), 3, 4 (`6`), 5, 7 (`3`), 8 (implementer excluded, it equals
+its backup), 9, 23, 24, 25, plus 28 to 32 (28 replaces 22, 31 replaces 26, 32 replaces 27).
+
+28. `grep -c -E '<dir>/<file> <old> <new>|span breaks the build, try another|baseline goes under .## Cannot verify.|n == 1 or sys.exit|you pick the exact old text in the committed source|Baseline first: the unmutated copy must exit 0' $R` → `6`, and `grep -c ' <file> <old>' $R` → `0`
+29. `grep -c -E 'Its definition of done is the cases plus its task gates|the mutations are not part of it' $S` → `2`
+30. `grep -c -E 'restates the corrected plan text in full|to settle a red baseline' $V` → `2`, and `grep -c 'changes the plan section first' $V` → `0`
+31. Spike in a throwaway Go module under the scratchpad: with cwd = the repo, build the
+    archive copy, apply SD5 exactly as written in `plan-reviewer.md` with
+    `<dir>/internal/<pkg>/<file>.go`, run `(cd <dir> && go vet ./internal/<pkg>/ && go test ./internal/<pkg>/)`:
+    a flipped comparison prints `--- FAIL: Test...`, and `git -C <repo> status --short`
+    prints nothing afterwards.
+32. A fresh `skill-dry-run` over the four files finds no CRITICAL or MAJOR issue that
+    this plan introduced; pre-existing issues (present in the backups) are listed as
+    follow-ups, not blockers.
