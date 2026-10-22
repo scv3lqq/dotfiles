@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # Session tree for `prefix + s`: sessions collapsed, right/left expand and
 # collapse, Enter opens a session's first window or the focused window.
-# Claude panes that are mid-turn are listed in a section pinned to the bottom
-# of the list, refreshed every 2 s.
+# Claude panes that are mid-turn or waiting on background agents are listed in
+# a section pinned to the bottom of the list, refreshed every 2 s.
 # State: pane options from claude/hooks/pane-state.sh.
 # List lines are "<session_id>\t<target>\t<aux>\t<display>":
 #   session line  $sid  (empty)   (empty)          tree row
@@ -90,8 +90,9 @@ render() {
       {
         claude = $10 ~ version || $10 == "claude"
         # Esc or a denied prompt ends a turn without a hook event; a working
-        # Claude redraws its spinner every second, so a silent window is idle
-        busy = $13 == "waiting" || ($13 == "working" && now - $15 <= 5)
+        # Claude redraws its spinner (its background agents their timer) every
+        # second, so a silent window is idle
+        busy = $13 == "waiting" || (($13 == "working" || $13 == "agents") && now - $15 <= 5)
         if (busy && claude) {
           na++; asid[na] = $1; apid[na] = $3; aname[na] = $5; aw[na] = $7 "." $8
           ast[na] = $13; asince[na] = $14; atitle[na] = strip($11); apath[na] = $12
@@ -137,7 +138,9 @@ render() {
         }
         for (i = 1; i <= na; i++) {
           w = ast[i] == "waiting"
-          mk = w ? c(orange, "\357\203\263") : c(cyan, "\357\204\220")
+          if (w) mk = c(orange, "\357\203\263")
+          else if (ast[i] == "agents") mk = c(cyan, "\357\203\200")
+          else mk = c(cyan, "\357\204\220")
           t = atitle[i] != "" ? atitle[i] : short(apath[i])
           printf "%s\t%s\t\t  %s %s  %s  %s\n", asid[i], apid[i], mk,
             c(w ? orange : fg, sprintf("%-" width "s › %-5s", aname[i], aw[i])),
