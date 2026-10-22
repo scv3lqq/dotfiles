@@ -357,3 +357,142 @@ four files, in parallel; both verdicts go to the `acceptance-validator`.
 - No change to `~/dotfiles/CLAUDE.md`, `go-code-reviewer`, `python-code-reviewer`,
   `skill-dry-run`, or the `skill-note-sync.sh` hook (its false positive on reads of the
   plugin marketplace cache is a separate follow-up).
+
+## Iteration 1: fixes
+
+Validator FAIL on criterion 10 (skill-dry-run). Upheld, `plan-mandated`: the mutation run
+reuses the task gate, whose absolute repo paths test the repo instead of the copy (false
+"caught" and "not caught"); a build or setup failure counts as a caught mutation. Upheld
+MINOR: the reviewer has no stated way to apply a mutation (`sed -i` is hook-blocked, no
+Edit tool), `tar -C` fails on a missing dir, phase 5 passes no commit SHA, the "Workflow
+sections" list lacks Seams. Dropped: test-gap ownership, scope rule vs. copy.
+
+Fix: every test task names a **mutation command** (build check plus test run, relative to
+the repo root); the implementer and reviewer run it as `(cd <dir> && <mutation command>)`
+inside a copy built from `git archive`; a mutation counts only when the copy builds and
+the output names a failed test. The implementer copy switches from `rsync` (pulls wave
+siblings' half-written files) to `git archive HEAD` plus its own scope files.
+
+SD1 and SD2 apply unchanged; backups stay the originals (pre-plan), so SD2 diffs cover
+both rounds. Tasks I1-T1, I1-T2, I1-T3 touch one file each and run in parallel.
+
+### I1-T1: plan-reviewer.md
+
+File: `~/.claude/agents/plan-reviewer.md`. Task gate: SD2 with its pair, plus criteria
+2 (now `5`), 3, 11. Definition of done: both edits applied, those criteria pass.
+
+Edit A. Replace:
+
+```text
+   - Run each mutation the plan names for the task on a mutation copy (below), one
+     mutation per run, with the task's test command. A named mutation that no test
+     fails on is MAJOR.
+```
+
+with:
+
+```text
+   - Run each mutation the plan names for the task on a mutation copy (below), one
+     mutation per run, with the plan's mutation command. A valid named mutation that
+     no test fails on is MAJOR. A named mutation that breaks the build is invalid:
+     MAJOR, labeled `plan-mandated` (the plan picks a buildable one).
+```
+
+Edit B. Replace:
+
+```text
+Mutation copy: extract the reviewed commit into a new
+directory under the scratchpad (`git -C <repo> archive <commit> | tar -x -C <dir>`),
+mutate and run the tests there; report which tests failed under which mutation.
+```
+
+with:
+
+```text
+Mutation copy: extract the reviewed commit into a new
+directory under the scratchpad
+(`mkdir -p <dir> && git -C <repo> archive <commit> | tar -x -C <dir>`). Apply the
+mutation with `python3 -c` (read_text, replace, write_text: `sed -i` is blocked and you
+have no Edit tool), then run `(cd <dir> && <mutation command>)`, never with a repo path
+and never through `<repo>/.venv`. A mutation is caught only when the copy builds and the
+output names a failed test; a build or setup failure makes it invalid. Report which
+tests failed under which mutation, one copy per mutation.
+```
+
+### I1-T2: feature/SKILL.md
+
+File: `~/.claude/skills/feature/SKILL.md`. Task gate: SD2 with its pair, plus criteria 4,
+5, 12. Definition of done: the three edits applied, those criteria pass.
+
+Edit A. Replace the paragraph added by T2 edit 2:
+
+```text
+A test task lists its cases, each with literal expected values written in the plan
+(never "whatever the function returns") and the named mutation it must catch: the
+smallest production change that breaks the case (flip a comparison, drop a branch,
+return the zero value, skip a side effect). Its definition of done: each named mutation,
+applied on a scratch copy, makes at least one test fail. Tests land after their source
+task, so the mutation stands in for TDD's red step.
+```
+
+with:
+
+```text
+A test task lists its cases, each with literal expected values written in the plan
+(never "whatever the function returns") and the named mutation it must catch: the
+smallest production change that breaks the case and still builds (flip a comparison,
+drop a branch, return the zero value, skip a side effect). It also names one mutation
+command, the build check plus the test run, relative to the repo root with no repo path
+in it (`go vet ./internal/calc/ && go test ./internal/calc/`, `uv run pytest tests/x.py`).
+Definition of done: each named mutation, applied on a scratch copy, builds and makes a
+named test fail. The mutation stands in for TDD's red step: tests land after their
+source task.
+```
+
+Edit B. In the line starting `then append one "Workflow sections" block`, replace the
+substring `(Gates, Shared definitions, Tasks, Not doing)` with
+`(Gates, Shared definitions, Tasks, Seams, Not doing)`.
+
+Edit C. In phase 5, in the line starting `   waves), in parallel (same cap of 12), passing:`,
+replace the substring `passing: path to the plan, the commit's task IDs,` with
+`passing: path to the plan, the commit SHA, its task IDs,`.
+
+### I1-T3: implementer.md
+
+File: `~/.claude/agents/implementer.md`. Task gate: SD2 with its pair, plus criterion 13.
+Definition of done: the edit applied, criterion 13 passes.
+
+Edit A. Replace the whole bullet added by T3 (six lines, from
+`- A mutation check in your definition of done never touches repo files. Copy the` to
+`  means your tests are not done. List each mutation and its failing test under **Gates**.`)
+with:
+
+```text
+- A mutation check in your definition of done never touches repo files. Build each copy
+  from the last commit plus your own files, in a new directory under the scratchpad:
+  `mkdir -p <dir> && git -C <repo> archive HEAD | tar -x -C <dir>`, then `cp` every file
+  of your scope to its relative path under `<dir>`. Apply one mutation in the copy and run
+  the plan's mutation command from it: `(cd <dir> && <mutation command>)`, never with a
+  repo path and never through `<repo>/.venv`. A mutation is caught only when the copy
+  builds and the output names a failed test; a build or setup failure makes it invalid:
+  report it, do not count it. Use a fresh copy for each mutation. A valid named mutation
+  that no test fails on means your tests are not done. Under **Gates**, list each
+  mutation with its failing test, or "invalid: build fails".
+```
+
+### Iteration 1 acceptance criteria
+
+Criterion 2 now expects `5` (a second `labeled `plan-mandated`` line). Criterion 6 is
+replaced by 13. New:
+
+11. `grep -c -E 'mkdir -p <dir> && git -C <repo> archive <commit>|`sed -i` is blocked|output names a failed test; a build' $R` → `3`
+12. `grep -c -E 'breaks the case and still builds|relative to the repo root with no repo path|builds and makes a$|Tasks, Seams, Not doing|the commit SHA, its task IDs' $S` → `5`, and `grep -c 'makes at least one test fail' $S` → `0`
+13. `grep -c -E 'never touches repo files|archive HEAD \| tar -x -C <dir>|output names a failed test|invalid: build fails' $I` → `4`, and `grep -c rsync $I` → `0`
+14. Spike in a throwaway Go module under the scratchpad, with the documented forms only
+    (`mkdir -p <dir> && git -C <repo> archive HEAD | tar -x -C <dir>`, mutation applied
+    via `python3 -c`, then `(cd <dir> && go vet ./<pkg>/ && go test ./<pkg>/)`):
+    a flip-a-comparison mutation prints a `--- FAIL: Test...` line; the clean copy prints
+    `ok`; a mutation that leaves an unused import fails in `go vet` before any test runs
+    (invalid, not caught).
+15. A fresh `skill-dry-run` over the four files finds no CRITICAL or MAJOR issue
+    (replaces criterion 10 for this iteration).
