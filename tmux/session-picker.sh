@@ -2,12 +2,13 @@
 # Session tree for `prefix + s`: sessions collapsed, right/left expand and
 # collapse, Enter opens a session's first window or the focused window.
 # Claude panes that are mid-turn or waiting on background agents are listed in
-# a section pinned to the bottom of the list, refreshed every 2 s.
+# a section pinned to the bottom of the list, refreshed every 2 s; below them,
+# panes whose turn finished in the last 10 minutes, newest first.
 # State: pane options from claude/hooks/pane-state.sh.
 # List lines are "<session_id>\t<target>\t<aux>\t<display>":
 #   session line  $sid  (empty)   (empty)          tree row
 #   window line   $sid  @wid      session row N    tree row under an open session
-#   active row    $sid  %pid      (empty)          Claude pane mid-turn
+#   active row    $sid  %pid      (empty)          Claude pane mid-turn or finished
 #   filler/rule   (empty)(empty)  U:D              non-selectable, U/D = rows to
 #                                                  jump to when moving up/down
 # --id-nth 1,2 gives every selectable line a unique key, so a reload that
@@ -97,6 +98,11 @@ render() {
           na++; asid[na] = $1; apid[na] = $3; aname[na] = $5; aw[na] = $7 "." $8
           ast[na] = $13; asince[na] = $14; atitle[na] = strip($11); apath[na] = $12
         }
+        # A finished turn stays listed for 10 minutes after its end
+        if (claude && $13 == "done" && $14 ~ /^[0-9]+$/ && now - $14 < 600) {
+          nd++; dsid[nd] = $1; dpid[nd] = $3; dname[nd] = $5; dw[nd] = $7 "." $8
+          dend[nd] = $14 + 0; dtitle[nd] = strip($11); dpath[nd] = $12
+        }
         if ($4 != 1) next
         n++; sid[n] = $1; wid[n] = $2; sname[n] = $5; swin[n] = $6
         widx[n] = $7; wname[n] = $9; cmd[n] = $10; title[n] = $11; path[n] = $12
@@ -128,8 +134,8 @@ render() {
           out++
         }
         skip = 0
-        if (na && !search) {
-          fill = height - out - 1 - na
+        if (na + nd && !search) {
+          fill = height - out - 1 - na - nd
           if (fill < 0) fill = 0
           ud = out ":" (out + fill + 2)
           for (i = 1; i <= fill; i++) printf "\t\t%s\t\n", ud
@@ -145,6 +151,18 @@ render() {
           printf "%s\t%s\t\t  %s %s  %s  %s\n", asid[i], apid[i], mk,
             c(w ? orange : fg, sprintf("%-" width "s › %-5s", aname[i], aw[i])),
             c(grey, sprintf("%5s", ago(asince[i]))), c(w ? orange : grey, t)
+        }
+        # Finished rows, newest end first (insertion sort, stable on ties)
+        for (i = 1; i <= nd; i++) {
+          for (j = i; j > 1 && dend[ord[j - 1]] < dend[i]; j--) ord[j] = ord[j - 1]
+          ord[j] = i
+        }
+        for (k = 1; k <= nd; k++) {
+          i = ord[k]
+          t = dtitle[i] != "" ? dtitle[i] : short(dpath[i])
+          printf "%s\t%s\t\t  %s %s  %s  %s\n", dsid[i], dpid[i], c(green, "\357\200\214"),
+            c(grey, sprintf("%-" width "s › %-5s", dname[i], dw[i])),
+            c(grey, sprintf("%5s", ago(dend[i]))), c(grey, t)
         }
         if (skipfile != "") print skip > skipfile
       }'
