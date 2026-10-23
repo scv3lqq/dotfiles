@@ -100,6 +100,9 @@ Every non-trivial task runs this cycle, `/feature` typed or not (follow
   dirty worktree, first run); edits under ~15 lines total make one task.
 - Its agents write and review the code, in their own report formats.
 - Branch: `git switch -c feat/<slug>` here, no worktree: gates read live paths.
+- Other Claude sessions share this checkout: before `git switch -c` wait
+  (background loop) for a clean `main` with no other busy Claude pane in the
+  repo (picker rule: `@claude_state` waiting, or working/agents active <= 5 s).
 - `~/.claude/` targets (skills, agents) are outside git: back them up to
   `~/.claude/backups/<name>.<ts>` before dispatch, gate on `diff` against the
   backup; only the plan is committed.
