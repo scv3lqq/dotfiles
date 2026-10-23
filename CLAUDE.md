@@ -100,6 +100,9 @@ Every non-trivial task runs this cycle, `/feature` typed or not (follow
   dirty worktree, first run); edits under ~15 lines total make one task.
 - Its agents write and review the code, in their own report formats.
 - Branch: `git switch -c feat/<slug>` here, no worktree: gates read live paths.
+- `~/.claude/` targets (skills, agents) are outside git: back them up to
+  `~/.claude/backups/<name>.<ts>` before dispatch, gate on `diff` against the
+  backup; only the plan is committed.
 - Final PASS: `git switch main`, `git merge --ff-only feat/<slug>`,
   `git push origin main`, `git branch -d feat/<slug>`, overriding "never
   touch main" and "no remote operations". A refused merge or push, or a stop
