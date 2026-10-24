@@ -25,5 +25,11 @@ paths:
 - fzf popups (`tmux/session-picker.sh`): proven fzf behavior and the test
   harness design live in `plans/claude-activity-picker.md` (spike findings);
   read them before a spike. Never a tracked reload (it drops keys).
+- A popup is invisible to `capture-pane`. To see its fill or timing, attach
+  a `-L` server client from a python3 `pty.fork()` and parse the client's
+  output (`48;2;R;G;Bm` = popup background), or run the command inside the
+  popup through a relaying pty that logs timestamps. fzf sends `\e[6n` and
+  DECRQM on start and waits ~0.5 s for replies, so a bare pty without tmux
+  overstates its startup. A flash before the first frame is `popup-style`.
 - A copied `/bin/bash` (fake `pane_current_command`) is SIGKILLed on macOS
   until `codesign -s - -f <copy>`.
