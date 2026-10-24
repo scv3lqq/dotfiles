@@ -12,6 +12,29 @@ moves existing configs aside, runs `install.sh` and lists the first-run
 steps that are left. `/setup-dotfiles update` does the same with
 `install.sh --update`.
 
+## Screenshots
+
+The projects, sessions and shell history in these shots are a made-up demo.
+
+AeroSpace tiling three Ghostty windows: Neovim, Yazi and a shell with the
+Starship prompt.
+
+![AeroSpace layout with Neovim, Yazi and a shell](assets/screenshots/layout.png)
+
+Neovim inside tmux: a Go handler next to its test, gitsigns marks in the
+gutter, lualine at the bottom.
+
+![Neovim in tmux](assets/screenshots/nvim.png)
+
+`prefix + s`: the session tree popup; Claude panes waiting on you or finished
+in the last 10 minutes are listed at the bottom.
+
+![tmux session picker](assets/screenshots/picker.png)
+
+Yazi with a code preview.
+
+![Yazi file manager](assets/screenshots/yazi.png)
+
 ## Requirements
 
 - macOS: Apple Silicon only (the official Homebrew installer aborts on Intel
@@ -281,6 +304,7 @@ available on servers, and the markdown-preview.nvim build error on the first
 | `claude/agents/*.md` | `~/.claude/agents/` | one link per file: the agents `/feature` runs (implementer, plan-reviewer, acceptance-validator, skill-dry-run) |
 | `.claude/skills/` | | Claude Code skills of this repo: `/setup-dotfiles`, `docs-sync` |
 | `notes/`, `plans/`, `everything.md` | | personal notes, implementation plans, Russian cheatsheet |
+| `assets/screenshots/` | | README screenshots of a made-up demo, recipe in `plans/readme-screenshots.md` |
 
 Symlinks point directly into the repo: edits are live.
 
