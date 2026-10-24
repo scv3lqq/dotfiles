@@ -65,6 +65,7 @@ No database, no migrations, no service/API, no CI, no test suite.
   from the configs, so it lags them.
 - `AGENTS.md`: symlink to this file for Codex; edit `CLAUDE.md`.
 - `README.md` — user-facing setup.
+- `.claude/skills/`: project skills `setup-dotfiles` (`/setup-dotfiles`) and `docs-sync`.
 
 # Planning for the implementer
 

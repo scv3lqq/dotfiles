@@ -6,6 +6,12 @@ Starship). `install.sh` installs the tools and symlinks the configs into
 `$HOME` and `~/.config`; the links point into this repo, so edits in the repo
 are live.
 
+With Claude Code installed, `/setup-dotfiles` in a Claude Code session opened
+in `~/dotfiles` walks through the setup below: it checks the requirements,
+moves existing configs aside, runs `install.sh` and lists the first-run
+steps that are left. `/setup-dotfiles update` does the same with
+`install.sh --update`.
+
 ## Requirements
 
 - macOS: Apple Silicon only (the official Homebrew installer aborts on Intel
@@ -273,6 +279,7 @@ available on servers, and the markdown-preview.nvim build error on the first
 | `claude/hooks/pane-state.sh` | `~/.claude/hooks/pane-state.sh` | macOS only; Claude Code hook that marks mid-turn panes for the `prefix + s` picker, `install.sh` also wires it into `~/.claude/settings.json` |
 | `claude/skills/feature/SKILL.md` | `~/.claude/skills/feature/SKILL.md` | Claude Code `/feature` skill: plan, implement, review on a branch |
 | `claude/agents/*.md` | `~/.claude/agents/` | one link per file: the agents `/feature` runs (implementer, plan-reviewer, acceptance-validator, skill-dry-run) |
+| `.claude/skills/` | | Claude Code skills of this repo: `/setup-dotfiles`, `docs-sync` |
 | `notes/`, `plans/`, `everything.md` | | personal notes, implementation plans, Russian cheatsheet |
 
 Symlinks point directly into the repo: edits are live.
