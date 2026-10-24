@@ -411,7 +411,8 @@ Task gates: acceptance criteria 7, 8, 9.
 ## Not doing
 
 - No capture scripts or fixtures in the repo: they live in `$S/run/`; this
-  plan is the recipe for a retake.
+  plan is the recipe for a retake. (Later: the verified scripts were kept in
+  the `.claude/skills/readme-screenshots/` skill.)
 - No GIF or video, no Linux screenshots, no `everything.md` changes.
 - No changes to nvim, tmux, Ghostty, AeroSpace, Yazi or zsh configs.
 - No image optimizer installs (`brew install` is off limits).

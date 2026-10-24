@@ -65,9 +65,9 @@ No database, no migrations, no service/API, no CI, no test suite.
   from the configs, so it lags them.
 - `AGENTS.md`: symlink to this file for Codex; edit `CLAUDE.md`.
 - `README.md`: user-facing setup.
-- `assets/screenshots/`: README shots of a made-up demo scene; how to retake
-  them: `plans/readme-screenshots.md`.
-- `.claude/skills/`: project skills `setup-dotfiles` (`/setup-dotfiles`) and `docs-sync`.
+- `assets/screenshots/`: README shots of a made-up demo; retake: `readme-screenshots` skill.
+- `.claude/skills/`: project skills `setup-dotfiles` (`/setup-dotfiles`), `docs-sync`,
+  `readme-screenshots`.
 
 # Planning for the implementer
 
