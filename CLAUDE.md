@@ -57,6 +57,8 @@ No database, no migrations, no service/API, no CI, no test suite.
 - `claude/hooks/`: `notify.sh` (Stop hook, macOS alert) and `pane-state.sh`
   (turn state in pane options for the picker), linked into `~/.claude/hooks/` by
   `install.sh`, which also wires settings.json; see `plans/claude-*.md`.
+- `claude/skills/feature/`, `claude/agents/`: `/feature` and its four agents,
+  file-linked into `~/.claude/` by `install.sh`; edit them here, not via the links.
 - `plans/` — PLANNER's implementation plans (`<task-name>.md`).
 - `notes/` — personal reference notes, not workflow docs.
 - `everything.md`: Russian cheatsheet of the whole stack and keymaps, derived
@@ -95,7 +97,7 @@ necessary.
 # `/feature` in this repo
 
 Every non-trivial task runs this cycle, `/feature` typed or not (follow
-`~/.claude/skills/feature/SKILL.md`), with no OK wait. Overrides here:
+`claude/skills/feature/SKILL.md`), with no OK wait. Overrides here:
 
 - Plan: the command's sections plus Edge cases (macOS vs Linux, missing tools,
   dirty worktree, first run); edits under ~15 lines total make one task.
@@ -104,9 +106,9 @@ Every non-trivial task runs this cycle, `/feature` typed or not (follow
 - Other Claude sessions share this checkout: before `git switch -c` wait
   (background loop) for a clean `main` with no other busy Claude pane in the
   repo (picker rule: `@claude_state` waiting, or working/agents active <= 5 s).
-- `~/.claude/` targets (skills, agents) are outside git: back them up to
-  `~/.claude/backups/<name>.<ts>` before dispatch, gate on `diff` against the
-  backup; only the plan is committed.
+- `~/.claude/` targets outside `claude/` (other skills, agents) are outside
+  git: back them up to `~/.claude/backups/<name>.<ts>` before dispatch, gate on
+  `diff` against the backup; only the plan is committed.
 - Final PASS: `git switch main`, `git merge --ff-only feat/<slug>`,
   `git push origin main`, `git branch -d feat/<slug>`, overriding "never
   touch main" and "no remote operations". A refused merge or push, or a stop

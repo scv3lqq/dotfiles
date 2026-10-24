@@ -34,6 +34,10 @@ are live.
 - `~/.config/karabiner` is deleted (macOS).
 - `~/.zshenv` is overwritten.
 - `~/.tmux.conf` and `~/.config/starship.toml` are replaced by links.
+- `~/.claude/skills/feature/SKILL.md` and `implementer.md`,
+  `plan-reviewer.md`, `acceptance-validator.md`, `skill-dry-run.md` in
+  `~/.claude/agents/` are replaced by links (Claude Code's `/feature`
+  skill and the agents it runs).
 - Stow links into `~/.config/nvim`, `~/.config/zsh`, `~/.config/yazi` and, on
   macOS, `~/.config/ghostty`, `~/.config/aerospace`, `~/.config/topgrade`. If
   one of them already holds a regular file where the repo wants a link, Stow
@@ -50,7 +54,10 @@ backup=~/dotfiles-backup/$(date +%Y%m%d-%H%M%S)
 mkdir -p "$backup"
 for p in ~/.zshenv ~/.tmux.conf ~/.config/starship.toml \
   ~/.config/nvim ~/.config/zsh ~/.config/yazi \
-  ~/.config/ghostty ~/.config/aerospace ~/.config/karabiner ~/.config/topgrade; do
+  ~/.config/ghostty ~/.config/aerospace ~/.config/karabiner ~/.config/topgrade \
+  ~/.claude/skills/feature/SKILL.md ~/.claude/agents/implementer.md \
+  ~/.claude/agents/plan-reviewer.md ~/.claude/agents/acceptance-validator.md \
+  ~/.claude/agents/skill-dry-run.md; do
   if [ -e "$p" ] && [ ! -L "$p" ]; then
     mv "$p" "$backup"/ && echo "moved $p"
   fi
@@ -84,8 +91,9 @@ Also on macOS:
 
 The script installs Homebrew if missing, the formulae and casks listed below,
 links the configs, clones TPM, writes `ZDOTDIR` into `~/.zshenv`, switches the
-default shell to zsh, wires the Claude Code Stop hook, and sets up commit
-signing for this repo when `~/.ssh/id_ed25519.pub` exists.
+default shell to zsh, links the Claude Code `/feature` skill and its agents,
+wires the Claude Code Stop hook, and sets up commit signing for this repo when
+`~/.ssh/id_ed25519.pub` exists.
 
 ### Linux
 
@@ -106,8 +114,9 @@ signing for this repo when `~/.ssh/id_ed25519.pub` exists.
 The script installs the apt or dnf packages listed below plus Neovim,
 the tree-sitter CLI and Starship, links the configs, clones TPM, writes
 `ZDOTDIR` into `~/.zshenv`, switches the default shell to zsh (`sudo usermod`,
-no password prompt from `chsh`), and sets up commit signing when
-`~/.ssh/id_ed25519.pub` exists. macOS-only configs are skipped.
+no password prompt from `chsh`), links the Claude Code `/feature` skill and
+its agents, and sets up commit signing when `~/.ssh/id_ed25519.pub` exists.
+macOS-only configs are skipped.
 
 `install.sh` is safe to re-run on both systems.
 
@@ -262,6 +271,8 @@ available on servers, and the markdown-preview.nvim build error on the first
 | `anki/terminal_theme/` | `Anki2/addons21/terminal_theme` | Anki add-on; symlinked by hand, not by `install.sh` (`anki/cards/` holds card templates) |
 | `claude/hooks/notify.sh` | `~/.claude/hooks/notify.sh` | macOS only; Claude Code Stop hook, `install.sh` also wires it into `~/.claude/settings.json` |
 | `claude/hooks/pane-state.sh` | `~/.claude/hooks/pane-state.sh` | macOS only; Claude Code hook that marks mid-turn panes for the `prefix + s` picker, `install.sh` also wires it into `~/.claude/settings.json` |
+| `claude/skills/feature/SKILL.md` | `~/.claude/skills/feature/SKILL.md` | Claude Code `/feature` skill: plan, implement, review on a branch |
+| `claude/agents/*.md` | `~/.claude/agents/` | one link per file: the agents `/feature` runs (implementer, plan-reviewer, acceptance-validator, skill-dry-run) |
 | `notes/`, `plans/`, `everything.md` | | personal notes, implementation plans, Russian cheatsheet |
 
 Symlinks point directly into the repo: edits are live.

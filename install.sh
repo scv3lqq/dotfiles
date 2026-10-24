@@ -369,6 +369,16 @@ fi
 echo 'export ZDOTDIR="$HOME/.config/zsh"' > ~/.zshenv
 
 # =============================================================================
+# Claude Code: the /feature skill and the agents it runs
+# =============================================================================
+# File links: ~/.claude/skills and ~/.claude/agents also hold skills and
+# agents from outside this repo. A regular file in the way is replaced.
+echo "Linking Claude Code skills and agents..."
+mkdir -p ~/.claude/skills/feature ~/.claude/agents
+ln -sf "$DOTFILES/claude/skills/feature/SKILL.md" ~/.claude/skills/feature/SKILL.md
+ln -sf "$DOTFILES"/claude/agents/*.md ~/.claude/agents/
+
+# =============================================================================
 # Claude Code notifications (macOS)
 # =============================================================================
 # The Stop hook is the only alert source: the built-in channel and gopass
