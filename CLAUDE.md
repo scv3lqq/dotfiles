@@ -1,7 +1,7 @@
 # Claude role
 
 Claude Code (PLANNER/REVIEWER) is the thinking partner; a separate agent (the
-implementer) writes the code. Roles are configuration — change a name below and
+implementer) writes the code. Roles are configuration: change a name below and
 the workflow is unchanged.
 
 - PLANNER / REVIEWER: Claude Code, Opus 5.5 (`opus[1m]` in settings), xhigh effort.
@@ -26,20 +26,20 @@ live: symlinks point into this repo.
 
 Main pieces:
 
-- `install.sh` — bootstrap: package install (Homebrew/apt/dnf), Stow linking,
+- `install.sh`: bootstrap with package install (Homebrew/apt/dnf), Stow linking,
   TPM clone, `~/.zshenv`, default-shell switch.
-- `nvim/` — Neovim config (lazy.nvim, plugins under `nvim/lua/plugins/`).
+- `nvim/`: Neovim config (lazy.nvim, plugins under `nvim/lua/plugins/`).
 - `zsh/`, `tmux/tmux.conf`, `starship/starship.toml`: shell, multiplexer, prompt.
 
 No database, no migrations, no service/API, no CI, no test suite.
 
 # Repository map
 
-- `install.sh` — bootstrap and symlink orchestration.
-- `nvim/init.lua` — Neovim entry point and lazy.nvim bootstrap.
-- `nvim/lua/plugins/*.lua` — per-plugin specs and config.
-- `nvim/lazy-lock.json` — lazy.nvim-managed lock (do not hand-edit).
-- `nvim/snippets/` — user snippets (e.g. `go.json`).
+- `install.sh`: bootstrap and symlink orchestration.
+- `nvim/init.lua`: Neovim entry point and lazy.nvim bootstrap.
+- `nvim/lua/plugins/*.lua`: per-plugin specs and config.
+- `nvim/lazy-lock.json`: lazy.nvim-managed lock (do not hand-edit).
+- `nvim/snippets/`: user snippets (e.g. `go.json`).
 - `zsh/.zshrc`, `zsh/aliases.zsh`: shell config and aliases. `zsh/.zprofile`:
   PATH for login shells (launchd); `ZDOTDIR` makes `~/.zprofile` dead. Probe
   with `env -i HOME=$HOME /bin/zsh -lc '...'`, a plain `zsh -lc` inherits PATH.
@@ -59,12 +59,12 @@ No database, no migrations, no service/API, no CI, no test suite.
   `install.sh`, which also wires settings.json; see `plans/claude-*.md`.
 - `claude/skills/feature/`, `claude/agents/`: `/feature` and its four agents,
   file-linked into `~/.claude/` by `install.sh`; edit them here, not via the links.
-- `plans/` — PLANNER's implementation plans (`<task-name>.md`).
-- `notes/` — personal reference notes, not workflow docs.
+- `plans/`: PLANNER's implementation plans (`<task-name>.md`).
+- `notes/`: personal reference notes, not workflow docs.
 - `everything.md`: Russian cheatsheet of the whole stack and keymaps, derived
   from the configs, so it lags them.
 - `AGENTS.md`: symlink to this file for Codex; edit `CLAUDE.md`.
-- `README.md` — user-facing setup.
+- `README.md`: user-facing setup.
 - `.claude/skills/`: project skills `setup-dotfiles` (`/setup-dotfiles`) and `docs-sync`.
 
 # Planning for the implementer
@@ -73,7 +73,7 @@ For non-trivial tasks (behavioral change, new tool, refactor); a mechanical
 rename or a value/flag swap of a few lines skips the plan and goes straight
 to edit:
 
-1. Read the relevant configs first — never guess Neovim/Stow/shell behavior.
+1. Read the relevant configs first: never guess Neovim/Stow/shell behavior.
 2. State current behavior in one or two sentences.
 3. Write the plan to `plans/<task-name>.md` (or `PLAN.md` if `plans/` is
    missing). Reference exact paths, state what must not change, bound scope.
@@ -84,7 +84,7 @@ to edit:
 Review the implementer's diff before approving, in this order:
 
 1. Followed the plan; changes minimal and scoped.
-2. Scope creep — unrelated files, renames, reformatting.
+2. Scope creep: unrelated files, renames, reformatting.
 3. Symlink/Stow assumptions (target paths, package layout, OS branching).
 4. Keybindings, aliases, and other user-facing behavior preserved.
 5. Generated files left to their generator (`nvim/lazy-lock.json`,
@@ -120,7 +120,7 @@ Every non-trivial task runs this cycle, `/feature` typed or not (follow
   inside that tool's config directory.
 - Neovim: global options and lazy.nvim bootstrap in `nvim/init.lua`; plugin
   behavior in `nvim/lua/plugins/`.
-- Preserve Stow package shape — directory names under macOS packages map into
+- Preserve Stow package shape: directory names under macOS packages map into
   `~/.config` intentionally.
 - Preserve macOS/Linux branching in `install.sh`. macOS-only tools (Ghostty,
   AeroSpace, Karabiner) must not run on Linux.
@@ -129,12 +129,12 @@ Every non-trivial task runs this cycle, `/feature` typed or not (follow
 
 # Verification commands
 
-- `bash -n install.sh` — installer syntax check.
+- `bash -n install.sh`: installer syntax check.
 - `zsh -n zsh/.zshrc zsh/.zprofile zsh/aliases.zsh`: zsh syntax check.
 - `ghostty +validate-config`: Ghostty config check; run it as its own Bash
   call, it swallows the output of commands chained before it.
-- `find nvim -name '*.lua' -print0 | xargs -0 -n1 luac -p` — Lua parse check.
-- `find nvim karabiner -name '*.json' -print0 | xargs -0 -n1 jq empty` — JSON
+- `find nvim -name '*.lua' -print0 | xargs -0 -n1 luac -p`: Lua parse check.
+- `find nvim karabiner -name '*.json' -print0 | xargs -0 -n1 jq empty`: JSON
   shape check.
 - `tmux source-file ~/.tmux.conf` applies and validates `tmux/tmux.conf`; errors
   print, then confirm with `tmux show -g <option>`.
@@ -153,11 +153,11 @@ Every non-trivial task runs this cycle, `/feature` typed or not (follow
 
 Use external tools when local files and `notes/` are not enough.
 
-- **Context7** — current library/framework/plugin docs, version-specific
+- **Context7**: current library/framework/plugin docs, version-specific
   behavior, official examples, migration/configuration patterns. Reach for it
   when working with lazy.nvim, blink.cmp, treesitter, mason, conform, or any
   plugin whose API may have shifted.
-- **Firecrawl** — external pages, RFCs, GitHub issues/changelogs, blog posts
+- **Firecrawl**: external pages, RFCs, GitHub issues/changelogs, blog posts
   cited by the user.
 
 Rules:
