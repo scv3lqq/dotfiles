@@ -86,6 +86,9 @@ anchor lines; every symbol to add or change with its exact signature; behavior i
 edge cases and exact error/log text; imports; a snippet for any non-obvious logic; what in
 the file must not change; task gates; definition of done. Cross-file contracts (signatures,
 names, config keys) live once in Shared definitions.
+Several edits to one file in one task: quote each edit's old text (an Edit `old_string`), line
+numbers only as hints; an earlier insert shifts every later line (2026-10-24: dry-run caught
+shifted anchors in one README/CLAUDE.md task).
 
 When parallel tasks share one compile unit (a Go package, a TS module), put the shared
 types, constants and errors in a T0 task that runs alone and is committed before the
@@ -119,7 +122,8 @@ file set, say so in the Workflow block.
 When tasks transcribe prose that agents will follow (skills, agent definitions, commands
 they are told to run), send the plan to @skill-dry-run before phase 3 and fold its findings
 in: found after implementation, each one costs a full iteration (2026-10-22: five
-iterations on one mutation-check paragraph).
+iterations on one mutation-check paragraph). A NEW skill also needs its line in the vault
+skills index before an agent writes it: the `skill-note-sync` hook blocks the write otherwise.
 
 Commit the plan, print a short summary (goal, tasks, gates), and proceed to phase 3
 immediately — no approval needed.
