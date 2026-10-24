@@ -68,7 +68,8 @@ No database, no migrations, no service/API, no CI, no test suite.
 # Planning for the implementer
 
 For non-trivial tasks (behavioral change, new tool, refactor); a mechanical
-rename or value swap across files skips the plan and goes straight to edit:
+rename or a value/flag swap of a few lines skips the plan and goes straight
+to edit:
 
 1. Read the relevant configs first — never guess Neovim/Stow/shell behavior.
 2. State current behavior in one or two sentences.
