@@ -1,6 +1,5 @@
 ---
 paths:
-  - ".tmux.conf"
   - "tmux/**"
 ---
 

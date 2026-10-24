@@ -29,7 +29,7 @@ Main pieces:
 - `install.sh` — bootstrap: package install (Homebrew/apt/dnf), Stow linking,
   TPM clone, `~/.zshenv`, default-shell switch.
 - `nvim/` — Neovim config (lazy.nvim, plugins under `nvim/lua/plugins/`).
-- `zsh/`, `.tmux.conf`, `starship.toml` — shell, multiplexer, prompt.
+- `zsh/`, `tmux/tmux.conf`, `starship/starship.toml`: shell, multiplexer, prompt.
 
 No database, no migrations, no service/API, no CI, no test suite.
 
@@ -45,7 +45,7 @@ No database, no migrations, no service/API, no CI, no test suite.
   with `env -i HOME=$HOME /bin/zsh -lc '...'`, a plain `zsh -lc` inherits PATH.
 - `topgrade/`: macOS Stow package; its launchd agent lives outside the repo,
   see `plans/topgrade-autoupdate.md`.
-- `.tmux.conf`, `starship.toml`: directly linked configs. `prefix + s` runs
+- `tmux/tmux.conf`, `starship/starship.toml`: directly linked configs. `prefix + s` runs
   `tmux/session-picker.sh` (fzf popup; design in `plans/tmux-session-tree-picker.md`
   and `plans/claude-activity-picker.md`).
 - macOS Stow packages nest one level, the config lives at
@@ -134,7 +134,7 @@ Every non-trivial task runs this cycle, `/feature` typed or not (follow
 - `find nvim -name '*.lua' -print0 | xargs -0 -n1 luac -p` — Lua parse check.
 - `find nvim karabiner -name '*.json' -print0 | xargs -0 -n1 jq empty` — JSON
   shape check.
-- `tmux source-file ~/.tmux.conf` applies and validates `.tmux.conf`; errors
+- `tmux source-file ~/.tmux.conf` applies and validates `tmux/tmux.conf`; errors
   print, then confirm with `tmux show -g <option>`.
 - `aerospace reload-config --dry-run` validates `aerospace.toml`; drop
   `--dry-run` to apply (edits are live via the symlink).

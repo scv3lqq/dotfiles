@@ -356,8 +356,8 @@ stow --restow --target ~/.config/nvim nvim
 stow --restow --target ~/.config/zsh zsh
 stow --restow --target ~/.config/yazi yazi
 
-ln -sf "$DOTFILES/starship.toml" ~/.config/starship.toml
-ln -sf "$DOTFILES/.tmux.conf" ~/.tmux.conf
+ln -sf "$DOTFILES/starship/starship.toml" ~/.config/starship.toml
+ln -sf "$DOTFILES/tmux/tmux.conf" ~/.tmux.conf
 
 # TPM (tmux plugin manager)
 if [[ ! -d ~/.tmux/plugins/tpm ]]; then

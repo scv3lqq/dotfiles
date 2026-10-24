@@ -257,8 +257,8 @@ available on servers, and the markdown-preview.nvim build error on the first
 | (none) | `~/.zshenv` | written (not linked) by `install.sh`: `export ZDOTDIR="$HOME/.config/zsh"` |
 | `yazi/` | `~/.config/yazi` | file manager |
 | `ghostty/`, `aerospace/`, `karabiner/`, `topgrade/` | `~/.config/*` | macOS only, via Stow |
-| `starship.toml` | `~/.config/starship.toml` | prompt |
-| `.tmux.conf` | `~/.tmux.conf` | TPM cloned into `~/.tmux/plugins/tpm` |
+| `starship/starship.toml` | `~/.config/starship.toml` | prompt |
+| `tmux/tmux.conf` | `~/.tmux.conf` | TPM cloned into `~/.tmux/plugins/tpm` |
 | `anki/terminal_theme/` | `Anki2/addons21/terminal_theme` | Anki add-on; symlinked by hand, not by `install.sh` (`anki/cards/` holds card templates) |
 | `claude/hooks/notify.sh` | `~/.claude/hooks/notify.sh` | macOS only; Claude Code Stop hook, `install.sh` also wires it into `~/.claude/settings.json` |
 | `claude/hooks/pane-state.sh` | `~/.claude/hooks/pane-state.sh` | macOS only; Claude Code hook that marks mid-turn panes for the `prefix + s` picker, `install.sh` also wires it into `~/.claude/settings.json` |
@@ -288,7 +288,7 @@ configs, rewrites `~/.zshenv`) and also:
 - Linux, outside the package manager: Neovim, the tree-sitter CLI and
   Starship are replaced by their latest GitHub release when it is newer,
   and only when they live in `/usr/local/bin`, where `install.sh` puts them.
-- tmux: installs the plugins newly listed in `.tmux.conf` and updates all of
+- tmux: installs the plugins newly listed in `tmux/tmux.conf` and updates all of
   them. TPM runs against a private tmux server, so your sessions are not
   touched.
 - Neovim: restores the plugins to the commits in `nvim/lazy-lock.json`

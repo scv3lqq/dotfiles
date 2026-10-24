@@ -17,7 +17,7 @@ against the file that owns it, then report mismatches before editing anything.
 | What is linked where, link method | `install.sh` `stow --restow` and `ln -sf` lines |
 | Aliases, shell functions | `zsh/aliases.zsh` plus the alias block and `function` defs in `zsh/.zshrc` |
 | Prompt, PATH, login-shell behavior | `zsh/.zshrc`, `zsh/.zprofile`; `~/.zshenv` sets `ZDOTDIR`, so `~/.zshrc` and `~/.zprofile` are dead |
-| tmux prefix, binds, plugin list | `.tmux.conf` (`set -g prefix`, `bind`, `set -g @plugin`) |
+| tmux prefix, binds, plugin list | `tmux/tmux.conf` (`set -g prefix`, `bind`, `set -g @plugin`) |
 | AeroSpace keys, workspace assignment | `aerospace/aerospace/aerospace.toml` (`alt-*` keys, `if.app-id`) |
 | Neovim plugins | `nvim/lua/plugins/*.lua` |
 | Auto-update behavior, schedule | `topgrade/topgrade/topgrade.toml` + `plans/topgrade-autoupdate.md` (launchd agent lives outside the repo) |
@@ -33,7 +33,7 @@ grep the nested path (`yazi/yazi.toml`, `nvim/`, `zsh/` are flat).
    ```sh
    grep -nE 'brew install|apt-get|dnf|stow |ln -sf|chsh|TPM|zshenv' install.sh
    cat zsh/aliases.zsh; grep -nE '^alias|^function|^\s*function' zsh/.zshrc
-   grep -nE 'set -g prefix|^bind|@plugin' .tmux.conf
+   grep -nE 'set -g prefix|^bind|@plugin' tmux/tmux.conf
    grep -nE 'alt-|if.app-id' aerospace/aerospace/aerospace.toml
    ls nvim/lua/plugins
    ```
