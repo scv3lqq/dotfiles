@@ -5,8 +5,8 @@ implementer) writes the code. Roles are configuration — change a name below an
 the workflow is unchanged.
 
 - PLANNER / REVIEWER: Claude Code, Opus 5.5 (`opus[1m]` in settings), xhigh effort.
-- IMPLEMENTER: Claude Haiku 5.5 (`claude-haiku-5-5`), medium effort; may also be Codex
-  (`AGENTS.md` is its legacy contract; Claude sessions and agents skip it).
+- IMPLEMENTER: Claude Haiku 5.5 (`claude-haiku-5-5`), medium effort; may also be Codex,
+  which reads this file through the `AGENTS.md` symlink.
 
 PLANNER must:
 
@@ -62,9 +62,8 @@ No database, no migrations, no service/API, no CI, no test suite.
 - `plans/` — PLANNER's implementation plans (`<task-name>.md`).
 - `notes/` — personal reference notes, not workflow docs.
 - `everything.md`: Russian cheatsheet of the whole stack and keymaps, derived
-  from the configs, so it lags them. Root `plan.md` is a stale pre-`plans/`
-  leftover, not an active plan.
-- `AGENTS.md`: legacy Codex contract; Claude sessions and agents skip it.
+  from the configs, so it lags them.
+- `AGENTS.md`: symlink to this file for Codex; edit `CLAUDE.md`.
 - `README.md` — user-facing setup.
 
 # Planning for the implementer
@@ -194,4 +193,4 @@ Rules:
 
 Update only when workflow, architecture, commands, or durable conventions
 change. Keep rules actionable, remove outdated ones, avoid duplication with
-`AGENTS.md` and `README.md`. Keep the file under 200 lines.
+`README.md`. Keep the file under 200 lines; `AGENTS.md` follows it as a link.
