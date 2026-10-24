@@ -262,11 +262,14 @@ launch, window id polling, workspace layout, `fzf --listen` picker control,
    `:nohlsearch | echo` Enter, wait 1 s. Check `capture-pane -p` of the
    editor pane: contains `Idempotency-Key`, last line has no `Session`
    text. `screencapture -x -o -l <id> $S/run/raw/nvim.png`.
-5. Picker: set `@claude_since` of the `billing:claude` pane to now-120,
+5. Picker: set `@claude_since` of the `billing:claude` pane to now-120 and
+   of the `orders:claude` pane to now-45,
    set the server env `FZF_DEFAULT_OPTS` to the server's current value plus
    `--listen=127.0.0.1:16266`, open the popup with
    `send-keys -K -c <client> C-a s` in the background, wait for the port,
-   unset the env again, POST `first`, then
+   unset the env again, POST `pos(<N>)` with N the 1-based index of the
+   `orders` session row in `GET 127.0.0.1:16266?limit=30` (sessions sort by
+   name, so `first` lands on `billing`), then
    `transform(~/dotfiles/tmux/session-picker.sh right {1} {2} {3})` with
    `~` expanded; check `GET 127.0.0.1:16266?limit=30` lists `editor`,
    `idempotency` and `invoice` rows; wait 1 s, capture `raw/picker.png`,
