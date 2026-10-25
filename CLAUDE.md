@@ -133,8 +133,8 @@ Every non-trivial task runs this cycle, `/feature` typed or not (follow
 
 - `bash -n install.sh`: installer syntax check.
 - `zsh -n zsh/.zshrc zsh/.zprofile zsh/aliases.zsh`: zsh syntax check.
-- `ghostty +validate-config`: Ghostty config check; run it as its own Bash
-  call, it swallows the output of commands chained before it.
+- `ghostty +validate-config` (own Bash call: it eats chained output);
+  applying is the user's Cmd+Shift+, (osascript has no Accessibility).
 - `find nvim -name '*.lua' -print0 | xargs -0 -n1 luac -p`: Lua parse check.
 - `find nvim karabiner -name '*.json' -print0 | xargs -0 -n1 jq empty`: JSON
   shape check.
