@@ -46,6 +46,10 @@ theme = Ayu
 # Explicit so the terminal bg matches the tmux status bar 1:1
 background = #0B0E14
 foreground = #BFBDB6
+# Claude Code colors inline code and paths in replies from its base preset
+# (dark-ansi: blueBright) and ignores custom theme overrides there, so bright
+# blue becomes Ayu purple to match claude/themes/ayu.json
+palette = 12=#D2A6FF
 
 # =============================================================================
 # Updates
