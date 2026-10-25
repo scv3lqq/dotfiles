@@ -125,6 +125,11 @@ in: found after implementation, each one costs a full iteration (2026-10-22: fiv
 iterations on one mutation-check paragraph). A NEW skill also needs its line in the vault
 skills index before an agent writes it: the `skill-note-sync` hook blocks the write otherwise.
 
+Runnable blocks in the plan (a fixture suite) are fenced `bash`; steps that change live state
+(settings writes, links, installs) are fenced `sh`, so an agent extracting "the bash block"
+cannot run them (2026-10-26: an implementer extracted every `bash` block of a plan, live apply
+included; only the suite's `exit` stopped it).
+
 Commit the plan, print a short summary (goal, tasks, gates), and proceed to phase 3
 immediately — no approval needed.
 
