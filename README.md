@@ -67,8 +67,9 @@ Yazi with a code preview.
   `plan-reviewer.md`, `acceptance-validator.md`, `skill-dry-run.md` in
   `~/.claude/agents/` are replaced by links (Claude Code's `/feature`
   skill and the agents it runs).
-- `~/.claude/statusline.sh` is replaced by a link and the `statusLine` key in
-  `~/.claude/settings.json` is overwritten (Claude Code status line).
+- `~/.claude/statusline.sh` and `~/.claude/themes/ayu.json` are replaced by
+  links, and the `statusLine` and `theme` keys in `~/.claude/settings.json` are
+  overwritten (Claude Code status line and color theme).
 - Stow links into `~/.config/nvim`, `~/.config/zsh`, `~/.config/yazi` and, on
   macOS, `~/.config/ghostty`, `~/.config/aerospace`, `~/.config/topgrade`. If
   one of them already holds a regular file where the repo wants a link, Stow
@@ -88,7 +89,8 @@ for p in ~/.zshenv ~/.tmux.conf ~/.config/starship.toml \
   ~/.config/ghostty ~/.config/aerospace ~/.config/karabiner ~/.config/topgrade \
   ~/.claude/skills/feature/SKILL.md ~/.claude/agents/implementer.md \
   ~/.claude/agents/plan-reviewer.md ~/.claude/agents/acceptance-validator.md \
-  ~/.claude/agents/skill-dry-run.md ~/.claude/statusline.sh; do
+  ~/.claude/agents/skill-dry-run.md ~/.claude/statusline.sh \
+  ~/.claude/themes/ayu.json; do
   if [ -e "$p" ] && [ ! -L "$p" ]; then
     mv "$p" "$backup"/ && echo "moved $p"
   fi
@@ -122,9 +124,9 @@ Also on macOS:
 
 The script installs Homebrew if missing, the formulae and casks listed below,
 links the configs, clones TPM, writes `ZDOTDIR` into `~/.zshenv`, switches the
-default shell to zsh, links the Claude Code `/feature` skill, its agents and
-the status line, wires the Claude Code Stop hook, and sets up commit signing
-for this repo when `~/.ssh/id_ed25519.pub` exists.
+default shell to zsh, links the Claude Code `/feature` skill, its agents, the
+status line and the color theme, wires the Claude Code Stop hook, and sets up
+commit signing for this repo when `~/.ssh/id_ed25519.pub` exists.
 
 ### Linux
 
@@ -146,7 +148,7 @@ The script installs the apt or dnf packages listed below plus Neovim,
 the tree-sitter CLI and Starship, links the configs, clones TPM, writes
 `ZDOTDIR` into `~/.zshenv`, switches the default shell to zsh (`sudo usermod`,
 no password prompt from `chsh`), links the Claude Code `/feature` skill, its
-agents and the status line, and sets up commit signing when
+agents, the status line and the color theme, and sets up commit signing when
 `~/.ssh/id_ed25519.pub` exists.
 macOS-only configs are skipped.
 
