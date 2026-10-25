@@ -379,6 +379,19 @@ ln -sf "$DOTFILES/claude/skills/feature/SKILL.md" ~/.claude/skills/feature/SKILL
 ln -sf "$DOTFILES"/claude/agents/*.md ~/.claude/agents/
 
 # =============================================================================
+# Claude Code status line
+# =============================================================================
+echo "Linking Claude Code status line..."
+ln -sf "$DOTFILES/claude/statusline.sh" ~/.claude/statusline.sh
+settings="$HOME/.claude/settings.json"
+[[ -f "$settings" ]] || echo '{}' > "$settings"
+if ! jq -e '.statusLine.command == "~/.claude/statusline.sh"' "$settings" >/dev/null; then
+  tmp="$(mktemp)"
+  jq '.statusLine = {"type": "command", "command": "~/.claude/statusline.sh"}' \
+    "$settings" > "$tmp" && mv "$tmp" "$settings"
+fi
+
+# =============================================================================
 # Claude Code notifications (macOS)
 # =============================================================================
 # The Stop hook is the only alert source: the built-in channel and gopass
