@@ -85,7 +85,8 @@ One line on stdout, then exit 0. The line is:
 <G><segments joined by " · "><RST>\n
 ```
 
-- `G` = `\033[38;2;86;91;102m` (truecolor `#565B66`, the tmux-dotbar gray),
+- `G` = `\033[38;5;240m` (256-color gray `#585858`, nearest to the tmux-dotbar
+  `#565B66`; see Iteration 1 for why not truecolor),
   `Y` = `\033[33m`, `R` = `\033[31m` (theme palette yellow and red),
   `RST` = `\033[0m`.
 - Separator: space, U+00B7 middle dot, space (` · `).
@@ -145,18 +146,18 @@ check C1 "$J1" 'repo  demo-branch · opus 5.5 xhigh · 23%'
 check C2 "$(mk "$T/plain" '{model: {id: "claude-sonnet-4-5-20250929"}, context_window: {used_percentage: null}}')" 'plain · sonnet 4.5 · 0%'
 J3=$(mk "$T/plain" '{model: {id: "claude-opus-5-5[1m]"}, effort: {level: "high"}, context_window: {used_percentage: 64}}')
 check C3 "$J3" 'plain · opus 5.5 high · 64%'
-color C3c "$J3" '\e[33m64%\e[38;2;86;91;102m' yes
-color C4 "$(mk "$T/plain" '{model: {id: "claude-opus-5-5"}, context_window: {used_percentage: 85}}')" '\e[31m85%\e[38;2;86;91;102m' yes
+color C3c "$J3" '\e[33m64%\e[38;5;240m' yes
+color C4 "$(mk "$T/plain" '{model: {id: "claude-opus-5-5"}, context_window: {used_percentage: 85}}')" '\e[31m85%\e[38;5;240m' yes
 J5=$(mk "$T/plain" '{model: {id: "claude-opus-5-5"}, effort: {level: "high"}, context_window: {used_percentage: 59.9}}')
 check C5 "$J5" 'plain · opus 5.5 high · 59%'
 color C5y "$J5" '\e[33m' no
 color C5r "$J5" '\e[31m' no
 J6=$(mk "$T/plain" '{model: {id: "claude-opus-5-5"}, context_window: {used_percentage: 10}, rate_limits: {five_hour: {used_percentage: 86.4}, seven_day: {used_percentage: 41}}}')
 check C6 "$J6" 'plain · opus 5.5 · 10% · 5h 86%'
-color C6c "$J6" '\e[33m5h 86%\e[38;2;86;91;102m' yes
+color C6c "$J6" '\e[33m5h 86%\e[38;5;240m' yes
 J7=$(mk "$T/plain" '{model: {id: "claude-opus-5-5"}, context_window: {used_percentage: 10}, rate_limits: {five_hour: {used_percentage: 79.9}, seven_day: {used_percentage: 97}}}')
 check C7 "$J7" 'plain · opus 5.5 · 10% · 7d 97%'
-color C7c "$J7" '\e[31m7d 97%\e[38;2;86;91;102m' yes
+color C7c "$J7" '\e[31m7d 97%\e[38;5;240m' yes
 check C8 "$(mk "$T/repo" '{workspace: {git_worktree: "wt"}, model: {id: "claude-opus-5-5"}, context_window: {used_percentage: 5}}')" 'repo  demo-branch ⎇ wt · opus 5.5 · 5%'
 check C9 "$(mk "$T/repo" '{agent: {name: "reviewer"}, model: {id: "claude-haiku-5-5"}, effort: {level: "medium"}, context_window: {used_percentage: 5}}')" 'repo  demo-branch · reviewer · haiku 5.5 medium · 5%'
 check C10 "$(mk "$T/plain" '{model: {id: "us.anthropic.claude-opus-4-1-20250805-v1:0"}, context_window: {used_percentage: 1}}')" 'plain · opus 4.1 · 1%'
@@ -168,7 +169,7 @@ check C15 "$(mk "$HOME" '{model: {id: "claude-opus-5-5"}, context_window: {used_
 out=$(printf 'not json' | "$SL"); rc=$?
 if [ "$rc" = 0 ] && [ -z "$out" ]; then echo "PASS C16"; else echo "FAIL C16 rc=$rc out=[$out]"; fail=1; fi
 check C17 "$(mk "$T/plain" '{context_window: {used_percentage: 3}}')" 'plain · 3%'
-if raw "$J1" | perl -0777 -ne 'exit(/\A\e\[38;2;86;91;102m[^\n]*\e\[0m\n\z/ ? 0 : 1)'; then echo "PASS C18"; else echo "FAIL C18 framing"; fail=1; fi
+if raw "$J1" | perl -0777 -ne 'exit(/\A\e\[38;5;240m[^\n]*\e\[0m\n\z/ ? 0 : 1)'; then echo "PASS C18"; else echo "FAIL C18 framing"; fail=1; fi
 check C19 "$(mk "$T/gone" '{model: {id: "claude-opus-5-5"}, context_window: {used_percentage: 1}}')" 'gone · opus 5.5 · 1%'
 t0=$(perl -MTime::HiRes=time -e 'printf "%.3f", time')
 for i in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20; do raw "$J1" >/dev/null; done
@@ -406,9 +407,8 @@ Done: link and key in place, the diff against the backup is empty.
 ## Edge cases
 
 - macOS vs Linux: `/bin/bash` 3.2 on macOS (T1 restrictions); `jq` and `git`
-  come from install.sh on both; truecolor gray needs RGB support, which
-  `tmux/tmux.conf` enables for `xterm-ghostty`; a terminal without it shows a
-  close 256-color gray.
+  come from install.sh on both; the gray is a 256-color index, which every
+  terminal in use supports.
 - Missing tools: no `jq`, no output (blank row); no `git` or not a repo, no
   branch segment.
 - First run of a session: `used_percentage` null gives `0%`; `rate_limits`,
@@ -425,3 +425,21 @@ Done: link and key in place, the diff against the backup is empty.
 - Width handling via `COLUMNS`, multi-line output, `refreshInterval`, `padding`.
 - `everything.md` (it lags the configs by design).
 - Linux server rollout beyond the install.sh block.
+
+## Iteration 1: fixes
+
+Live check after T4 (`tmux capture-pane -ep` of a Claude pane): Claude Code
+re-encodes the script's truecolor `38;2;86;91;102` into its own 256-color
+level as `38;5;102` (`#878787`), clearly lighter than the tmux-dotbar gray.
+Yellow `33` comes through unchanged.
+
+### T5: `claude/statusline.sh`, gray as a 256-color index
+
+Scope: one change in `claude/statusline.sh`: the `G` color becomes
+`$'\033[38;5;240m'` (was `$'\033[38;2;86;91;102m'`). Nothing else in the file
+changes. The Shared definitions and the Fixture suite above already carry the
+new value.
+
+Task gates: as T1 (`/bin/bash -n`, `test -x`, the Fixture suite all PASS).
+
+Done: committed as `fix(claude): use a 256-color gray in the status line`.
