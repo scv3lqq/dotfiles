@@ -1,0 +1,10 @@
+{
+  "name": "Ayu",
+  "base": "dark-ansi",
+  "overrides": {
+    "permission": "ansi:magenta",
+    "permissionShimmer": "ansi:magentaBright",
+    "suggestion": "ansi:magenta",
+    "remember": "ansi:magenta"
+  }
+}
