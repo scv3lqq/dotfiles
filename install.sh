@@ -391,6 +391,15 @@ if ! jq -e '.statusLine.command == "~/.claude/statusline.sh"' "$settings" >/dev/
     "$settings" > "$tmp" && mv "$tmp" "$settings"
 fi
 
+# Color theme: dark-ansi with the blue accents in Ayu lilac
+echo "Linking Claude Code color theme..."
+mkdir -p ~/.claude/themes
+ln -sf "$DOTFILES/claude/themes/ayu.json" ~/.claude/themes/ayu.json
+if ! jq -e '.theme == "custom:ayu"' "$settings" >/dev/null; then
+  tmp="$(mktemp)"
+  jq '.theme = "custom:ayu"' "$settings" > "$tmp" && mv "$tmp" "$settings"
+fi
+
 # =============================================================================
 # Claude Code notifications (macOS)
 # =============================================================================
