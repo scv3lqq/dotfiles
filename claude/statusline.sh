@@ -7,6 +7,8 @@ command -v jq >/dev/null || exit 0
 G=$'\033[38;5;240m'
 Y=$'\033[33m'
 R=$'\033[31m'
+FILL=$'\033[38;5;245m'
+TRACK=$'\033[38;5;237m'
 RST=$'\033[0m'
 
 filter='
@@ -77,9 +79,21 @@ if [ -n "$effort" ]; then
 fi
 [ -n "$me" ] && add "$me"
 
-# 4. Context
+# 4. Context: 10-cell bar in half-cell (5%) steps, then the percentage
+units=$(( (ctx * 20 + 50) / 100 ))
+[ "$units" -gt 20 ] && units=20
+full=$((units / 2))
+half=$((units % 2))
+fill=""
+i=0
+while [ "$i" -lt "$full" ]; do fill="${fill}━"; i=$((i + 1)); done
+[ "$half" -eq 1 ] && fill="${fill}╾"
+track=""
+i=$((full + half))
+while [ "$i" -lt 10 ]; do track="${track}─"; i=$((i + 1)); done
+if [ "$ctx" -ge 80 ]; then fc=$R; elif [ "$ctx" -ge 60 ]; then fc=$Y; else fc=$FILL; fi
 tint "$ctx" 60 80 "${ctx}%"
-add "$REPLY"
+add "$fc$fill$TRACK$track$G $REPLY"
 
 # 5-6. Rate limits, shown only near the cap
 if [ "$h5" -ge 80 ]; then
