@@ -54,9 +54,9 @@ No database, no migrations, no service/API, no CI, no test suite.
   `yazi/yazi.toml`, `nvim/`, `zsh/` are flat (stowed into `~/.config/<tool>`).
 - `anki/`: Anki add-on source and card templates, symlinked into `addons21`;
   edits and checks: `anki-addon` skill.
-- `claude/hooks/`: `notify.sh` (Stop hook, macOS alert) and `pane-state.sh`
-  (turn state in pane options for the picker), linked into `~/.claude/hooks/` by
-  `install.sh`, which also wires settings.json; see `plans/claude-*.md`.
+- `claude/hooks/`: `notify.sh` (Stop hook, macOS alert), `pane-state.sh` (turn
+  state for the picker); `claude/statusline.sh`: the status line. `install.sh`
+  links them into `~/.claude/` and wires settings.json; see `plans/claude-*.md`.
 - `claude/skills/feature/`, `claude/agents/`: `/feature` and its four agents,
   file-linked into `~/.claude/` by `install.sh`; edit them here, not via the links.
 - `plans/`: PLANNER's implementation plans (`<task-name>.md`).
