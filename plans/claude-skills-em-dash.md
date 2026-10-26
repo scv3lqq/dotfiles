@@ -96,8 +96,9 @@ task gate for each file, do not commit (the orchestrator commits by pathspec).
 Implementers run with `model: sonnet` (every replacement is a judgment call).
 
 - T1: `claude/skills/anki/SKILL.md` (29), `claude/skills/anki/scripts/anki.py`
-  (1, line 234: the message continues the f-string above it; `": insert a space
-  before the closing braces"` keeps it grammatical). Extra gate: AC4.
+  (1, line 234: the message continues the f-string above it, whose last string
+  ends with a space, so the new string is `"(insert a space before the closing
+  braces)"`; a leading colon would read `\\) : insert`). Extra gate: AC4.
 - T2: `claude/skills/anki-grammar/SKILL.md` (5), `claude/skills/refactor-proof/SKILL.md`
   (3), `claude/skills/retro/SKILL.md` (3).
 - T3: `claude/skills/obsidian-sr-flashcards/SKILL.md` (33). The YAML
