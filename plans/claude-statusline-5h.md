@@ -509,14 +509,14 @@ one new line right after the line that starts with
 
 <!-- T4 block start -->
 ```
-- Status line geometry (2.1.310, fullscreen): the row is indented 2 columns and cut with `…` past `COLUMNS - 4` cells, so a right-aligned segment pads to `COLUMNS - 4` (live: `claude/statusline.sh` segment 6). A terminal resize does not re-run the script; `refreshInterval` does, with the new `COLUMNS`. `disableAllHooks` turns the status line off too: probe one in an isolated instance with `--setting-sources local --settings '{"tui": "fullscreen", "statusLine": {"type": "command", "command": "<probe>"}}'` (no user hooks), `send-keys BTab` re-runs it.
+- Status line geometry (2.1.310, fullscreen): the row is indented 2 columns and cut with `…` past `COLUMNS - 4` cells, so a right-aligned segment pads the row to exactly `COLUMNS - 4` cells (live: `~/dotfiles/claude/statusline.sh` segment 6). A terminal resize does not re-run the script; `refreshInterval` does, with the new `COLUMNS`. `disableAllHooks` turns the status line off too, so the isolated instance below shows none: to probe a script, replace its `--settings` with `--setting-sources local --settings '{\"tui\": \"fullscreen\", \"statusLine\": {\"type\": \"command\", \"command\": \"<probe>\"}}'` (no user hooks), then `send-keys BTab` re-runs it.
 ```
 <!-- T4 block end -->
 
 Task gates: the block diff gate prints nothing:
 
 ```bash
-diff <(awk '/<!-- T4 block start -->/{f=1; next} /<!-- T4 block end -->/{f=0} f' plans/claude-statusline-5h.md | sed '1d;$d') \
+diff <(awk '/^<!-- T4 block start -->$/{f=1; next} /^<!-- T4 block end -->$/{f=0} f' plans/claude-statusline-5h.md | sed '1d;$d') \
   <(grep -F -- '- Status line geometry (2.1.310, fullscreen)' claude/skills/cc-settings/SKILL.md)
 ```
 
