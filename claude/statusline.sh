@@ -4,11 +4,19 @@
 
 command -v jq >/dev/null || exit 0
 
+# Segment 6 strips color codes with *(...), so extglob must be on first.
+shopt -s extglob
+
 G=$'\033[38;5;240m'
 Y=$'\033[33m'
 R=$'\033[31m'
 FILL=$'\033[38;5;245m'
 TRACK=$'\033[38;5;237m'
+ORANGE=$'\033[38;5;173m'
+TRACK5=$'\033[38;5;246m'
+BRIGHT=$'\033[38;5;254m'
+BOLD=$'\033[1m'
+NOBOLD=$'\033[22m'
 RST=$'\033[0m'
 
 filter='
@@ -21,10 +29,11 @@ filter='
 (.effort.level // ""),
 (.context_window.used_percentage // 0 | floor),
 (.rate_limits.five_hour.used_percentage // -1 | floor),
-(.rate_limits.seven_day.used_percentage // -1 | floor)
+(.rate_limits.seven_day.used_percentage // -1 | floor),
+((.rate_limits.five_hour.resets_at // 0) - now | floor)
 '
 
-{ IFS= read -r cwd; IFS= read -r wt; IFS= read -r agent; IFS= read -r model; IFS= read -r effort; IFS= read -r ctx; IFS= read -r h5; IFS= read -r d7; } < <(jq -r "$filter" 2>/dev/null)
+{ IFS= read -r cwd; IFS= read -r wt; IFS= read -r agent; IFS= read -r model; IFS= read -r effort; IFS= read -r ctx; IFS= read -r h5; IFS= read -r d7; IFS= read -r h5r; } < <(jq -r "$filter" 2>/dev/null)
 
 # Empty ctx means jq failed on invalid input: print nothing.
 [ -n "$ctx" ] || exit 0
@@ -95,15 +104,50 @@ if [ "$ctx" -ge 80 ]; then fc=$R; elif [ "$ctx" -ge 60 ]; then fc=$Y; else fc=$F
 tint "$ctx" 60 80 "${ctx}%"
 add "$fc$fill$TRACK$track$G $REPLY"
 
-# 5-6. Rate limits, shown only near the cap
-if [ "$h5" -ge 80 ]; then
-  tint "$h5" 80 95 "5h ${h5}%"
-  add "$REPLY"
-fi
+# 5. 7d rate limit, shown only near the cap
 if [ "$d7" -ge 80 ]; then
   tint "$d7" 80 95 "7d ${d7}%"
   add "$REPLY"
 fi
 
-printf '%s%s%s\n' "$G" "$out" "$RST"
+# 6. 5h rate limit at the right edge: 10-cell bar, percentage, time to reset.
+# Claude Code indents the row by 2 and cuts it with … past COLUMNS - 4 cells.
+right=""
+if [ "$h5" -ge 0 ]; then
+  cells=$(( (h5 * 10 + 50) / 100 ))
+  [ "$cells" -gt 10 ] && cells=10
+  bar=""
+  i=0
+  while [ "$i" -lt "$cells" ]; do bar="${bar}━"; i=$((i + 1)); done
+  rest=""
+  while [ "$i" -lt 10 ]; do rest="${rest}━"; i=$((i + 1)); done
+  if [ "$h5" -ge 95 ]; then hc=$R; elif [ "$h5" -ge 80 ]; then hc=$Y; else hc=$ORANGE; fi
+  if [ "$h5" -ge 80 ]; then pc=$hc; else pc=$BRIGHT; fi
+  pct="$BOLD$pc${h5}%$NOBOLD"
+  reset=""
+  if [ "$h5r" -gt 0 ]; then
+    mins=$(( (h5r + 59) / 60 ))
+    if [ "$mins" -ge 60 ]; then
+      reset=" ↻ $((mins / 60))h $((mins % 60))m"
+    else
+      reset=" ↻ ${mins}m"
+    fi
+  fi
+  right="${FILL}5h $hc$bar$TRACK5$rest $pct$FILL$reset"
+  cols=$COLUMNS
+  case "$cols" in ''|*[!0-9]*) cols=0 ;; esac
+  gap=2
+  if [ "$cols" -gt 0 ]; then
+    plain=${out//$'\033'\[*([0-9;])m/}
+    gap=$(( cols - 4 - ${#plain} - 15 - ${#h5} - ${#reset} ))
+    if [ "$gap" -lt 2 ]; then
+      right="${FILL}5h $pct"
+      gap=$(( cols - 4 - ${#plain} - 4 - ${#h5} ))
+    fi
+    [ "$gap" -lt 2 ] && gap=2
+  fi
+  printf -v right '%*s%s' "$gap" '' "$right"
+fi
+
+printf '%s%s%s%s\n' "$G" "$out" "$right" "$RST"
 exit 0
