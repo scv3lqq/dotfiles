@@ -369,70 +369,52 @@ fi
 echo 'export ZDOTDIR="$HOME/.config/zsh"' > ~/.zshenv
 
 # =============================================================================
-# Claude Code: the /feature skill and the agents it runs
+# Claude Code: config from claude/
 # =============================================================================
-# File links: ~/.claude/skills and ~/.claude/agents also hold skills and
-# agents from outside this repo. A regular file in the way is replaced.
-echo "Linking Claude Code skills and agents..."
-mkdir -p ~/.claude/skills/feature ~/.claude/agents
-ln -sf "$DOTFILES/claude/skills/feature/SKILL.md" ~/.claude/skills/feature/SKILL.md
+# Skills are directory links; agents, hooks and bin are file links:
+# ~/.claude/skills and ~/.claude/agents also hold entries from outside this repo.
+echo "Linking Claude Code skills, agents and hooks..."
+mkdir -p ~/.claude/skills ~/.claude/agents ~/.claude/hooks ~/.claude/bin ~/.claude/themes
+for src in "$DOTFILES"/claude/skills/*/; do
+  src="${src%/}"
+  name="$(basename "$src")"
+  if [[ "$OS" != "Darwin" && "$name" == mac-* ]]; then
+    continue
+  fi
+  dst="$HOME/.claude/skills/$name"
+  if [[ -d "$dst" && ! -L "$dst" ]]; then
+    # Older installs linked only SKILL.md into a real directory
+    if [[ -n "$(find "$dst" -mindepth 1 ! -type l)" ]]; then
+      echo "Skipping $dst: a real directory with files, move it aside first"
+      continue
+    fi
+    find "$dst" -mindepth 1 -type l -delete
+    rmdir "$dst"
+  fi
+  ln -sfn "$src" "$dst"
+done
 ln -sf "$DOTFILES"/claude/agents/*.md ~/.claude/agents/
-
-# =============================================================================
-# Claude Code status line
-# =============================================================================
-echo "Linking Claude Code status line..."
+ln -sf "$DOTFILES"/claude/hooks/*.sh "$DOTFILES"/claude/hooks/*.py ~/.claude/hooks/
+ln -sf "$DOTFILES"/claude/bin/* ~/.claude/bin/
 ln -sf "$DOTFILES/claude/statusline.sh" ~/.claude/statusline.sh
-settings="$HOME/.claude/settings.json"
-[[ -f "$settings" ]] || echo '{}' > "$settings"
-if ! jq -e '.statusLine.command == "~/.claude/statusline.sh"' "$settings" >/dev/null; then
-  tmp="$(mktemp)"
-  jq '.statusLine = {"type": "command", "command": "~/.claude/statusline.sh"}' \
-    "$settings" > "$tmp" && mv "$tmp" "$settings"
-fi
-
-# Color theme: dark-ansi with the blue accents in Ayu lilac
-echo "Linking Claude Code color theme..."
-mkdir -p ~/.claude/themes
 ln -sf "$DOTFILES/claude/themes/ayu.json" ~/.claude/themes/ayu.json
-if ! jq -e '.theme == "custom:ayu"' "$settings" >/dev/null; then
-  tmp="$(mktemp)"
-  jq '.theme = "custom:ayu"' "$settings" > "$tmp" && mv "$tmp" "$settings"
-fi
 
-# =============================================================================
-# Claude Code notifications (macOS)
-# =============================================================================
-# The Stop hook is the only alert source: the built-in channel and gopass
-# alerts are turned off, Ghostty drops terminal OSC notifications.
 if [[ "$OS" == "Darwin" ]]; then
-  echo "Setting up Claude Code notifications..."
-  mkdir -p ~/.claude/hooks
-  ln -sf "$DOTFILES/claude/hooks/notify.sh" ~/.claude/hooks/notify.sh
-  ln -sf "$DOTFILES/claude/hooks/pane-state.sh" ~/.claude/hooks/pane-state.sh
+  # Instructions and settings come from the repo; personal facts live in
+  # ~/.claude/private, which is never linked (CLAUDE.md imports it)
+  echo "Linking Claude Code instructions and settings..."
+  mkdir -p ~/.claude/private ~/.claude/backups
+  chmod 700 ~/.claude/private
+  [[ -f ~/.claude/private/CLAUDE.md ]] || : > ~/.claude/private/CLAUDE.md
+  for f in CLAUDE.md settings.json; do
+    if [[ -f "$HOME/.claude/$f" && ! -L "$HOME/.claude/$f" ]]; then
+      mv "$HOME/.claude/$f" "$HOME/.claude/backups/$f.$(date +%Y%m%d-%H%M%S)"
+    fi
+    ln -sf "$DOTFILES/claude/$f" "$HOME/.claude/$f"
+  done
 
-  settings="$HOME/.claude/settings.json"
-  [[ -f "$settings" ]] || echo '{}' > "$settings"
-  if ! jq -e '[.hooks.Stop[]?.hooks[]?.command // empty] | any(test("notify\\.sh"))' "$settings" >/dev/null; then
-    tmp="$(mktemp)"
-    jq '.hooks.Stop += [{"hooks": [{"type": "command", "command": "~/.claude/hooks/notify.sh", "timeout": 10}]}]' \
-      "$settings" > "$tmp" && mv "$tmp" "$settings"
-  fi
-
-  # Turn state for the `prefix + s` picker: one entry per event, added where missing
-  pane_state_filter='reduce ("UserPromptSubmit", "PreToolUse", "PermissionRequest", "PostToolUse",
-    "PostToolUseFailure", "Notification", "Stop", "StopFailure",
-    "SessionStart", "SessionEnd") as $e (.;
-  if any(.hooks[$e][]?.hooks[]?.command; . == "~/.claude/hooks/pane-state.sh") then .
-  else .hooks[$e] += [(if $e == "Notification"
-      then {matcher: "permission_prompt|elicitation_dialog|idle_prompt"} else {} end)
-    + {hooks: [{type: "command", command: "~/.claude/hooks/pane-state.sh", timeout: 5}]}]
-  end)'
-  if [[ "$(jq "$pane_state_filter" "$settings")" != "$(jq . "$settings")" ]]; then
-    tmp="$(mktemp)"
-    jq "$pane_state_filter" "$settings" > "$tmp" && mv "$tmp" "$settings"
-  fi
-
+  # The Stop hook is the only alert source: the built-in channel and gopass
+  # alerts are turned off, Ghostty drops terminal OSC notifications.
   # A global config key: the same key in settings.json does not override it
   [[ -f ~/.claude.json ]] || echo '{}' > ~/.claude.json
   if ! jq -e '.preferredNotifChannel == "notifications_disabled"' ~/.claude.json >/dev/null; then
@@ -443,6 +425,19 @@ if [[ "$OS" == "Darwin" ]]; then
   # Without an existing config gopass would start its interactive setup
   if command -v gopass &>/dev/null && [[ -f ~/.config/gopass/config ]]; then
     gopass config core.notifications false >/dev/null
+  fi
+else
+  # Linux keeps a local settings.json: only the status line and theme keys
+  settings="$HOME/.claude/settings.json"
+  [[ -f "$settings" ]] || echo '{}' > "$settings"
+  if ! jq -e '.statusLine.command == "~/.claude/statusline.sh"' "$settings" >/dev/null; then
+    tmp="$(mktemp)"
+    jq '.statusLine = {"type": "command", "command": "~/.claude/statusline.sh"}' \
+      "$settings" > "$tmp" && mv "$tmp" "$settings"
+  fi
+  if ! jq -e '.theme == "custom:ayu"' "$settings" >/dev/null; then
+    tmp="$(mktemp)"
+    jq '.theme = "custom:ayu"' "$settings" > "$tmp" && mv "$tmp" "$settings"
   fi
 fi
 
