@@ -37,11 +37,11 @@ directly and never hand-write the TSV.
 
 # Flags
 
-- `-ru` — write the back in simple English (B1-level words) with labels When, Form, Why, Trap;
+- `-ru`: write the back in simple English (B1-level words) with labels When, Form, Why, Trap;
   no По-русски line.
-- `+contrast` — add exactly one extra contrast card (both slots under the same cN).
-- `+force` — card the topic even if it already exists in the collection.
-- `-push` — file only. `+tsv` — push and write the file. `-tsv` — never write a file.
+- `+contrast`: add exactly one extra contrast card (both slots under the same cN).
+- `+force`: card the topic even if it already exists in the collection.
+- `-push`: file only. `+tsv`: push and write the file. `-tsv`: never write a file.
 
 # Front: the pattern in use
 
@@ -146,7 +146,7 @@ Tags: en::grammar::future-in-the-past
 
 Always print every card in full, because the explanation is what the user needs to check:
 
-CARD n — Cloze
+CARD n: Cloze
 Text: ...
 Back Extra: ...
 Tags: ...

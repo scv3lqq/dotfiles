@@ -1,12 +1,12 @@
 ---
-description: "Session retro — evidence-based changes to CLAUDE.md, skills, agents, rules, applied immediately"
+description: "Session retro: evidence-based changes to CLAUDE.md, skills, agents, rules, applied immediately"
 argument-hint: "[focus: claude-md | skills | agents | context]"
 disable-model-invocation: true
 ---
 
 Review this session and improve my Claude Code setup so similar tasks run faster, with fewer mistakes and less context.
 
-Layout. Always loaded: `~/.claude/CLAUDE.md`, project `CLAUDE.md`, `.claude/rules/*.md` without `paths` — already in your context, do not re-read. On demand: skills (`~/.claude/skills`, `.claude/skills`), agents (`~/.claude/agents`, `.claude/agents`), path-scoped rules (`.claude/rules` with `paths`). Open a file only when a specific finding points at it.
+Layout. Always loaded: `~/.claude/CLAUDE.md`, project `CLAUDE.md`, `.claude/rules/*.md` without `paths`: already in your context, do not re-read. On demand: skills (`~/.claude/skills`, `.claude/skills`), agents (`~/.claude/agents`, `.claude/agents`), path-scoped rules (`.claude/rules` with `paths`). Open a file only when a specific finding points at it.
 
 ## Evidence
 Count only what actually happened in this session:
@@ -26,6 +26,6 @@ Count only what actually happened in this session:
 - Placement: facts and "always do X" → CLAUDE.md; procedures → skill; file-type conventions → rule with `paths`; context-heavy or parallel work → agent; must-always-happen checks (lint, format, tests) → hook, not prose.
 - Max 5 changes, ordered by impact/size. Each: evidence (one line) → change (file + exact diff or text) → expected effect. Terse.
 - "Nothing worth changing" is a valid answer.
-- Apply every change immediately — edit the files yourself, do not ask for confirmation. Report each change as applied (or why not).
+- Apply every change immediately: edit the files yourself, do not ask for confirmation. Report each change as applied (or why not).
 
 Focus (optional): $ARGUMENTS
