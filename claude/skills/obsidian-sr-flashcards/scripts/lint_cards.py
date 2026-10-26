@@ -313,7 +313,7 @@ def lint_file(path, s):
             groups = {m.group(1).split(';;')[0] for m in numbered} if numbered else None
             n_cards = len(groups) if groups else len(dels)
             if n_cards > 3:
-                add("WARN", a, f"cloze creates {n_cards} sibling cards; more than 3 usually means an enumeration — split it")
+                add("WARN", a, f"cloze creates {n_cards} sibling cards; more than 3 usually means an enumeration; split it")
             continue
         fw, bw = words(front), words(back.split("\n")[0])
         if fw > 40:
@@ -321,10 +321,10 @@ def lint_file(path, s):
         if bw > 25:
             add("WARN", a, f"first answer line is long ({bw} words); keep the gradable core short, move 'why' to a second line")
         if words(back) > 70:
-            add("WARN", a, f"answer is long ({words(back)} words) — probably several cards")
+            add("WARN", a, f"answer is long ({words(back)} words): probably several cards")
         items = [l for l in back.split("\n") if re.match(r"^\s*([-*+]|\d+[.)])\s+", l)]
         if len(items) >= 3:
-            add("WARN", a, f"answer is a list of {len(items)} items — enumerations are hard to recall; split or use per-item cards")
+            add("WARN", a, f"answer is a list of {len(items)} items: enumerations are hard to recall; split or use per-item cards")
         elif back.split("\n")[0].count(",") + back.split("\n")[0].count(";") >= 3:
             add("WARN", a, "answer looks like an inline enumeration (≥4 items); consider splitting")
         q = front.split("\n")[0]
@@ -355,7 +355,7 @@ def lint_file(path, s):
             prev = start - 2
             follows_card = prev >= 0 and prev in card_lines and not lines[start - 1].strip()
             sev = "WARN" if follows_card else "INFO"
-            why = "right after a card — answer cut off by a blank line?" if follows_card else "text not parsed as a card"
+            why = "right after a card: answer cut off by a blank line?" if follows_card else "text not parsed as a card"
             add(sev, start, f"{why}: {lines[start][:60]!r}")
             continue
         k += 1
