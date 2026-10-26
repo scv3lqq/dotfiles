@@ -129,6 +129,10 @@ Runnable blocks in the plan (a fixture suite) are fenced `bash`; steps that chan
 (settings writes, links, installs) are fenced `sh`, so an agent extracting "the bash block"
 cannot run them (2026-10-26: an implementer extracted every `bash` block of a plan, live apply
 included; only the suite's `exit` stopped it).
+A task that pastes a verbatim plan block gets a gate that diffs the block (awk-extracted from the
+plan) against the file range; a fixture that extracts a section by markers first checks that both
+markers exist (2026-10-26: a splice dropped a block's last 5 lines, the end marker went missing,
+and the fixture ran install.sh to EOF and still printed DONE).
 
 Commit the plan, print a short summary (goal, tasks, gates), and proceed to phase 3
 immediately — no approval needed.

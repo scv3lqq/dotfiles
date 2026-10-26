@@ -75,6 +75,24 @@ dumps every rewritten commit into context. Same for `git clone`, `brew install`,
 
 Drop a file from history: same shape with `--index-filter 'git rm --cached --ignore-unmatch <path>'`.
 
+Scrub text from every version (home paths, names): work in a fresh clone in the scratchpad,
+never in a shared checkout. `git clone -b <branch> <repo> <dir>` (`-b`: a local clone checks
+out the source's current branch), copy the repo-local signing config into it, then one pass
+that replaces and re-signs; the replacement table lives in a scratchpad script, never in the
+repo:
+
+```bash
+FILTER_BRANCH_SQUELCH_WARNING=1 git filter-branch -f --tree-filter "python3 <scratch>/scrub.py" \
+  --commit-filter 'git commit-tree -S "$@"' -- <branch> 2>&1 | tr '\r' '\n' | tail -1
+```
+
+`scrub.py` walks `.` (skip `.git`, links), `bytes.replace` per pair, longest pair first. Verify:
+same `rev-list --count`; `git log '--format=%an|%ae|%ad|%cn|%ce|%cd|%B'` shasum equal old vs
+new; `%G?` all G; `git log -p --format='COMMIT %h' | grep -c <patterns>` is 0 (plain `log -p`
+also prints `Author:` lines); every `+` line of `git diff <old> <new>` holds a replacement.
+Push from the clone with `--force-with-lease=<branch>:<old sha> <remote url>`, then move the
+shared checkout only when it is clean and still at `<old sha>`: `fetch` + `reset --hard origin/<branch>`.
+
 Sign existing commits (SSH signing configured first: `gpg.format ssh`, `user.signingkey`,
 `commit.gpgsign true`, `gpg.ssh.allowedSignersFile`): keeps author and committer dates.
 

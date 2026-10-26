@@ -111,10 +111,10 @@ Every non-trivial task runs this cycle, `/feature` typed or not (follow
   git: back them up to `~/.claude/backups/<name>.<ts>` before dispatch, gate on
   `diff` against the backup. A dirty `claude/settings.json` alone (Claude Code
   writes `/model` through the link) is committed first: `chore(claude): sync settings`.
-- Final PASS: `git switch main`, `git merge --ff-only feat/<slug>`,
-  `git push origin main`, `git branch -d feat/<slug>`, overriding "never
-  touch main" and "no remote operations". A refused merge or push, or a stop
-  condition: stop and report, the branch stays; no rebase, no force-push.
+- Final PASS: `git fetch . feat/<slug>:main` (ff-only, moves no file under a
+  busy pane), `git switch main`, `git push origin main`, `git branch -d
+  feat/<slug>`, overriding "never touch main" and "no remote operations".
+  A refused merge or push, or a stop: report, keep the branch, no rebase/force-push.
 
 # Architecture rules
 
