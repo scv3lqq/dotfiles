@@ -8,25 +8,25 @@ description: Write, review, fix and lint spaced-repetition flashcards for the Ob
 Vault-specific overrides: read `~/.claude/private/obsidian-sr-flashcards.md` when it exists; it wins over the plugin workflow below.
 
 Goal: turn what the user reads (e.g. a chapter of Rogov's *PostgreSQL 18 Internals*) into cards that
-(1) the Obsidian SR plugin parses correctly, and (2) actually build durable, usable understanding —
+(1) the Obsidian SR plugin parses correctly, and (2) actually build durable, usable understanding:
 the kind that helps when reading an `EXPLAIN` plan or debugging bloat, not just reciting sentences.
 
 Supporting files (read when needed):
-- `references/plugin-syntax.md` — exact card syntax, plugin settings file, scheduling comments, and
+- `references/plugin-syntax.md`: exact card syntax, plugin settings file, scheduling comments, and
   **parser traps verified against the plugin source** (several of them silently delete cards).
   Read it before writing into a vault for the first time in a session.
-- `references/pg-internals-examples.md` — worked before/after examples for PostgreSQL internals
+- `references/pg-internals-examples.md`: worked before/after examples for PostgreSQL internals
   topics (MVCC, vacuum, WAL, locks, planner, indexes, PG 18 changes). Read it when writing cards
   for that book or any similar systems book.
-- `scripts/lint_cards.py` — a port of the plugin's parser plus quality checks. Run it after every
+- `scripts/lint_cards.py`: a port of the plugin's parser plus quality checks. Run it after every
   write.
-- `references/interview-filter.md` — **which facts deserve a card at all** (interview test,
+- `references/interview-filter.md`: **which facts deserve a card at all** (interview test,
   P1/P2/P3, calibration examples, type mix, volume). Read it every time before writing cards: it
   overrides anything below that suggests carding parameters, identifiers or numbers.
 
 ---
 
-## 1. Why cards fail — the four things to get right
+## 1. Why cards fail: the four things to get right
 
 A review only trains memory if you retrieve the *same specific thing* each time and can grade
 yourself honestly. Most weak cards break one of these:
@@ -42,10 +42,10 @@ yourself honestly. Most weak cards break one of these:
    the failure mode, who maintains the state, and how to observe it are where practical value is.
 
 Andy Matuschak's summary of the same idea: prompts should be *focused, precise, consistent,
-tractable, effortful*. Tractable means you can answer correctly ~90% of the time — if a card
+tractable, effortful*. Tractable means you can answer correctly ~90% of the time; if a card
 keeps failing, it's usually too big or too vague, so split it or add a cue.
 
-## 2. Worked example — the user's current card
+## 2. Worked example: the user's current card
 
 Before (a typical weak card):
 
@@ -57,14 +57,14 @@ Before (a typical weak card):
 
 What's wrong: the stem «как помогает» is vague (not precise); the answer states a conclusion
 without the cause (why would the table be needed at all?); it covers only the happy path; the
-practical facts — what happens otherwise, who sets the bit, how you'd notice — are missing.
+practical facts (what happens otherwise, who sets the bit, how you'd notice) are missing.
 
-After — one concept, several angles, each card a single retrieval:
+After: one concept, several angles, each card a single retrieval:
 
 ```
 Почему при обычном индексном доступе PostgreSQL обращается к таблице, даже если все нужные столбцы есть в индексе?
 ?
-В индексных записях нет информации о видимости (`xmin`/`xmax`) — она хранится только в версиях строк в таблице.
+В индексных записях нет информации о видимости (`xmin`/`xmax`): она хранится только в версиях строк в таблице.
 
 Index-only scan: в каком случае для найденной индексной записи всё же читается табличная страница?
 ?
@@ -76,7 +76,7 @@ Index-only scan: в каком случае для найденной индек
 
 Какой процесс обычно устанавливает бит all-visible в карте видимости?
 ?
-Очистка — `VACUUM`, в том числе автоочистка.
+Очистка: `VACUUM`, в том числе автоочистка.
 
 Что происходит с битом all-visible, когда на странице меняется хотя бы одна строка?
 ?
@@ -85,7 +85,7 @@ Index-only scan: в каком случае для найденной индек
 Таблицу интенсивно обновляют, автоочистка отстаёт. Что происходит с index-only scan по ней?
 ?
 Он вырождается в обычный индексный доступ: биты all-visible сброшены, растёт `Heap Fetches`.
-↳ Лечение — очистка (настроить автоочистку или выполнить `VACUUM`).
+↳ Лечение: очистка (настроить автоочистку или выполнить `VACUUM`).
 
 Карта видимости хранит на каждую страницу таблицы ==два;;сколько?== бита: all-visible и all-frozen.
 ```
@@ -95,28 +95,28 @@ its observable symptom (card 3), its maintenance (cards 4–5), and an applied s
 
 ## 3. Workflow (Claude Code)
 
-### Step 1 — Discover the vault setup
+### Step 1: Discover the vault setup
 - Find the vault root (the directory containing `.obsidian/`).
 - Read `.obsidian/plugins/obsidian-spaced-repetition/data.json` if it exists. It overrides the
   defaults: separators, whether `==highlight==` / `**bold**` / `{{curly}}` are clozes, the
   multi-line end marker, deck tags, folder-as-deck mode, algorithm. Obey what you find.
 - Find existing card files for this book (grep for the deck tag or the book title). Match their
-  conventions — language, deck-tag path, file layout, heading style — unless those conventions
+  conventions (language, deck-tag path, file layout, heading style) unless those conventions
   are what the user asked you to fix.
 - Card language: use the language of the user's existing cards (this user writes in Russian).
   Keep identifiers in English inside backticks: GUCs, functions, views, columns, plan nodes,
   `EXPLAIN` tokens. When the book's Russian term differs from the English docs term, it helps to
   give the English one once in parentheses: «бит полной видимости (all-visible)».
 
-### Step 2 — Get the source text
+### Step 2: Get the source text
 - Write cards from the actual text the user is studying, not from memory. If the book PDF is in
   the vault, extract the chapter: `pdftotext -layout -f <first> -l <last> book.pdf -`.
   (The Russian edition «PostgreSQL 18 изнутри» is free from postgrespro.ru.)
 - Use the book's real chapter/section titles for headings. Never invent page numbers.
 - If the source is missing, ask for it. If you must rely on general knowledge for a card, don't
-  write it silently — list such cards in your report so the user can verify them.
+  write it silently; list such cards in your report so the user can verify them.
 
-### Step 3 — Extract knowledge before writing cards
+### Step 3: Extract knowledge before writing cards
 Read the section and list its knowledge units first (in your head or scratch notes, not in the
 vault). Run each unit through `references/interview-filter.md`: drop everything that fails the
 interview test or is P3, even when the book spends a page on it. For the surviving core
@@ -130,9 +130,9 @@ mechanisms, go through the lenses in §5. Prioritise:
 - A dense 25–30 page chapter typically yields 10–25 good cards. Going past ~40 means trivia or
   enumerations sneaking in.
 
-### Step 4 — Write the cards (rules in §4–§6)
+### Step 4: Write the cards (rules in §4–§6)
 
-### Step 5 — Lint and self-review
+### Step 5: Lint and self-review
 ```bash
 python3 <skill-dir>/scripts/lint_cards.py <card-file-or-dir> --vault <vault-root> --dump
 ```
@@ -140,7 +140,7 @@ Fix every ERROR (these are cards the plugin will lose or split wrongly). Review 
 either fix it or consciously keep it. Read the `--dump` output: it is exactly what the plugin
 will show on each side. Then run the checklist in §8.
 
-### Step 6 — Save and report
+### Step 6: Save and report
 - One file per chapter, e.g. `PostgreSQL 18 Internals/Cards/<NN> <chapter title>.md` (number and
   title from the book's TOC), with the deck tag in frontmatter and one `##` heading per book section (the plugin shows
   `Note › Heading` as context on every card, so headings double as source references).
@@ -160,7 +160,7 @@ will show on each side. Then run the checklist in §8.
 - Give enough context to be unambiguous out of the flow of the book: say "index-only scan",
   "в PostgreSQL 18", "в B-дереве" when it matters. The heading context helps but don't depend on
   it for disambiguation.
-- Keep it short — ideally one line.
+- Keep it short: ideally one line.
 
 ### The answer
 - **Line 1 is the gradable answer**: short (aim ≤ 15 words), concrete, checkable in seconds.
@@ -171,19 +171,19 @@ will show on each side. Then run the checklist in §8.
   every release and your memory should age gracefully.
 
 ### Choosing the card type
-- **Multi-line basic (`?`) — the default.** Safe with code, allows the `↳` line, and immune to the
+- **Multi-line basic (`?`): the default.** Safe with code, allows the `↳` line, and immune to the
   `::` cast trap. Use it for almost everything.
-- **Single-line (`::`)** — only for short plain-text facts with no code and no `::` anywhere
+- **Single-line (`::`)**: only for short plain-text facts with no code and no `::` anywhere
   in them (see traps below).
-- **Cloze (`==…==`)** — for a key term, number or name inside a canonical sentence. One deletion
+- **Cloze (`==…==`)**: for a key term, number or name inside a canonical sentence. One deletion
   per card is best, two at most; add a hint with `;;` when the blank is ambiguous:
   `==два;;сколько?==`. Don't cloze trivial words, and make sure the rest of the sentence doesn't
   give the answer away.
-- **Bidirectional (`:::` / `??`)** — only when both directions are genuinely worth recalling:
+- **Bidirectional (`:::` / `??`)**: only when both directions are genuinely worth recalling:
   term ↔ short definition, GUC ↔ what it controls. Never for explanations (the reverse becomes an
   impossible question).
 
-## 5. Lenses — covering a mechanism from several angles
+## 5. Lenses: covering a mechanism from several angles
 
 For each important mechanism, consider these angles and write the ones the source supports and the
 user would benefit from (typically 2–3 per core mechanism; secondary facts get none or one):
@@ -210,8 +210,8 @@ one per core mechanism. Keep scenarios short enough to read in a few seconds.
   whole set on one card. Options, best first: (a) one card per member with a distinguishing cue
   («Какой режим блокировки берёт `UPDATE` на таблицу?»); (b) a count card («Сколько режимов
   табличных блокировок?») plus per-item cards; (c) a cloze sentence per item.
-- **Ordered processes** (vacuum phases, WAL recovery, query stages): one card per transition —
-  «Что делает очистка сразу после сканирования таблицы?» — plus one card for the overall purpose.
+- **Ordered processes** (vacuum phases, WAL recovery, query stages): one card per transition:
+  «Что делает очистка сразу после сканирования таблицы?», plus one card for the overall purpose.
   Keep order the same across cards.
 - **Numbers and defaults**: card one only if it drives decisions (8 KB page, ~2 KB TOAST
   threshold, default isolation level), and pair it with a "why this value / what happens if
@@ -224,7 +224,7 @@ one per core mechanism. Keep scenarios short enough to read in a few seconds.
 ### Code and SQL in cards
 - Identifiers in inline code: `pg_class.relallvisible`, `VACUUM`, `work_mem`.
 - Multi-line SQL goes in a fenced block (at column 0, not inside a list) inside a `?` card. Fenced
-  blocks are safe — the parser swallows them whole, including blank lines and `::`.
+  blocks are safe: the parser swallows them whole, including blank lines and `::`.
 - Don't make the user memorise whole queries. Ask for the key function/view/column
   («Какой функцией `pageinspect` посмотреть заголовки версий строк?» →
   `heap_page_items(get_raw_page('t', 0))`) or for the observable result.
@@ -232,7 +232,7 @@ one per core mechanism. Keep scenarios short enough to read in a few seconds.
 ## 7. Improving existing cards
 
 When the user asks to fix/improve cards:
-1. Lint the file first (`--dump`) to see how the plugin currently parses it — some "cards" may not
+1. Lint the file first (`--dump`) to see how the plugin currently parses it; some "cards" may not
    exist at all from the plugin's point of view.
 2. Classify each card: keep, reword, split, merge, delete. Show the user a short before/after for a
    few representative cards before a bulk rewrite, unless they already asked for the bulk rewrite.
@@ -243,12 +243,12 @@ When the user asks to fix/improve cards:
    - Never fabricate or edit the values.
 4. Re-lint after editing.
 
-## 8. Plugin-safe formatting — hard rules
+## 8. Plugin-safe formatting: hard rules
 (Details and evidence in `references/plugin-syntax.md`.)
 - Exactly one blank line between cards; **no blank lines inside a card** (except inside fenced
   code blocks, or if the vault sets an end marker).
 - The `?` / `??` separator must be alone on its line.
-- **Never write a PostgreSQL cast `x::type` outside backticks** — `::` is the single-line
+- **Never write a PostgreSQL cast `x::type` outside backticks**: `::` is the single-line
   separator. Inside a single-line card, even a backticked `::` before the real separator makes the
   plugin silently drop the card. Code → use a `?` card.
 - **No HTML comments** (`<!-- … -->`) in card files other than the plugin's own `<!--SR:` lines:
