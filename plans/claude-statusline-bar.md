@@ -51,6 +51,8 @@ Examples (stripped): 0 `──────────`, 3 `╾─────�
 
 ### Fixture suite
 
+Superseded by the suite in `plans/claude-statusline-5h.md` (5h bar).
+
 Supersedes the suite in `plans/claude-statusline.md`. Run as
 `bash <file>` from anywhere inside the repo.
 

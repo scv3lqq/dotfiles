@@ -111,7 +111,9 @@ Segments, in this order, each omitted when empty:
 
 ### Fixture suite
 
-Superseded by the suite in `plans/claude-statusline-bar.md` (context bar).
+Superseded by the suite in `plans/claude-statusline-bar.md` (context bar),
+then by `plans/claude-statusline-5h.md` (5h bar at the right edge, always
+shown).
 
 Run as `bash <file>` or `bash <<'EOF' ... EOF` from anywhere inside the repo.
 It leaves its fixture repos in a `mktemp -d` directory (prints the path).
