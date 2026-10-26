@@ -105,8 +105,8 @@ Every non-trivial task runs this cycle, `/feature` typed or not (follow
   dirty worktree, first run); edits under ~15 lines total make one task.
 - Its agents write and review the code, in their own report formats.
 - Branch: `git switch -c feat/<slug>` here, no worktree: gates read live paths.
-- Shared checkout: before `git switch -c` background-wait for a clean `main` with no
-  busy Claude pane (`@claude_state` waiting, or working/agents <= 5 s); a direct commit
+- Shared checkout: before `git switch -c` run `.claude/bin/wait-free-checkout.sh` in
+  the background (exit 0: clean `main`, no other busy Claude pane); a direct commit
   needs no open `feat/*` branch and is chained after a branch == `main` check.
 - `~/.claude/` targets outside `claude/` (third-party skills) are outside
   git: back them up to `~/.claude/backups/<name>.<ts>` before dispatch, gate on
