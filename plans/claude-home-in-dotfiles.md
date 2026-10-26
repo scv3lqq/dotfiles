@@ -625,6 +625,7 @@ F11 runs the new section against fake homes (it never touches the real
 
 ```bash
 T=$(mktemp -d); R="$HOME/dotfiles"
+grep -q '^# Personal-data guard for this repo$' "$R/install.sh" || { echo "FAIL no end marker: the section would run to EOF"; exit 1; }
 awk '/^# Claude Code: config from claude\/$/ {on = 1} /^# Personal-data guard for this repo$/ {on = 0} on' "$R/install.sh" > "$T/section.sh"
 run() { env -i HOME="$1" PATH="$PATH" DOTFILES="$R" OS="$2" /bin/bash -e "$T/section.sh"; }
 fail() { echo "FAIL $*"; }
