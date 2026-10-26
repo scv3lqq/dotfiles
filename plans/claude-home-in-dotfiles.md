@@ -872,8 +872,12 @@ done
 ls ~/.claude/skills/*/SKILL.md | wc -l
 git -C ~/dotfiles status --short
 git -C ~/dotfiles config core.hooksPath
-[ "$(claude -p --model haiku 'Quote the first line under the "## Identity" heading of your user-level instructions, verbatim, nothing else.')" = "$(head -1 ~/.claude/private/CLAUDE.md)" ] && echo identity-ok || echo identity-FAIL
+[ "$(claude -p --model haiku --disallowedTools Read Bash Grep Glob Edit Write -- 'Your context includes instructions loaded from the file ~/.claude/private/CLAUDE.md (imported by your user CLAUDE.md). Without using any tool, reply with only the first line of that imported file, verbatim. If its content is not in your context, reply NOT-LOADED.' < /dev/null)" = "$(head -1 ~/.claude/private/CLAUDE.md)" ] && echo identity-ok || echo identity-FAIL
 ```
+
+Asking for "the first line under `## Identity`" does not work: Claude Code
+keeps the literal `@~/.claude/private/CLAUDE.md` line in the text and loads the
+imported file as a separate section, so the model quotes the import line.
 
 ## Rollback
 
