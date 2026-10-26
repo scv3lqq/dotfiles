@@ -58,17 +58,19 @@ Yazi with a code preview.
 
 ## Before you start: existing configs
 
-`install.sh` does not back anything up:
+`install.sh` backs up nothing but the two Claude Code files named below:
 
 - `~/.config/karabiner` is deleted (macOS).
 - `~/.zshenv` is overwritten.
 - `~/.tmux.conf` and `~/.config/starship.toml` are replaced by links.
-- `~/.claude/skills/feature/SKILL.md` and `implementer.md`,
-  `plan-reviewer.md`, `acceptance-validator.md`, `skill-dry-run.md` in
-  `~/.claude/agents/` are replaced by links (Claude Code's `/feature`
-  skill and the agents it runs).
-- `~/.claude/statusline.sh` and `~/.claude/themes/ayu.json` are replaced by
-  links, and the `statusLine` and `theme` keys in `~/.claude/settings.json` are
+- In `~/.claude/`, an entry named like one in `claude/` is replaced by a link:
+  one directory link per skill under `claude/skills/` (`mac-*` skills on macOS
+  only), one file link per file in `claude/agents/`, `claude/hooks/` and
+  `claude/bin/`, plus `statusline.sh` and `themes/ayu.json`. A real skill
+  directory that holds files is skipped with a message instead.
+- macOS: `~/.claude/CLAUDE.md` and `~/.claude/settings.json` become links too;
+  a regular file there is first moved to `~/.claude/backups/<name>.<timestamp>`.
+- Linux: the `statusLine` and `theme` keys in `~/.claude/settings.json` are
   overwritten (Claude Code status line and color theme).
 - Stow links into `~/.config/nvim`, `~/.config/zsh`, `~/.config/yazi` and, on
   macOS, `~/.config/ghostty`, `~/.config/aerospace`, `~/.config/topgrade`. If
@@ -87,9 +89,12 @@ mkdir -p "$backup"
 for p in ~/.zshenv ~/.tmux.conf ~/.config/starship.toml \
   ~/.config/nvim ~/.config/zsh ~/.config/yazi \
   ~/.config/ghostty ~/.config/aerospace ~/.config/karabiner ~/.config/topgrade \
-  ~/.claude/skills/feature/SKILL.md ~/.claude/agents/implementer.md \
-  ~/.claude/agents/plan-reviewer.md ~/.claude/agents/acceptance-validator.md \
-  ~/.claude/agents/skill-dry-run.md ~/.claude/statusline.sh \
+  ~/.claude/agents/implementer.md ~/.claude/agents/plan-reviewer.md \
+  ~/.claude/agents/acceptance-validator.md ~/.claude/agents/skill-dry-run.md \
+  ~/.claude/hooks/notify.sh ~/.claude/hooks/pane-state.sh \
+  ~/.claude/hooks/bash-guard.py ~/.claude/hooks/git-commit-guard.py \
+  ~/.claude/hooks/no-em-dash.sh ~/.claude/hooks/skill-note-sync.sh \
+  ~/.claude/bin/settings-edit.sh ~/.claude/statusline.sh \
   ~/.claude/themes/ayu.json; do
   if [ -e "$p" ] && [ ! -L "$p" ]; then
     mv "$p" "$backup"/ && echo "moved $p"
@@ -124,8 +129,8 @@ Also on macOS:
 
 The script installs Homebrew if missing, the formulae and casks listed below,
 links the configs, clones TPM, writes `ZDOTDIR` into `~/.zshenv`, switches the
-default shell to zsh, links the Claude Code `/feature` skill, its agents, the
-status line and the color theme, wires the Claude Code Stop hook, and sets up
+default shell to zsh, links the Claude Code config from `claude/` (instructions,
+settings, skills, agents, hooks, status line, color theme), and sets up
 commit signing for this repo when `~/.ssh/id_ed25519.pub` exists.
 
 ### Linux
@@ -147,8 +152,8 @@ commit signing for this repo when `~/.ssh/id_ed25519.pub` exists.
 The script installs the apt or dnf packages listed below plus Neovim,
 the tree-sitter CLI and Starship, links the configs, clones TPM, writes
 `ZDOTDIR` into `~/.zshenv`, switches the default shell to zsh (`sudo usermod`,
-no password prompt from `chsh`), links the Claude Code `/feature` skill, its
-agents, the status line and the color theme, and sets up commit signing when
+no password prompt from `chsh`), links the Claude Code skills, agents, hooks,
+status line and color theme from `claude/`, and sets up commit signing when
 `~/.ssh/id_ed25519.pub` exists.
 macOS-only configs are skipped.
 
@@ -303,10 +308,10 @@ available on servers, and the markdown-preview.nvim build error on the first
 | `starship/starship.toml` | `~/.config/starship.toml` | prompt |
 | `tmux/tmux.conf` | `~/.tmux.conf` | TPM cloned into `~/.tmux/plugins/tpm` |
 | `anki/terminal_theme/` | `Anki2/addons21/terminal_theme` | Anki add-on; symlinked by hand, not by `install.sh` (`anki/cards/` holds card templates) |
-| `claude/hooks/notify.sh` | `~/.claude/hooks/notify.sh` | macOS only; Claude Code Stop hook, `install.sh` also wires it into `~/.claude/settings.json` |
-| `claude/hooks/pane-state.sh` | `~/.claude/hooks/pane-state.sh` | macOS only; Claude Code hook that marks mid-turn panes for the `prefix + s` picker, `install.sh` also wires it into `~/.claude/settings.json` |
-| `claude/skills/feature/SKILL.md` | `~/.claude/skills/feature/SKILL.md` | Claude Code `/feature` skill: plan, implement, review on a branch |
-| `claude/agents/*.md` | `~/.claude/agents/` | one link per file: the agents `/feature` runs (implementer, plan-reviewer, acceptance-validator, skill-dry-run) |
+| `claude/CLAUDE.md`, `claude/settings.json` | `~/.claude/` | macOS only; global Claude Code instructions and settings; the personal part of the instructions is imported from `~/.claude/private/CLAUDE.md`, which stays outside the repo |
+| `claude/skills/*/` | `~/.claude/skills/` | one directory link per skill, `/feature` among them; `mac-*` skills on macOS only |
+| `claude/agents/*.md`, `claude/hooks/*`, `claude/bin/*`, `claude/statusline.sh`, `claude/themes/ayu.json` | `~/.claude/` | one link per file: the `/feature` agents, the hooks `settings.json` wires (Stop alert, picker state, guards), `settings-edit.sh`, the status line and color theme |
+| `.githooks/pre-commit` | | refuses staged lines that match `~/.claude/private/denylist`; `install.sh` sets `core.hooksPath` |
 | `.claude/skills/` | | Claude Code skills of this repo: `/setup-dotfiles`, `docs-sync` |
 | `notes/`, `plans/`, `everything.md` | | personal notes, implementation plans, Russian cheatsheet |
 | `assets/screenshots/` | | README screenshots of a made-up demo, recipe in `plans/readme-screenshots.md` |
