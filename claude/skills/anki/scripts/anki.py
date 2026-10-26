@@ -231,7 +231,7 @@ def validate(cards, config: dict) -> None:
             if MATHJAX_TRAP_RE.search(field):
                 errors.append(
                     f"{where}: '{name}' closes a cloze right after }} or \\) "
-                    "— insert a space before the closing braces"
+                    "(insert a space before the closing braces)"
                 )
 
         if not isinstance(tags, list):
