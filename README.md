@@ -70,6 +70,10 @@ Yazi with a code preview.
   directory that holds files is skipped with a message instead.
 - macOS: `~/.claude/CLAUDE.md` and `~/.claude/settings.json` become links too;
   a regular file there is first moved to `~/.claude/backups/<name>.<timestamp>`.
+- macOS: in the Zen profile named by
+  `~/Library/Application Support/zen/installs.ini`, `user.js` and
+  `chrome/userChrome.css` become links; a regular file there is skipped
+  with a message. Without a profile (Zen never started) the step is skipped.
 - Linux: the `statusLine` and `theme` keys in `~/.claude/settings.json` are
   overwritten (Claude Code status line and color theme).
 - Stow links into `~/.config/nvim`, `~/.config/zsh`, `~/.config/yazi` and, on
@@ -291,7 +295,7 @@ available on servers, and the markdown-preview.nvim build error on the first
 
 | App | Purpose |
 |---|---|
-| [Zen](https://zen-browser.app) | Browser |
+| [Zen](https://zen-browser.app) | Browser; start it once before `install.sh` so the theme in `zen/` gets linked |
 | [Obsidian](https://obsidian.md) | Notes |
 | [Telegram](https://telegram.org) | Messenger |
 | [Spotify](https://spotify.com) | Music |
@@ -308,6 +312,7 @@ available on servers, and the markdown-preview.nvim build error on the first
 | `starship/starship.toml` | `~/.config/starship.toml` | prompt |
 | `tmux/tmux.conf` | `~/.tmux.conf` | TPM cloned into `~/.tmux/plugins/tpm` |
 | `anki/terminal_theme/` | `Anki2/addons21/terminal_theme` | Anki add-on; symlinked by hand, not by `install.sh` (`anki/cards/` holds card templates) |
+| `zen/user.js`, `zen/chrome/userChrome.css` | Zen profile | macOS only; terminal look in the Ayu palette, linked into the profile named by `installs.ini`; check it headless with `zen/preview.py` + `zen/checks.jq` |
 | `claude/CLAUDE.md`, `claude/settings.json` | `~/.claude/` | macOS only; global Claude Code instructions and settings; the personal part of the instructions is imported from `~/.claude/private/CLAUDE.md`, which stays outside the repo |
 | `claude/skills/*/` | `~/.claude/skills/` | one directory link per skill, `/feature` among them; `mac-*` skills on macOS only |
 | `claude/agents/*.md`, `claude/hooks/*`, `claude/bin/*`, `claude/statusline.sh`, `claude/themes/ayu.json` | `~/.claude/` | one link per file: the `/feature` agents, the hooks `settings.json` wires (Stop alert, picker state, guards), `settings-edit.sh`, the status line and color theme |
@@ -505,6 +510,7 @@ find nvim -name '*.lua' -print0 | xargs -0 -n1 luac -p # Lua parse
 find nvim karabiner -name '*.json' -print0 | xargs -0 -n1 jq empty
 tmux source-file ~/.tmux.conf                          # apply + validate tmux
 aerospace reload-config --dry-run                      # AeroSpace config
+uv run zen/preview.py --out /tmp/zen.png && jq -e -r -f zen/checks.jq /tmp/zen.json # Zen theme, headless
 ```
 
 - `tmux source-file` must run inside a tmux session.

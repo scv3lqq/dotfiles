@@ -54,6 +54,7 @@ No database, no migrations, no service/API, no CI, no test suite.
   `yazi/yazi.toml`, `nvim/`, `zsh/` are flat (stowed into `~/.config/<tool>`).
 - `anki/`: Anki add-on source and card templates, symlinked into `addons21`;
   edits and checks: `anki-addon` skill.
+- `zen/`: Zen prefs + userChrome.css (macOS); `zen/preview.py` + `zen/checks.jq` check them.
 - `claude/`: the global `~/.claude` config, linked by `install.sh` (skills as
   dir links; `CLAUDE.md`, `settings.json` on macOS only). Personal facts live in
   `~/.claude/private/`, never linked; `.githooks/pre-commit` refuses staged
@@ -189,8 +190,7 @@ Rules:
 # Documentation gaps
 
 - No architecture, testing, local-development, or agent-workflow docs.
-- No documented reload/validation for Karabiner, Starship, or Yazi.
-- No documented lazy.nvim lockfile update workflow.
+- No documented reload/validation for Karabiner, Starship, Yazi, or lazy.nvim lock updates.
 
 # Maintaining this file
 
