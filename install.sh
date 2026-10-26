@@ -430,9 +430,10 @@ else
   # Linux keeps a local settings.json: only the status line and theme keys
   settings="$HOME/.claude/settings.json"
   [[ -f "$settings" ]] || echo '{}' > "$settings"
-  if ! jq -e '.statusLine.command == "~/.claude/statusline.sh"' "$settings" >/dev/null; then
+  if ! jq -e '.statusLine.command == "~/.claude/statusline.sh" and .statusLine.refreshInterval == 30' \
+    "$settings" >/dev/null; then
     tmp="$(mktemp)"
-    jq '.statusLine = {"type": "command", "command": "~/.claude/statusline.sh"}' \
+    jq '.statusLine = {"type": "command", "command": "~/.claude/statusline.sh", "refreshInterval": 30}' \
       "$settings" > "$tmp" && mv "$tmp" "$settings"
   fi
   if ! jq -e '.theme == "custom:ayu"' "$settings" >/dev/null; then
