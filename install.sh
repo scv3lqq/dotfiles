@@ -443,6 +443,37 @@ else
 fi
 
 # =============================================================================
+# Zen Browser: prefs and UI theme from zen/
+# =============================================================================
+# The profile exists only after Zen's first start; installs.ini names the one
+# in use. userContent.css stays out: the content process sandbox does not
+# follow a link that points outside the profile.
+if [[ "$OS" == "Darwin" ]]; then
+  zen_root="$HOME/Library/Application Support/zen"
+  zen_profile=""
+  if [[ -f "$zen_root/installs.ini" ]]; then
+    zen_profile="$(awk '/^Default=/ { sub(/^Default=/, ""); print; exit }' "$zen_root/installs.ini")"
+  fi
+  if [[ -n "$zen_profile" && "$zen_profile" != /* ]]; then
+    zen_profile="$zen_root/$zen_profile"
+  fi
+  if [[ -z "$zen_profile" || ! -d "$zen_profile" ]]; then
+    echo "Skipping Zen theme: no Zen profile found, start Zen once and rerun"
+  else
+    echo "Linking Zen Browser prefs and theme..."
+    mkdir -p "$zen_profile/chrome"
+    for f in user.js chrome/userChrome.css; do
+      dst="$zen_profile/$f"
+      if [[ -e "$dst" && ! -L "$dst" ]]; then
+        echo "Skipping $dst: a regular file, move it aside first"
+        continue
+      fi
+      ln -sf "$DOTFILES/zen/$f" "$dst"
+    done
+  fi
+fi
+
+# =============================================================================
 # Personal-data guard for this repo
 # =============================================================================
 # .githooks/pre-commit refuses staged lines matching ~/.claude/private/denylist
