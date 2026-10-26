@@ -1,4 +1,4 @@
-# Worked examples — PostgreSQL internals (Rogov, «PostgreSQL 18 изнутри»)
+# Worked examples: PostgreSQL internals (Rogov, «PostgreSQL 18 изнутри»)
 
 These show *form*: how to phrase, split and cover a topic. *What* to card is decided by
 `interview-filter.md`: an identifier or parameter card below is a syntax demo, not a hint to
@@ -9,11 +9,11 @@ the patterns transfer to any language.
 
 ## Contents
 1. Anti-pattern gallery (bad → better)
-2. Part I — Isolation and MVCC (snapshots, HOT, vacuum, freezing)
-3. Part II — Buffer cache and WAL
-4. Part III — Locks
-5. Part IV — Query execution and statistics
-6. Part V — Index types
+2. Part I: Isolation and MVCC (snapshots, HOT, vacuum, freezing)
+3. Part II: Buffer cache and WAL
+4. Part III: Locks
+5. Part IV: Query execution and statistics
+6. Part V: Index types
 7. PostgreSQL 18 changes
 
 ---
@@ -37,19 +37,19 @@ Bad:
 ?
 xmin, xmax и список активных транзакций xip
 ```
-Better — one card per component, each asking what that component *does*:
+Better: one card per component, each asking what that component *does*:
 ```
 Снимок: изменения транзакций с номером меньше какого значения точно завершены?
 ?
-Меньше `xmin` снимка — наименьшего номера транзакции, активной в момент снимка.
+Меньше `xmin` снимка: наименьшего номера транзакции, активной в момент снимка.
 
 Снимок: изменения транзакций с номером начиная с какого значения не видны?
 ?
-Начиная с `xmax` снимка — номера, следующего за последней завершённой транзакцией.
+Начиная с `xmax` снимка: номера, следующего за последней завершённой транзакцией.
 
 Зачем снимку список `xip`, если есть границы `xmin` и `xmax`?
 ?
-Транзакции между `xmin` и `xmax` могли быть ещё активны в момент снимка — их изменения не видны.
+Транзакции между `xmin` и `xmax` могли быть ещё активны в момент снимка: их изменения не видны.
 ```
 
 ### Yes/no
@@ -59,12 +59,12 @@ Bad:
 ?
 Нет
 ```
-Better — ask for what actually happens:
+Better: ask for what actually happens:
 ```
 Что обычный `VACUUM` делает с местом, освобождённым от мёртвых версий строк?
 ?
 Отмечает его в карте свободного пространства для повторного использования; файл обычно не уменьшается.
-↳ Отрезать может только полностью пустые страницы в конце файла; сжать таблицу — `VACUUM FULL` (перезапись).
+↳ Отрезать может только полностью пустые страницы в конце файла; сжать таблицу: `VACUUM FULL` (перезапись).
 ```
 
 ### Definition dump
@@ -75,7 +75,7 @@ Bad:
 Это оптимизация, при которой если не меняются индексированные столбцы и на странице есть место, новая версия
 кладётся на ту же страницу, индексы не обновляются, а старые версии потом удаляются внутристраничной очисткой...
 ```
-Better — split by lens (condition / benefit / knob):
+Better: split by lens (condition / benefit / knob):
 ```
 При каком условии `UPDATE` может выполниться как HOT-обновление?
 ?
@@ -92,7 +92,7 @@ Better — split by lens (condition / benefit / knob):
 
 ### Answer leak
 Bad: `Какой бит карты видимости означает, что все версии на странице видимы всем снимкам?::all-visible`
-(the question practically spells the answer). Better: ask for a consequence or the actor —
+(the question practically spells the answer). Better: ask for a consequence or the actor:
 «Какой процесс обычно устанавливает …», «Что index-only scan делает, если бит не установлен?».
 
 ### Ambiguous out of context
@@ -101,7 +101,7 @@ Better: `Почему долгая транзакция мешает VACUUM оч
 
 ---
 
-## 2. Part I — Isolation and MVCC
+## 2. Part I: Isolation and MVCC
 
 Scenario (applied understanding):
 ```
@@ -122,7 +122,7 @@ Contrast (look-alikes):
 ```
 Чем бит all-frozen карты видимости отличается от all-visible?
 ?
-all-visible — все версии на странице видны всем снимкам; all-frozen — они ещё и заморожены.
+all-visible: все версии на странице видны всем снимкам; all-frozen: они ещё и заморожены.
 ↳ Страницы all-frozen может пропускать даже агрессивная очистка.
 ```
 
@@ -135,7 +135,7 @@ Observe:
 
 ---
 
-## 3. Part II — Buffer cache and WAL
+## 3. Part II: Buffer cache and WAL
 
 ```
 Какой алгоритм вытеснения использует буферный кеш PostgreSQL?
@@ -169,7 +169,7 @@ Cloze for a canonical fact:
 
 ---
 
-## 4. Part III — Locks
+## 4. Part III: Locks
 
 Same fact, two angles (redundancy is fine when each angle is a different retrieval):
 ```
@@ -200,19 +200,19 @@ Enumeration handled per item (instead of "list all table lock modes"):
 
 ---
 
-## 5. Part IV — Query execution and statistics
+## 5. Part IV: Query execution and statistics
 
 ```
 Какая статистика столбца помогает планировщику выбрать между индексным и bitmap-сканированием?
 ?
-`correlation` в `pg_stats` — насколько физический порядок строк совпадает с порядком значений.
+`correlation` в `pg_stats`: насколько физический порядок строк совпадает с порядком значений.
 
 Какое представление показывает собранную `ANALYZE` статистику по столбцам?
 ?
 `pg_stats`
 ```
 
-Code card (fenced block inside a `?` card — safe):
+Code card (fenced block inside a `?` card: safe):
 ````
 Узел плана показывает `Rows Removed by Filter: 99000` при `rows=1000`. Что это говорит о запросе?
 ```
@@ -226,7 +226,7 @@ Seq Scan on t (actual rows=1000 loops=1)
 
 ---
 
-## 6. Part V — Index types
+## 6. Part V: Index types
 
 ```
 Почему BRIN почти бесполезен, если значения столбца случайно разбросаны по страницам?

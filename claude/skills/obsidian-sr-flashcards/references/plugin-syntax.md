@@ -1,4 +1,4 @@
-# Obsidian Spaced Repetition plugin — syntax and parser traps
+# Obsidian Spaced Repetition plugin: syntax and parser traps
 
 Plugin: `obsidian-spaced-repetition` by st3v3nmw (docs: stephenmwangi.com/obsidian-spaced-repetition).
 Behaviour below was checked against `src/parser.ts` and `src/data/settings.ts` on the master
@@ -42,25 +42,25 @@ Always read the actual file; users change separators and cloze toggles.
 
 ## 2. Card types
 
-Single-line basic — one line, `::` between sides:
+Single-line basic: one line, `::` between sides:
 ```
 Какая структура хранит свободное место на страницах таблицы?::Карта свободного пространства (FSM)
 ```
 
-Single-line bidirectional — `:::`, creates two sibling cards (A→B and B→A):
+Single-line bidirectional: `:::`, creates two sibling cards (A→B and B→A):
 ```
 `maintenance_work_mem`:::Память для служебных операций (VACUUM, CREATE INDEX)
 ```
 
-Multi-line basic — `?` alone on a line; question above, answer below; a blank line ends it:
+Multi-line basic: `?` alone on a line; question above, answer below; a blank line ends it:
 ```
 Почему очистка не может удалить версию строки, если в системе есть давняя активная транзакция?
 ?
-Эта версия может быть видна снимку той транзакции — горизонт очистки не сдвигается.
+Эта версия может быть видна снимку той транзакции: горизонт очистки не сдвигается.
 ↳ Отсюда раздувание таблиц при долгих транзакциях.
 ```
 
-Multi-line bidirectional — `??` alone on a line; two sibling cards.
+Multi-line bidirectional: `??` alone on a line; two sibling cards.
 
 Fenced code inside a multi-line card is fine (fence must start at column 0):
 ````
@@ -110,7 +110,7 @@ Question
 Answer
 <!--SR:!2026-10-02,4,270-->
 ```
-(due date, interval in days, ease — SM-2; FSRS stores a different payload in the same place.)
+(due date, interval in days, ease: SM-2; FSRS stores a different payload in the same place.)
 With `useCalloutsForSchedulingComments` it writes a `> [!sr|card-metadata]` callout instead.
 Treat both as opaque. Keep them attached (no blank line) to the card they belong to; delete them
 only when the card's meaning changes; never invent them.
