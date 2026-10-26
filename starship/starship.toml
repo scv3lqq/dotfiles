@@ -7,17 +7,17 @@ format = '$character$directory$git_branch${custom.git_dirty}'
 
 [character]
 format = '$symbol  '
-success_symbol = '[➜](bold #AAD94C)'
+success_symbol = '[➜](bold #565B66)'
 error_symbol = '[➜](bold #F07178)'
 
 [directory]
 format = '[$path]($style) '
-style = 'bold #95E6CB'
+style = 'bold'
 truncation_length = 1
 truncate_to_repo = false
 
 [git_branch]
-format = '[git:\(](bold #59C2FF)[$branch](bold #F07178)[\)](bold #59C2FF) '
+format = '[git:\(](#565B66)[$branch](#D2A6FF)[\)](#565B66) '
 
 # Single robbyrussell-style dirty mark instead of the git_status symbol set
 [custom.git_dirty]
