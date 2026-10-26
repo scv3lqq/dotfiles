@@ -442,6 +442,12 @@ else
 fi
 
 # =============================================================================
+# Personal-data guard for this repo
+# =============================================================================
+# .githooks/pre-commit refuses staged lines matching ~/.claude/private/denylist
+git -C "$DOTFILES" config core.hooksPath .githooks
+
+# =============================================================================
 # Commit signing for this repo
 # =============================================================================
 # Repo-local only: the global ~/.gitconfig may carry another identity. The
