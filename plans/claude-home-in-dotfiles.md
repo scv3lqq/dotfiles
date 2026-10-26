@@ -25,8 +25,10 @@ and the pane-state hooks into `~/.claude/settings.json` with `jq > tmp && mv`.
   `~/.claude/settings.json -> ~/dotfiles/claude/settings.json` keeps working.
   `jq > tmp && mv tmp settings.json` replaces a link with a regular file, so
   `install.sh` stops merging into it on macOS and `bin/settings-edit.sh` writes
-  through the link. The tmux-assistant-resurrect plugin resolves links before it
-  writes (`tmux-assistant-resurrect.tmux`, `remove_assistant_json_hooks`).
+  through the link. The tmux-assistant-resurrect plugin resolves links only on
+  its removal path; its install path (`install_claude_hooks`) still writes with
+  `mv`, but only when its two hooks are missing, and the repo `settings.json`
+  already holds them. T14's `readlink` check detects a replaced link.
 - Skills become directory links (Claude Code 2.0.62 fixed files inside symlinked
   skill directories), so a file a session adds to a skill lands in the repo.
   Agents, hooks and `bin/` stay file links.
@@ -52,7 +54,7 @@ Run from any directory; paths are absolute.
 - AC1 guard: the F0 fixture (T0) prints `case1 exit=0`, `case2 exit=1`, `1`,
   `case3 exit=0`, `1`.
 - AC2 privacy: the G-PRIV block prints `0`, then `grep exit=1` with no lines
-  before it, then `gitleaks exit=0`.
+  before it, then `0` (commit messages), then `gitleaks exit=0`.
 - AC3 parity: the G-PAR block prints exactly the lines of SD-EXPECTED-DIFF (any
   order) and nothing else.
 - AC4 syntax: the G-SYN block prints only `install-ok`.
@@ -60,11 +62,11 @@ Run from any directory; paths are absolute.
 - AC6 hooks: the F3 fixtures (T3) print `new exit=2`, `1`, `known exit=0`,
   `novault exit=0`, then `edit exit=0`, `link-kept`, `1`, `1`, `bad exit=1`, `1`.
 - AC7 docs: each `grep -c -F` in G-DOCS prints the number it names, and
-  `wc -l < ~/dotfiles/CLAUDE.md` prints `199`.
+  `wc -l < ~/dotfiles/CLAUDE.md | tr -d ' '` prints `199`.
 - AC8 no new em dash: G-DASH prints `0`.
 - AC9 (post-merge, orchestrator): the AC-POST block prints no `FAIL`, then `22`,
-  an empty `git status`, `.githooks`, and the `claude -p` answer equals
-  `head -1 ~/.claude/private/CLAUDE.md`.
+  an empty `git status`, `.githooks`, `identity-ok` (the personal line itself
+  is never printed).
 
 ## Gates
 
@@ -73,7 +75,7 @@ G-SYN:
 ```bash
 bash -n ~/dotfiles/install.sh && echo install-ok
 find ~/dotfiles/claude ~/dotfiles/.githooks -type f \( -name '*.sh' -o -name pre-commit \) -exec sh -c '/bin/bash -n "$1" || echo "FAIL $1"' _ {} \;
-find ~/dotfiles/claude -name '*.zsh' -exec sh -c 'zsh -n "$1" || echo "FAIL $1"' _ {} \;
+find ~/dotfiles/claude -name '*.zsh' -exec sh -c 'zsh -n "$1" /dev/null || echo "FAIL $1"' _ {} \;
 find ~/dotfiles/claude -name '*.py' -not -path '*/__pycache__/*' -exec sh -c 'python3 -c "import ast, sys; ast.parse(open(sys.argv[1]).read())" "$1" || echo "FAIL $1"' _ {} \;
 find ~/dotfiles/claude -name '*.json' -exec sh -c 'jq empty "$1" || echo "FAIL $1"' _ {} \;
 find ~/dotfiles/claude -name '*.mjs' -exec sh -c 'node --check "$1" || echo "FAIL $1"' _ {} \;
@@ -85,6 +87,7 @@ G-PRIV (the denylist is personal: never print it, never copy it into the repo):
 deny=$(mktemp); grep -v -E '^[[:space:]]*(#|$)' ~/.claude/private/denylist > "$deny"
 git -C ~/dotfiles log -p --no-color main..HEAD | grep '^+' | grep -c -i -E -f "$deny"
 git -C ~/dotfiles grep -n -I -i -E -f "$deny" -- claude .githooks install.sh README.md CLAUDE.md .claude/skills plans/claude-home-in-dotfiles.md; echo "grep exit=$?"
+git -C ~/dotfiles log --format=%B main..HEAD | grep -c -i -E -f "$deny"
 gitleaks git --no-banner --redact --log-opts='main..HEAD' ~/dotfiles; echo "gitleaks exit=$?"
 ```
 
@@ -104,7 +107,7 @@ S=~/.claude/backups/claude-home-move/snapshot; R=~/dotfiles/claude
 G-DOCS:
 
 ```bash
-grep -c -F 'one directory link per skill' ~/dotfiles/README.md            # 1
+grep -c -F 'one directory link per skill' ~/dotfiles/README.md            # 2
 grep -c -F 'a regular file there is first moved to' ~/dotfiles/README.md  # 1
 grep -c -F '.githooks/pre-commit' ~/dotfiles/README.md                    # 1
 grep -c -F 'skills/feature/SKILL.md' ~/dotfiles/README.md                 # 0
@@ -112,7 +115,7 @@ grep -c -F '.githooks/pre-commit' ~/dotfiles/CLAUDE.md                    # 1
 grep -c -F 'chore(claude): sync settings' ~/dotfiles/CLAUDE.md            # 1
 grep -c -F 'skills/feature/SKILL.md' ~/dotfiles/.claude/skills/setup-dotfiles/SKILL.md  # 0
 grep -c -F 'is skipped by' ~/dotfiles/.claude/skills/setup-dotfiles/SKILL.md            # 1
-wc -l < ~/dotfiles/CLAUDE.md                                              # 199
+wc -l < ~/dotfiles/CLAUDE.md | tr -d ' '                                  # 199
 ```
 
 G-DASH (moved files keep their old text; every line this branch writes is
@@ -248,6 +251,23 @@ Waves: T0 alone (committed before anything else); then T1..T10 in parallel;
 then T11..T14 in parallel. Implementers do not commit: the orchestrator commits
 each task by explicit pathspec after its gates, so the guard checks every
 commit. Every task also runs its scoped privacy check (Gates).
+
+Commit subjects (the guard does not see messages; G-PRIV checks them):
+T0 `feat(git): refuse personal data in staged lines`,
+T1 `feat(claude): move clean ~/.claude config into the repo`,
+T2 `feat(claude): track global instructions, import the private part`,
+T3 `feat(claude): track note-sync hook and settings-edit, write through links`,
+T4 `feat(claude): track anki skills with home-relative paths`,
+T5 `feat(claude): track cc-settings, note the settings link`,
+T6 `feat(claude): track mac-audit, baseline moves to the overlay`,
+T7 `feat(claude): track flashcards skill, vault override in the overlay`,
+T8 `feat(claude): track public-repo and repo-knowledge-base skills`,
+T9 `feat(claude): track tech-note-review, vault path from the overlay`,
+T10 `docs(claude): generalize a /feature lesson`,
+T11 `feat(install): link the whole claude/ tree into ~/.claude`,
+T12 `docs(readme): describe the claude/ links`,
+T13 `docs(claude): map claude/ and the private overlay`,
+T14 `docs(setup): check the new claude/ links`.
 
 ### T0: personal-data pre-commit hook
 
@@ -426,6 +446,14 @@ public dotfiles repo. After the run update that file: add what the user confirme
 - `references/agents.md` line 7: replace the parenthetical right after
   `auditing the user's own Mac ` (it names the account and the macOS version)
   with ``(account from `id -un`, version from `sw_vers -productVersion`)``.
+- `references/agents.md` line 69 starts `2. Wallet extensions: version vs known incidents`
+  and names one wallet brand with a version and dates (taken from this Mac's
+  history). Replace the whole line with:
+
+```text
+2. Wallet extensions: version vs known incidents (web-search each wallet extension's name and version for compromised releases) and browser History for unlocks in the incident window.
+```
+
 - Task gates: G-SYN's zsh and python lines for the skill's scripts; `diff`
   against the snapshot touches only the lines above; `grep -c -i baseline
   SKILL.md` prints `3`; scoped privacy check prints nothing.
@@ -437,6 +465,9 @@ public dotfiles repo. After the run update that file: add what the user confirme
 - Line 3: the `description:` value opens with a parenthetical about the vault
   (from `(` through `here.)`). Delete it and the space after it, so the line
   starts `description: Write, review, fix and lint spaced-repetition flashcards`.
+  In the same line wrap the one token that starts with `#` (the deck tag before
+  the word `decks`) in backticks: an unquoted ` #` starts a YAML comment and
+  would cut the description there.
 - Line 48: `Before (a real card from the user's vault):` becomes
   `Before (a typical weak card):`.
 - After the H1 line `# Flashcards for Obsidian Spaced Repetition, from technical books`
@@ -731,7 +762,7 @@ bug would write into the repo).
   writes `/model` through the link) is committed first: `chore(claude): sync settings`.
 ```
 
-- Task gates: G-DOCS CLAUDE.md lines; `wc -l < ~/dotfiles/CLAUDE.md` prints `199`.
+- Task gates: G-DOCS CLAUDE.md lines; `wc -l < ~/dotfiles/CLAUDE.md | tr -d ' '` prints `199`.
 
 ### T14: setup-dotfiles skill
 
@@ -840,7 +871,7 @@ done
 ls ~/.claude/skills/*/SKILL.md | wc -l
 git -C ~/dotfiles status --short
 git -C ~/dotfiles config core.hooksPath
-claude -p --model haiku 'Quote the first line under the "## Identity" heading of your user-level instructions, verbatim, nothing else.'
+[ "$(claude -p --model haiku 'Quote the first line under the "## Identity" heading of your user-level instructions, verbatim, nothing else.')" = "$(head -1 ~/.claude/private/CLAUDE.md)" ] && echo identity-ok || echo identity-FAIL
 ```
 
 ## Rollback
