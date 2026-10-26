@@ -1,0 +1,21 @@
+#!/bin/bash
+# Refuse a commit whose added lines match a personal pattern. The patterns are
+# personal data themselves, so they live outside the repo: one case-insensitive
+# extended regex per line in ~/.claude/private/denylist, `#` starts a comment.
+set -u
+deny="$HOME/.claude/private/denylist"
+if [ ! -f "$deny" ]; then
+    echo "pre-commit: no $deny, personal-data check skipped" >&2
+    exit 0
+fi
+patterns=$(mktemp)
+trap 'rm -f "$patterns"' EXIT
+grep -v -E '^[[:space:]]*(#|$)' "$deny" > "$patterns"
+[ -s "$patterns" ] || exit 0
+hits=$(git diff --cached -U0 --no-color --no-ext-diff --diff-filter=ACMR \
+    | awk '/^\+\+\+ / { file = substr($0, 7); next } /^\+/ { print file ": " substr($0, 2) }' \
+    | grep -i -E -f "$patterns")
+[ -n "$hits" ] || exit 0
+printf 'pre-commit: staged lines match %s:\n%s\n' "$deny" "$hits" >&2
+echo 'Move the personal part to ~/.claude/private/ or rewrite it generically.' >&2
+exit 1
