@@ -30,6 +30,11 @@ command -v go &>/dev/null && export PATH="$PATH:$(go env GOPATH)/bin"
 # Aliases
 # =============================================================================
 alias ls='ls --color=auto'
+# No blue or red: bold dirs, cyan symlinks, green executables. BSD ls (macOS)
+# has no bold default fg, so dirs are bold light grey there
+export LSCOLORS='Hxgxcxdxcxegedabagacad'
+# GNU ls (Linux), eza and fd
+export LS_COLORS='di=1:ln=36:ex=32'
 alias ll='ls -lah'
 alias la='ls -A'
 alias ..='cd ..'
