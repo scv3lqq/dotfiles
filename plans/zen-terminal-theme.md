@@ -401,6 +401,11 @@ why, as below.
      If the screenshot shows the glyph misplaced (not left of the site/identity
      icon, or clipped), adjust only `padding-inline`/`align-self`/`order` in
      this block; the probe values (`content`, `color`) must stay.
+   - Placeholder slot (added during T2 after the first preview: while the URL
+     bar floats, Zen's `#urlbar-container` keeps a rounded grey fill in the
+     sidebar): `#urlbar-container:has(> #urlbar[breakout-extend])`:
+     `background-color: var(--term-panel)`, `border-radius: var(--term-radius)`,
+     `box-shadow: inset 0 0 0 1px var(--term-border)`.
 10. URL bar results:
     - `#urlbar-results .urlbarView-row`: `border-radius: var(--term-radius)`,
       `color: var(--term-fg)`.
