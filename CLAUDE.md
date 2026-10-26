@@ -54,11 +54,10 @@ No database, no migrations, no service/API, no CI, no test suite.
   `yazi/yazi.toml`, `nvim/`, `zsh/` are flat (stowed into `~/.config/<tool>`).
 - `anki/`: Anki add-on source and card templates, symlinked into `addons21`;
   edits and checks: `anki-addon` skill.
-- `claude/hooks/` (`notify.sh` Stop alert, `pane-state.sh` picker state),
-  `claude/statusline.sh`, `claude/themes/ayu.json`: linked into `~/.claude/` by
-  `install.sh`, which also wires settings.json; see `plans/claude-*.md`.
-- `claude/skills/feature/`, `claude/agents/`: `/feature` and its four agents,
-  file-linked into `~/.claude/` by `install.sh`; edit them here, not via the links.
+- `claude/`: the global `~/.claude` config, linked by `install.sh` (skills as
+  dir links; `CLAUDE.md`, `settings.json` on macOS only). Personal facts live in
+  `~/.claude/private/`, never linked; `.githooks/pre-commit` refuses staged
+  lines matching its `denylist`. Design: `plans/claude-*.md`.
 - `plans/`: PLANNER's implementation plans (`<task-name>.md`).
 - `notes/`: personal reference notes, not workflow docs.
 - `everything.md`: Russian cheatsheet of the whole stack and keymaps, derived
@@ -108,9 +107,10 @@ Every non-trivial task runs this cycle, `/feature` typed or not (follow
 - Other Claude sessions share this checkout: before `git switch -c` wait
   (background loop) for a clean `main` with no other busy Claude pane in the
   repo (picker rule: `@claude_state` waiting, or working/agents active <= 5 s).
-- `~/.claude/` targets outside `claude/` (other skills, agents) are outside
+- `~/.claude/` targets outside `claude/` (third-party skills) are outside
   git: back them up to `~/.claude/backups/<name>.<ts>` before dispatch, gate on
-  `diff` against the backup; only the plan is committed.
+  `diff` against the backup. A dirty `claude/settings.json` alone (Claude Code
+  writes `/model` through the link) is committed first: `chore(claude): sync settings`.
 - Final PASS: `git switch main`, `git merge --ff-only feat/<slug>`,
   `git push origin main`, `git branch -d feat/<slug>`, overriding "never
   touch main" and "no remote operations". A refused merge or push, or a stop
