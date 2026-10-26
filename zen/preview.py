@@ -42,7 +42,6 @@ SRC_DIR: Final = Path(__file__).resolve().parent
 # Written to prefs.js; user.js is read after prefs.js and wins.
 HARNESS_PREFS: Final[MappingProxyType[str, bool | int | str]] = MappingProxyType(
     {
-        "toolkit.legacyUserProfileCustomizations.stylesheets": True,
         "zen.welcome-screen.seen": True,
         "zen.updates.show-update-notification": False,
         "browser.shell.checkDefaultBrowser": False,
