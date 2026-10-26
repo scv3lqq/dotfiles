@@ -9,7 +9,7 @@
 
 | Слой              | Инструмент                                |
 | ----------------- | ----------------------------------------- |
-| Терминал          | **Ghostty** (JetBrainsMono Nerd Font, 20) |
+| Терминал          | **Ghostty** (JetBrainsMono Nerd Font, 18) |
 | Window manager    | **AeroSpace** (тайлинг, как i3)           |
 | Keyboard remap    | **Karabiner-Elements**                    |
 | Мультиплексор     | **tmux** (prefix `C-a`, gruvbox)          |
@@ -371,7 +371,7 @@ Spotify → `s`, Telegram → `m`, Obsidian → `o`, Chrome → `g`.
 
 ## 8. Ghostty
 
-- Шрифт: **JetBrainsMono Nerd Font** 20 pt.
+- Шрифт: **JetBrainsMono Nerd Font** Medium 18 pt, высота строки +10%.
 - `macos-option-as-alt = true` — Alt-биндинги работают как ожидается.
 - `copy-on-select = true` — выделение мышью сразу попадает в буфер.
 - Скрытый titlebar, восстановление состояния окон.

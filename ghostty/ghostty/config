@@ -2,7 +2,10 @@
 # Font
 # =============================================================================
 font-family = JetBrainsMono Nerd Font
-font-size = 15
+# Regular reads thin on the dark background; bold text keeps the Bold face
+font-style = Medium
+font-size = 18
+adjust-cell-height = 10%
 
 # =============================================================================
 # Window
