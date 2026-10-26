@@ -5,6 +5,8 @@
     "permission": "ansi:magenta",
     "permissionShimmer": "ansi:magentaBright",
     "suggestion": "ansi:magenta",
-    "remember": "ansi:magenta"
+    "remember": "ansi:magenta",
+    "userMessageBackground": "ansi256(236)",
+    "memoryBackgroundColor": "ansi256(236)"
   }
 }

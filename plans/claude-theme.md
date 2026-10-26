@@ -269,3 +269,18 @@ Task gates: criteria 6 and 7.
 - Other tokens (text, inactive, diff colors, spinner, subagent colors).
 - Ghostty palette changes, `COLORTERM`/tmux color-depth changes.
 - A theme for light terminals.
+
+## Follow-up 2026-10-26: brighter text, dark user message bar
+
+Asked for whiter, more readable text, after a reference screenshot (bg
+`#0C0B0A`, text `#E8E6DD`, dim text `#8F8D86`, user message bar `#2E2C28`).
+The background already matched in brightness, so it stays Ayu `#0B0E14`.
+
+- Reply text has no SGR color, it is the terminal default fg: Ghostty
+  `foreground` goes from Ayu `#BFBDB6` to `#E8E6DD`.
+- Secondary text is `2;37` (faint `#C7C7C7`): Ghostty `faint-opacity` 0.5 to
+  0.7 lands near `#8F8F92`.
+- `userMessageBackground` and `memoryBackgroundColor` were `ansi:blackBright`
+  (`#686868`, a light bar under white text): overridden to `ansi256(236)`
+  (`#303030`); verified as `48;5;236` in an isolated instance.
+- `claude/themes/ayu.json` therefore no longer matches criterion 1.
