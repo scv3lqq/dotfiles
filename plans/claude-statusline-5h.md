@@ -321,7 +321,7 @@ new:
 ```
 command -v jq >/dev/null || exit 0
 
-# On before segment 6 is parsed: it strips color codes with *(...).
+# Segment 6 strips color codes with *(...), so extglob must be on first.
 shopt -s extglob
 ```
 
