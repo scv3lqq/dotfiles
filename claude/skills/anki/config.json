@@ -1,0 +1,15 @@
+{
+  "ankiconnect_url": "http://127.0.0.1:8765",
+  "note_types": {
+    "Basic": {"name": "Basic", "fields": ["Front", "Back"]},
+    "Cloze": {"name": "Cloze", "fields": ["Text", "Back Extra"]}
+  },
+  "decks": {
+    "language": "English",
+    "grammar": "English",
+    "math": "Math",
+    "tech": "Tech"
+  },
+  "out_dir": "~/anki-cards",
+  "sync_after_push": false
+}
