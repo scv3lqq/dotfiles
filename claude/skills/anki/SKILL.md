@@ -165,7 +165,7 @@ For grammar items, read ~/.claude/skills/anki-grammar/SKILL.md and follow its ca
 - **Definition (Basic)**: Front: the term. Back: what it is **and the problem it solves**,
   concisely: ground it in purpose, not a dictionary gloss.
 - **Mechanism (Cloze)**: a sentence with the core mechanism blanked.
-- **Discrimination (Basic/Cloze)**: only when `+contrast` is set: one card contrasting the term
+- **Discrimination (Basic/Cloze)**: only when `+contrast` is set, one card contrasting the term
   with a classic confusable (e.g. forward vs inverted index).
 
 ## Anki syntax
