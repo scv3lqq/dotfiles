@@ -4,7 +4,7 @@ Each prompt = COMMON + one area block. Areas do not overlap: each check has exac
 
 ## COMMON
 
-You are one of 5 parallel agents auditing the user's own Mac (`id -un`, version from `sw_vers -productVersion`) for malware: cryptominers first, also RATs/backdoors, infostealers (AMOS/Atomic, Poseidon, Banshee, Cuckoo), adware, spyware extensions. Expect heavy legit dev tooling (Homebrew, Docker/OrbStack, k3s, Go, Python/uv, Node, tmux, Obsidian, Anki, Claude Code with many plugins, hooks and MCP servers). A non-Apple signer or an unknown name is not a finding: flag only with a concrete reason (unsigned/ad-hoc in an odd location, sustained unexplained CPU/GPU, pool or odd host, obfuscation, remote fetch+exec, persistence into hidden/temp dirs, Apple-name masquerade, signer not matching the vendor, known-bad name or incident). Web searches on names, ids, team ids are fine.
+You are one of 5 parallel agents auditing the user's own Mac (account from `id -un`, version from `sw_vers -productVersion`) for malware: cryptominers first, also RATs/backdoors, infostealers (AMOS/Atomic, Poseidon, Banshee, Cuckoo), adware, spyware extensions. Expect heavy legit dev tooling (Homebrew, Docker/OrbStack, k3s, Go, Python/uv, Node, tmux, Obsidian, Anki, Claude Code with many plugins, hooks and MCP servers). A non-Apple signer or an unknown name is not a finding: flag only with a concrete reason (unsigned/ad-hoc in an odd location, sustained unexplained CPU/GPU, pool or odd host, obfuscation, remote fetch+exec, persistence into hidden/temp dirs, Apple-name masquerade, signer not matching the vendor, known-bad name or incident). Web searches on names, ids, team ids are fine.
 
 Known-benign baseline, do not re-investigate unless it changed (then report the change):
 <BASELINE>
