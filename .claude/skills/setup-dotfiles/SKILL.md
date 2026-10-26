@@ -62,12 +62,16 @@ checkouts older than that move), otherwise **fresh**.
   `config.ghostty` next to it.
 - Set up: skip that loop (it would move the real `~/.config/nvim`,
   `~/.config/zsh` and `~/.config/yazi` directories that hold the Stow links).
-  Check only the Claude Code files `install.sh` links over:
-  `~/.claude/skills/feature/SKILL.md` and
-  `~/.claude/agents/{implementer,plan-reviewer,acceptance-validator,skill-dry-run}.md`.
-  Each one that is a regular file (not a link) and differs from its copy
-  under `~/dotfiles/claude/` (`cmp -s`; a missing copy counts as different)
-  goes on the move list.
+  Check only the Claude Code files `install.sh` links over: every file of
+  `~/dotfiles/claude/{agents,hooks,bin}/` plus `claude/statusline.sh` and
+  `claude/themes/ayu.json`, at the same path under `~/.claude/`. Each one that
+  is a regular file (not a link) and differs from its copy under
+  `~/dotfiles/claude/` (`cmp -s`; a missing copy counts as different) goes on
+  the move list. On macOS `install.sh` moves a regular `~/.claude/CLAUDE.md` or
+  `~/.claude/settings.json` to `~/.claude/backups/` itself: list those as notes,
+  not moves. A real directory `~/.claude/skills/<name>` for a name in
+  `~/dotfiles/claude/skills/` that holds regular files is skipped by
+  `install.sh`: put it in the warnings.
 
 ## 3. Confirm (one AskUserQuestion)
 
@@ -132,7 +136,7 @@ propose a fix. Re-run only after the user agrees; step 4 is not repeated.
 
 ```sh
 ls -l ~/.tmux.conf ~/.config/starship.toml ~/.config/nvim/init.lua ~/.config/zsh/.zshrc \
-  ~/.claude/skills/feature/SKILL.md ~/.claude/agents/implementer.md
+  ~/.claude/skills/feature ~/.claude/agents/implementer.md ~/.claude/hooks/pane-state.sh
 cat ~/.zshenv; ls -d ~/.tmux/plugins/tpm
 dscl . -read "/Users/$USER" UserShell 2>/dev/null || getent passwd "$USER" | cut -d: -f7
 git -C ~/dotfiles status --short
@@ -141,9 +145,8 @@ git -C ~/dotfiles status --short
 Expected: every link resolves into `~/dotfiles` (`~/.tmux.conf` to
 `tmux/tmux.conf`, `~/.config/starship.toml` to `starship/starship.toml`),
 `~/.zshenv` exports `ZDOTDIR`, TPM exists, the login shell is zsh, the
-checkout is clean. On macOS also
-`jq -r '.hooks.Stop[].hooks[].command' ~/.claude/settings.json` lists
-`~/.claude/hooks/notify.sh`.
+checkout is clean. On macOS also `readlink ~/.claude/settings.json` (and the
+same for `~/.claude/CLAUDE.md`) prints a path under `~/dotfiles/claude/`.
 
 ## 7. Report
 
