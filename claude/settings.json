@@ -1,0 +1,238 @@
+{
+  "includeCoAuthoredBy": false,
+  "model": "opus",
+  "skillOverrides": {
+    "update-config": "user-invocable-only"
+  },
+  "hooks": {
+    "Notification": [
+      {
+        "matcher": "permission_prompt|elicitation_dialog|idle_prompt",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/pane-state.sh",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "PermissionRequest": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/pane-state.sh",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit|Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/no-em-dash.sh",
+            "timeout": 5
+          },
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/skill-note-sync.sh",
+            "timeout": 5,
+            "statusMessage": "checking the skills index note"
+          }
+        ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/pane-state.sh",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "PostToolUseFailure": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/pane-state.sh",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 ~/.claude/hooks/bash-guard.py",
+            "timeout": 10,
+            "statusMessage": "checking bash command"
+          },
+          {
+            "type": "command",
+            "command": "python3 ~/.claude/hooks/git-commit-guard.py",
+            "timeout": 10,
+            "statusMessage": "checking commit subject and author"
+          }
+        ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/pane-state.sh",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$HOME\"'/.tmux/plugins/tmux-assistant-resurrect/hooks/claude-session-cleanup.sh'"
+          }
+        ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/pane-state.sh",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$HOME\"'/.tmux/plugins/tmux-assistant-resurrect/hooks/claude-session-track.sh'"
+          }
+        ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/pane-state.sh",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/notify.sh",
+            "timeout": 10,
+            "statusMessage": "sending macOS notification"
+          }
+        ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/pane-state.sh",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "StopFailure": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/pane-state.sh",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/pane-state.sh",
+            "timeout": 5
+          }
+        ]
+      }
+    ]
+  },
+  "enabledPlugins": {
+    "0bull@anthropic-plugin-directory": true,
+    "data@claude-plugins-official": true,
+    "frontend-design@anthropic-plugin-directory": true,
+    "gopls-lsp@claude-plugins-official": true,
+    "html-skills@agent-html-skills": true,
+    "obsidian@obsidian-skills": true,
+    "visual-explainer@visual-explainer-marketplace": true,
+    "humanizer-blader@anthropic-plugin-directory": true
+  },
+  "extraKnownMarketplaces": {
+    "agent-html-skills": {
+      "source": {
+        "source": "github",
+        "repo": "f-labs-io/agent-html-skills"
+      }
+    },
+    "obsidian-skills": {
+      "source": {
+        "source": "github",
+        "repo": "kepano/obsidian-skills"
+      },
+      "autoUpdate": true
+    },
+    "visual-explainer-marketplace": {
+      "source": {
+        "source": "github",
+        "repo": "nicobailon/visual-explainer"
+      }
+    }
+  },
+  "effortLevel": "xhigh",
+  "modelSettings": {
+    "claude-opus-5": {
+      "effortLevel": "high"
+    },
+    "claude-opus-5-5": {
+      "effortLevel": "xhigh"
+    },
+    "claude-sonnet-5-5": {
+      "effortLevel": "medium"
+    }
+  },
+  "promptSuggestionEnabled": false,
+  "tui": "fullscreen",
+  "voice": {
+    "enabled": false,
+    "mode": "tap"
+  },
+  "skipDangerousModePermissionPrompt": true,
+  "theme": "custom:ayu",
+  "preferredNotifChannel": "notifications_disabled",
+  "voiceEnabled": false,
+  "statusLine": {
+    "type": "command",
+    "command": "~/.claude/statusline.sh"
+  }
+}
