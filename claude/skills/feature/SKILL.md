@@ -137,6 +137,12 @@ A task that pastes a verbatim plan block gets a gate that diffs the block (awk-e
 plan) against the file range; a fixture that extracts a section by markers first checks that both
 markers exist (2026-10-26: a splice dropped a block's last 5 lines, the end marker went missing,
 and the fixture ran install.sh to EOF and still printed DONE).
+Edits to existing prose (docs, Confluence pages, instruction files): never retype the old text.
+`python3 ~/.claude/skills/feature/plan_edits.py stub <file> <base> 9 112-129` (repo root) prints
+whole-line `md E<n>-old` fences plus prefilled `md E<n>-new` fences; rewrite only the new ones in
+the plan. The task runs `plan_edits.py apply <plan> <file> <base>` and gates on `... check`
+(base plus edits, byte for byte), so it needs no reviewer (2026-10-27: 22 page edits, one 30 s
+implementer run, no iteration).
 
 Commit the plan, print a short summary (goal, tasks, gates), and proceed to phase 3
 immediately — no approval needed.
