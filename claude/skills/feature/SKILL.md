@@ -61,7 +61,11 @@ Write the plan into the plan dir the project CLAUDE.md defines (e.g. `plans/<slu
   prose, one `grep -F` phrase per check: a multi-pattern `grep -c` counts lines. A grep
   over code must not hit text the plan itself mandates (comments, docstrings): anchor it
   (`^\s*assert\b`) or use the AST. A "new tests fail before the change" criterion names
-  the plan's guard tests (kept behavior, pass on both) as exempt
+  the plan's guard tests (kept behavior, pass on both) as exempt. Before committing the
+  plan, run every task gate and criterion on the base and record that result: a whole-file
+  property (no em dash, linter finding count) is checked on added lines only
+  (`git diff -U0 <base> | grep '^+'`) or states the base count (2026-10-27: 44 pre-existing
+  em dashes and an unlisted ruff finding cost two plan fixes and a BLOCKED implementer)
 - **Gates** — the exact commands for this repo
 - **Tasks T1..Tn**: scope, exclusive file list, dependencies, definition of done
 - **Seams**: one row per pair of tasks that share a symbol, file, config key or output
@@ -143,7 +147,9 @@ task ID · branch · path to the plan · scope · files · relevant paths from p
 conventions · definition of done · the task's task gates (not the full Gates). (Prohibitions and the report
 format live in the implementer agent definition — do not restate them. Same for
 path-scoped rules covering the task's own files: they auto-load for the implementer —
-cite the rule file, restate only what lives elsewhere. Project `CLAUDE.md` loads into every
+cite the rule file, restate only what lives elsewhere. Exception: in a worktree a
+git-excluded `.claude/` is absent, and a repo below the session root never auto-loads its
+rules: quote them in the plan's Constraints instead. Project `CLAUDE.md` loads into every
 subagent too — never restate its code style, gate rules or language conventions; a prompt
 carries only task-specific anchors: verified line numbers, fixture/helper names, the plan's
 § references.)
