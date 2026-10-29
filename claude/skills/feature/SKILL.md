@@ -23,9 +23,11 @@ match the task scope AND whose matching files you will NOT Read directly — pat
 rules auto-inject when you Read a matching file, so pre-reading those is double-paid.
 Exception: in bypass-permissions mode files are read via Bash (`cat`/`sed`), which never
 triggers auto-inject — then `cat` every matching rule explicitly, once, before reading the file.
-Rules may constrain the research itself (e.g. what must not be delegated). Files under ~300 lines that the plan will anchor to (exact lines,
-constants): read them directly; delegate to Explore only what you will NOT read
-yourself (test conventions, callers/importers, broad sweeps).
+Rules may constrain the research itself (e.g. what must not be delegated). Anchors the plan
+will quote (exact lines, constants, signatures) go to one Explore agent that returns only
+`file:line` plus the quoted lines (≤15 per anchor), never whole files; with a reviewed design
+that already cites anchors, it only confirms or corrects those citations (2026-10-29: main
+re-read ~1000 lines to confirm a design's anchors, every one of which matched).
 
 Delegate specific questions to the Explore agent, not "explore the repo":
 where the affected logic lives, what the conventions are, how tests are structured,

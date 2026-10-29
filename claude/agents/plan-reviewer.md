@@ -59,8 +59,10 @@ moves refs or the working tree — a reviewer once silently moved a feature bran
 `git reset`. Never edit repo files. Mutation copy: extract the reviewed commit into a new
 directory under the scratchpad
 (`mkdir -p <dir> && git -C <repo> archive <commit> | tar -x -C <dir>`), then run
-`(cd <dir> && <mutation command>)` there, never with a repo path and never through
-`<repo>/.venv`. Baseline first: the unmutated copy must exit 0, else no mutation counts.
+`(cd <dir> && <mutation command>)` there, never with a repo path. An untracked venv the
+command needs (`.venv`): `ln -s <repo>/.venv <dir>/.venv` only when no `*.pth` in its
+site-packages names the repo path (else the copy would import the repo's code); otherwise
+recreate it in `<dir>`. Baseline first: the unmutated copy must exit 0, else no mutation counts.
 Then one fresh copy per mutation, applied with (`sed -i` is blocked, you have no Edit):
 `python3 -c 'import pathlib,sys; p=pathlib.Path(sys.argv[1]); t=p.read_text(); n=t.count(sys.argv[2]); n == 1 or sys.exit(f"old text found {n} times"); p.write_text(t.replace(sys.argv[2], sys.argv[3]))' <dir>/<file> <old> <new>`
 (tabs and quotes in <old> as zsh `$'...'`; a non-zero exit means pick a longer span).
