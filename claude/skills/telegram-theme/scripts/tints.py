@@ -21,9 +21,7 @@ import sys
 from pathlib import Path
 
 BASES: dict[str, str] = {
-    "bg": "0b0e14",  # chat and list background (Ghostty bg)
-    "panel": "0f131a",  # chrome: macOS background, iOS bars and cards
-    "in": "151a23",  # incoming bubble
+    "bg": "0b0e14",  # Ghostty bg: macOS canvas, iOS chat and list background
     "chip": "3a3f4b",  # muted badge, unplayed waveform in incoming bubbles
     "gray": "8f8e89",  # secondary text
     "icon": "6c7380",  # gray icons
@@ -37,9 +35,9 @@ TINTS: dict[str, tuple[int, str, str]] = {
     "out_gray": (27, "gray", "secondary text in outgoing bubbles"),
     "out_icon": (29, "icon", "gray icons in outgoing bubbles"),
     "out_wave": (17, "chip", "unplayed waveform in outgoing bubbles"),
-    "selected": (16, "panel", "selected chat row, pressed bot button"),
-    "select_text": (28, "panel", "text selection (macOS)"),
-    "focus": (30, "panel", "focus flash (macOS focusAnimationColor)"),
+    "selected": (16, "bg", "selected chat row, pressed bot button"),
+    "select_text": (28, "bg", "text selection (macOS)"),
+    "focus": (30, "bg", "focus flash (macOS focusAnimationColor)"),
     "select_msg": (7, "bg", "selected messages (macOS)"),
 }
 HEX = re.compile(r"^#?([0-9a-fA-F]{6})$")

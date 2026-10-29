@@ -65,6 +65,11 @@ allowed-tools: Bash(python3:*), Read, Edit, Grep
   fallbacks, so keep them equal (the checker prints an info line per difference). Apply also
   clears the per-theme wallpaper (`:414`), so `defaultWallpaper` wins.
 - macOS tab bar badge text is hardcoded white on `redUI` (`Appearance.swift:3480`): 2.86.
+- macOS service text (date pills, "Select a chat" label) turns pure white unless
+  `chatBackground == background`: wallpaper none is `.color(chatBackground)` (`Appearance.swift:2149`)
+  and any color != `background` gets white text (`:2436-2460`). The checker enforces it.
+- 13.x paints some things outside the palette: avatar gradients (pastel, not `peerAvatar*`),
+  the floating sidebar card border and round header buttons (white at ~10% / ~7%).
 
 ## Colors
 
@@ -75,7 +80,8 @@ allowed-tools: Bash(python3:*), Read, Edit, Grep
   and iOS search highlight (`textHighlight: 66e6b450`). Making the accent amber (Zen's,
   `~/dotfiles/zen/user.js`): move those two off amber first (caret to text `#e8e6dd`, search
   highlight to `66d2a6ff`), or they merge with the accent and recolor warns on them.
-- Roles: chat and list bg `#0b0e14`, chrome `#0f131a` (iOS bars at `f2` alpha), surfaces
+- Roles: canvas `#0b0e14` (macOS `background` = `chatBackground`; iOS chat and list bg),
+  macOS `listBackground` `#07090d`, iOS chrome `#0f131a` (bars at `f2` alpha), surfaces
   `#151a23` `#161b24` `#1c212b`, border `#1f242e`, text `#e8e6dd`, secondary `#8f8e89`,
   icons `#6c7380`, chip `#3a3f4b`, accent `#d2a6ff`, red `#f07178`, green `#aad94c`.
   A color change goes into both files, same role: grep the old hex in both.
@@ -90,13 +96,21 @@ allowed-tools: Bash(python3:*), Read, Edit, Grep
   | 27% over gray | `a194a9` | `grayTextBubble_outgoing`; outgoing `secondaryText`, `file*` |
   | 29% over icon | `8a82a5` | `grayIconBubble_outgoing`; outgoing `polls.radioButton` |
   | 17% over chip | `54516a` | `waveformBackgroundBubble_outgoing`; outgoing `mediaInactiveControl` |
-  | 16% over panel | `2e2b3f` | `accentSelect`; `itemSelectedBg`, `buttonHighlightedBg` |
-  | 28% / 30% over panel | `463c5a` / `4a3f5f` | `selectText`, `selectTextBubble_incoming` / `focusAnimationColor` |
+  | 16% over bg | `2b263a` | `accentSelect`; `itemSelectedBg`, `buttonHighlightedBg` |
+  | 28% / 30% over bg | `433956` / `473c5a` | `selectText`, `selectTextBubble_incoming` / `focusAnimationColor` |
   | 7% over bg | `191924` | `selectMessage`, `selectMessageBubble` |
 
   iOS alpha tints (`4cd2a6ff`, `59d2a6ff`, ...) follow the accent hex. An accent change
   recomputes every tint: `scripts/tints.py recolor OLD NEW <both files>` (comments untouched),
   `mix ACCENT BASE PCT` for a single value.
+
+## Look
+
+Read-only, never click or type in Telegram (opening a chat marks it read). Window bounds:
+`osascript -e 'tell application "System Events" to tell process "Telegram" to get {position, size} of window 1'`,
+then `screencapture -x -R x,y,w,h <scratchpad>/tg.png` (blank or wallpaper-only: the terminal
+lacks Screen Recording). Sample colors with `scripts/png_colors.py <png> X,Y | X0,Y0,X1,Y1`.
+Shots show private chats: keep them in the scratchpad, report UI only.
 
 ## Verify
 

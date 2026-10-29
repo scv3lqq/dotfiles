@@ -327,6 +327,13 @@ def check(pal: Palette) -> list[str]:
     for k, (_, a) in pal.colors.items():
         if a < 0.6 and k not in UNCLAMPED:
             fail.append(f"{k}: alpha {a} is clamped to 0.6 by the app")
+    # Wallpaper none or a color != background makes chatServiceItemTextColor pure
+    # white (Appearance.swift:2436-2460, :2149): date pills outshine message text
+    if (
+        "background" in pal.colors
+        and pal.colors.get("chatBackground") != pal.colors["background"]
+    ):
+        fail.append("chatBackground != background: service text turns pure white")
     if missing or fail:
         return fail
 
