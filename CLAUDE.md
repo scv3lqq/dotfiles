@@ -55,7 +55,7 @@ No database, no migrations, no service/API, no CI, no test suite.
   `yazi/yazi.toml`, `nvim/`, `zsh/` are flat (stowed into `~/.config/<tool>`).
 - `anki/`: Anki add-on source and card templates, symlinked into `addons21`;
   edits and checks: `anki-addon` skill.
-- `zen/`: Zen prefs + userChrome.css (macOS); `zen/preview.py` + `zen/checks.jq` check them.
+- `zen/`, `obsidian/`: macOS themes, checked by their `preview.py` + `check*`.
 - `claude/`: the global `~/.claude` config, linked by `install.sh` (skills as
   dir links; `CLAUDE.md`, `settings.json` on macOS only). Personal facts live in
   `~/.claude/private/`, never linked; `.githooks/pre-commit` refuses staged
