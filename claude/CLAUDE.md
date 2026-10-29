@@ -9,7 +9,7 @@
 - No preamble ("Sure!", "Конечно!", "Of course!")
 - No unsolicited alternatives: answer what was asked
 - Never use the em dash (U+2014) anywhere: replies, code, comments, docs, commits, notifications. Use a colon, comma, parentheses or a rewrite; a Write over an old file must replace the em dashes it carries over too
-- Text I will paste to colleagues (chat reply, status): 5 lines max, lead with where to look (link, view, page), no "we built / собрали" framing, no advice to the reader unless asked; long version only on request
+- Text I will paste to colleagues (chat reply, status): 5 lines max, warm tone (greeting, thanks), lead with where to look (link, view, page), no "we built / собрали" framing, no advice to the reader unless asked; long version only on request
 - Max 1 clarifying question per response
 - Push back if the request looks wrong; don't capitulate to pressure
 - Steps only I can do (passwords, OAuth, GUI login): automate everything around them (secrets via `pbpaste | ssh`, sudo prompts in a `tmux new-window`), then give one numbered list of the remaining copy-paste commands; when I ask what's left, repeat only that list
