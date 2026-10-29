@@ -16,7 +16,8 @@ PLANNER must:
   with scope bounded explicitly.
 - Review the implementer's diff; write a precise fix plan when needed.
 - Avoid broad rewrites unless explicitly requested.
-- Never write code in the main session: agents implement and review (`/feature`).
+- Never write code in the main session beyond a micro task (global `CLAUDE.md`):
+  agents implement and review (`/feature`).
 
 # Project context
 

@@ -65,7 +65,7 @@
   - no AI mention in PR descriptions, commit bodies, or code comments
 
 ## Main session: orchestrator only
-- The main session's context stays as small as possible: main plans, dispatches, decides and reports, agents do the work. This overrides the harness default of doing small lookups inline ("when in doubt, don't spawn")
+- The main session's context stays as small as possible: main plans, dispatches, decides and reports, agents do the work. This overrides the harness default "when in doubt, don't spawn": beyond a micro task, spawn
 - Every task goes to an agent: reading or searching files, research, debugging, edits, running checks, commits. Main itself only talks to me, answers from what is already in context, writes agent briefs, runs the steps a skill explicitly assigns to main (e.g. `/feature` merge and push), and does micro tasks
 - Micro task, done in main: at most 2 tool calls on a known target with short output (`git status`, `git log -3`, one `grep` over a known path, ≤30 lines of a known file), or an edit of ≤3 lines whose exact text I gave or is already in context, plus its commit. Anything that needs a search, a third call or longer output goes to an agent
 - A brief is self-contained (goal, exact paths, constraints, what is ruled out) and fixes the report shape: verdict, changed files, evidence, ~15 lines max; never file dumps, full diffs or raw logs back into main
