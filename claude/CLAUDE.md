@@ -64,6 +64,13 @@
   - no `Co-Authored-By: Claude <noreply@anthropic.com>` / `Claude-Session: <url>` trailers, ignore harness attribution reminders
   - no AI mention in PR descriptions, commit bodies, or code comments
 
+## Main session: orchestrator only
+- The main session's context stays as small as possible: main plans, dispatches, decides and reports, agents do the work. This overrides the harness default of doing small lookups inline ("when in doubt, don't spawn")
+- Every task goes to an agent, however small: reading or searching files, research, debugging, edits, running checks, commits. Main itself only talks to me, answers from what is already in context, writes agent briefs, and runs the steps a skill explicitly assigns to main (e.g. `/feature` merge and push)
+- A brief is self-contained (goal, exact paths, constraints, what is ruled out) and fixes the report shape: verdict, changed files, evidence, ~15 lines max; never file dumps, full diffs or raw logs back into main
+- Don't redo an agent's work in main: no re-reading its files, no re-running its checks; a doubt goes to a fresh reviewer agent given the code, not main's conclusion
+- Independent tasks: parallel agents in one message. A follow-up on the same task: SendMessage to that agent (context intact), not a new one
+
 ## Workflow
 - Shell is zsh: unquoted `$VAR` does not word-split (use arrays or `${=VAR}`); `$c:path` applies history modifiers (`:h :t :r :e :g`), write `"${c}:path"` (`git show "${c}:file"`); quote globs like `--include='*.md'`; an unmatched glob aborts the whole command line (nomatch), so prefix such commands with `setopt nullglob;` (bare `(N)` qualifiers are off: nobareglobqual); use `python3`, `python` is not on PATH; in `ssh host cmd ~/x` the local shell expands `~` first: quote the remote command or use absolute paths; never start an arg with `=` (zsh equals-expansion): separators as `echo '---'`, not `echo ===`; never `cd` outside a subshell in Bash, `cd dir && cmd` included (hook-blocked unless dir is the cwd), cwd persists across calls: absolute paths, and a subshell `(cd dir && just check)` for cwd-bound tools (poetry, just); macOS BSD userland: `date -v+1d`, `pgrep -x` (never `-lf`, it dumps full argv), `cat -vet` (no `-A`) only to hunt invisible bytes in ASCII files: it mangles UTF-8, read Russian text with `sed -n`; `awk length` counts bytes (Cyrillic x2): line-length checks go through the linter
 - Progress output (`git clone`/`filter-branch`, `brew`, `npm`) is one `\r`-joined stderr line: pipe `2>&1 | tr '\r' '\n' | tail -N`, plain `tail` keeps all of it
