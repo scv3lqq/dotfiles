@@ -35,6 +35,9 @@ body {
   --link-decoration-thickness: 1px;
   --link-unresolved-opacity: 1;
   --link-unresolved-decoration-style: dashed;
+  --nav-item-weight: 500;
+  --nav-item-weight-hover: 500;
+  --nav-item-weight-active: 500;
 }
 
 /* Colors and shape */
