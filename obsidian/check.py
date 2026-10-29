@@ -39,6 +39,7 @@ SIZE_RATIOS: Final = {
     "codeBlock": 0.875,
 }
 BOLD_KEYS: Final = ("h1", "h2", "h3", "h4")
+MEDIUM_KEYS: Final = ("nav", "navActive", "tab", "status")
 SPACING_RATIOS: Final = {"h1": -0.022, "h2": -0.018}
 
 APCA_MIN: Final = {
@@ -333,10 +334,11 @@ def check_file(report: Report, name: str, base: float, el: dict[str, Measure]) -
             report.check(
                 el[key].weight == 600, name, key, "weight", el[key].weight, "600"
             )
-    if "nav" in el:
-        report.check(
-            el["nav"].weight == 500, name, "nav", "weight", el["nav"].weight, "500"
-        )
+    for key in MEDIUM_KEYS:
+        if key in el:
+            report.check(
+                el[key].weight == 500, name, key, "weight", el[key].weight, "500"
+            )
 
     for key, ratio in SPACING_RATIOS.items():
         if key in el:
