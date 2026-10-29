@@ -1,0 +1,160 @@
+// Ayu Terminal Dark: Telegram for macOS palette matching the Ghostty Ayu setup
+// in ghostty/ghostty/config (bg #0B0E14, fg #E8E6DD, purple accent #D2A6FF,
+// amber cursor #E6B450). Near-black surfaces with small steps, hairline borders,
+// one accent. Format: TelegramSwift Telegram-Mac/ParseAppearanceColors.swift
+// importPalette(); every color key the parser reads is set, so parent is unused.
+// Colors are #rrggbb, alpha as #rrggbb:0.6 (the app clamps most alphas to >= 0.6).
+// Install: in Telegram click the Settings tab icon 5 times fast, then
+// Import Palette and pick this file.
+isDark = 1
+tinted = 0
+name = Ayu Terminal Dark
+//Fallback for parameters which didn't define. Available values: day, dayClassic, dark, nightAccent
+parent = dark
+copyright = Ayu color scheme
+
+// Accent: Ayu purple (ANSI 13, also bright blue remapped in Ghostty)
+basicAccent = #d2a6ff
+accent = #d2a6ff
+accentIcon = #d2a6ff
+link = #d2a6ff
+accentSelect = #2e2b3f
+selectText = #463c5a
+premium = #d2a6ff
+focusAnimationColor = #4a3f5f
+// Text cursor: the Ghostty cursor color
+indicatorColor = #e6b450
+
+// Surfaces: terminal bg as the deepest layer, chrome one step up
+background = #0f131a
+chatBackground = #0b0e14
+listBackground = #0b0e14
+grayHighlight = #151a23
+grayBackground = #161b24
+grayForeground = #1c212b
+grayUI = #262b35
+border = #1f242e
+grayTransparent = #1c212b:0.6
+blackTransparent = #000000:0.6
+vibrant = #6c7380:0.12
+selectMessage = #191924
+selectMessageBubble = #191924
+
+// Text
+text = #e8e6dd
+grayText = #8f8e89
+listGrayText = #8f8e89
+darkGrayText = #bfbdb6
+grayIcon = #6c7380
+
+// Status colors from the ANSI set
+redUI = #f07178
+greenUI = #aad94c
+badge = #d2a6ff
+badgeMuted = #3a3f4b
+
+// Code
+monospacedPre = #bfbdb6
+monospacedCode = #95e6cb
+
+// Media, reply and date pill outside bubbles
+fileActivityBackground = #d2a6ff
+fileActivityForeground = #0b0e14
+waveformBackground = #3a3f4b
+waveformForeground = #d2a6ff
+webPreviewActivity = #d2a6ff
+chatReplyTitle = #d2a6ff
+chatReplyTextEnabled = #e8e6dd
+chatReplyTextDisabled = #8f8e89
+chatDateActive = #151a23
+chatDateText = #8f8e89
+
+// Incoming bubble: neutral surface with a hairline border
+bubbleBackground_incoming = #151a23
+bubbleBorder_incoming = #1f242e
+bubbleBackgroundHighlight_incoming = #1f2530
+textBubble_incoming = #e8e6dd
+grayTextBubble_incoming = #8f8e89
+grayIconBubble_incoming = #737a87
+accentIconBubble_incoming = #d2a6ff
+linkBubble_incoming = #d2a6ff
+selectTextBubble_incoming = #463c5a
+monospacedPreBubble_incoming = #bfbdb6
+monospacedCodeBubble_incoming = #95e6cb
+fileActivityBackgroundBubble_incoming = #d2a6ff
+fileActivityForegroundBubble_incoming = #151a23
+waveformBackgroundBubble_incoming = #3a3f4b
+waveformForegroundBubble_incoming = #d2a6ff
+webPreviewActivityBubble_incoming = #d2a6ff
+redBubble_incoming = #f07178
+greenBubble_incoming = #aad94c
+chatReplyTitleBubble_incoming = #d2a6ff
+chatReplyTextEnabledBubble_incoming = #e8e6dd
+chatReplyTextDisabledBubble_incoming = #8f8e89
+
+// Outgoing bubble: 14% accent over the terminal bg, calm and readable
+bubbleBackground_outgoing = #272335
+bubbleBorder_outgoing = #372f48
+bubbleBackgroundHighlight_outgoing = #3b324c
+textBubble_outgoing = #e8e6dd
+grayTextBubble_outgoing = #a194a9
+grayIconBubble_outgoing = #8a82a5
+accentIconBubble_outgoing = #d2a6ff
+linkBubble_outgoing = #d2a6ff
+selectTextBubble_outgoing = #524468
+monospacedPreBubble_outgoing = #bfbdb6
+monospacedCodeBubble_outgoing = #95e6cb
+fileActivityBackgroundBubble_outgoing = #d2a6ff
+fileActivityForegroundBubble_outgoing = #272335
+waveformBackgroundBubble_outgoing = #54516a
+waveformForegroundBubble_outgoing = #d2a6ff
+webPreviewActivityBubble_outgoing = #d2a6ff
+redBubble_outgoing = #f07178
+greenBubble_outgoing = #aad94c
+chatReplyTitleBubble_outgoing = #d2a6ff
+chatReplyTextEnabledBubble_outgoing = #e8e6dd
+chatReplyTextDisabledBubble_outgoing = #a194a9
+
+// Sender names in groups: Ayu bright ANSI colors
+groupPeerNameRed = #f07178
+groupPeerNameOrange = #ffb454
+groupPeerNameViolet = #d2a6ff
+groupPeerNameGreen = #aad94c
+groupPeerNameCyan = #95e6cb
+groupPeerNameLightBlue = #59c2ff
+groupPeerNameBlue = #80a8ff
+
+// Avatar gradients: bright ANSI on top, deeper Ayu tone at the bottom
+peerAvatarRedTop = #f07178
+peerAvatarRedBottom = #d95757
+peerAvatarOrangeTop = #ffb454
+peerAvatarOrangeBottom = #ff8f40
+peerAvatarVioletTop = #d2a6ff
+peerAvatarVioletBottom = #a37acc
+peerAvatarGreenTop = #aad94c
+peerAvatarGreenBottom = #86b300
+peerAvatarCyanTop = #95e6cb
+peerAvatarCyanBottom = #4cbf99
+peerAvatarBlueTop = #59c2ff
+peerAvatarBlueBottom = #399ee6
+peerAvatarPinkTop = #de89b9
+peerAvatarPinkBottom = #c5679e
+
+// Chat list swipe actions: dark glyphs on pastel fills
+revealAction_neutral1_background = #3a3f4b
+revealAction_neutral1_foreground = #e8e6dd
+revealAction_neutral2_background = #ff8f40
+revealAction_neutral2_foreground = #0b0e14
+revealAction_destructive_background = #f07178
+revealAction_destructive_foreground = #0b0e14
+revealAction_constructive_background = #aad94c
+revealAction_constructive_foreground = #0b0e14
+revealAction_accent_background = #d2a6ff
+revealAction_accent_foreground = #0b0e14
+revealAction_warning_background = #ffb454
+revealAction_warning_foreground = #0b0e14
+revealAction_inactive_background = #565b66
+revealAction_inactive_foreground = #e8e6dd
+
+//Parameter only affects bubble chat mode. Available values: none, builtin, hexColor or url to cloud backgound like a t.me/bg/%slug%
+wallpaper = none
