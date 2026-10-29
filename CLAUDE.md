@@ -116,7 +116,8 @@ Every non-trivial task runs this cycle, `/feature` typed or not (follow
 - Final PASS: `git fetch . feat/<slug>:main` (ff-only, moves no file under a
   busy pane), `git switch main`, `git push origin main`, `git branch -d
   feat/<slug>`, overriding "never touch main" and "no remote operations".
-  A refused merge or push, or a stop: report, keep the branch, no rebase/force-push.
+  Main moved, no shared file: rm untracked files equal to main's, `git rebase
+  main`, Gates, retry. Else (or a stop): report, keep the branch, no force-push.
 
 # Architecture rules
 
@@ -195,6 +196,5 @@ Rules:
 
 # Maintaining this file
 
-Update only when workflow, architecture, commands, or durable conventions
-change. Keep rules actionable, remove outdated ones, avoid duplication with
-`README.md`. Keep the file under 200 lines; `AGENTS.md` follows it as a link.
+Update only when workflow, architecture, commands or durable conventions change;
+no duplication with `README.md`; under 200 lines (`AGENTS.md` is a link to it).
