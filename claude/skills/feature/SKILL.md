@@ -143,6 +143,9 @@ whole-line `md E<n>-old` fences plus prefilled `md E<n>-new` fences; rewrite onl
 the plan. The task runs `plan_edits.py apply <plan> <file> <base>` and gates on `... check`
 (base plus edits, byte for byte), so it needs no reviewer (2026-10-27: 22 page edits, one 30 s
 implementer run, no iteration).
+Repos whose committed text must be agent-neutral: the plan names no product-named path or pattern
+(this script's path, a product-name grep); write `$PLAN_EDITS` / `$AGENT_NAMES_RE` and give the
+values in the dispatch and validator prompts (2026-10-29: a name grep in the plan matched itself).
 
 Commit the plan, print a short summary (goal, tasks, gates), and proceed to phase 3
 immediately — no approval needed.
@@ -205,8 +208,9 @@ Two tiers:
    waves), in parallel (same cap of 12), passing: path to the plan, the commit SHA, its task IDs,
    their file lists, their task gates. A test task committed together with its source task
    gets one reviewer for both. It reviews only those tasks' code and runs only those gates
-   plus the test tasks' named mutations. Tasks that only copy verbatim plan text get no
-   reviewer: the validator checks each fenced block against the file.
+   plus the test tasks' named mutations. Tasks that only copy verbatim plan text, or whose
+   output a task gate pins to a frozen sha256, get no reviewer: the validator checks each fenced
+   block or hash against the file.
 2. Validation: ONE @acceptance-validator after all per-task verdicts are in, passing: path
    to the plan, `git diff <base>...HEAD --stat`, task list, the per-task verdicts verbatim.
    If a criterion needs the full Gates on every commit, run them yourself in the background
