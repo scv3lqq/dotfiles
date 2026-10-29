@@ -158,7 +158,7 @@ chatList:
   pinnedItemBg: 0f131a
   itemHighlightedBg: 151a23
   pinnedItemHighlightedBg: 1c212b
-  itemSelectedBg: 2e2b3f
+  itemSelectedBg: 2b263a
   title: e8e6dd
   secretTitle: aad94c
   dateText: 8f8e89
@@ -457,7 +457,7 @@ chat:
     buttonBg: 1c212b
     buttonHighlight: 0de8e6dd
     buttonStroke: 0b0e14
-    buttonHighlightedBg: 2e2b3f
+    buttonHighlightedBg: 2b263a
     buttonHighlightedStroke: 0b0e14
     buttonText: e8e6dd
   historyNav:

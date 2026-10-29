@@ -18,17 +18,19 @@ basicAccent = #d2a6ff
 accent = #d2a6ff
 accentIcon = #d2a6ff
 link = #d2a6ff
-accentSelect = #2e2b3f
-selectText = #463c5a
+accentSelect = #2b263a
+selectText = #433956
 premium = #d2a6ff
-focusAnimationColor = #4a3f5f
+focusAnimationColor = #473c5a
 // Text cursor: the Ghostty cursor color
 indicatorColor = #e6b450
 
-// Surfaces: terminal bg as the deepest layer, chrome one step up
-background = #0f131a
+// Surfaces: one terminal-bg canvas split by hairlines, list gaps one step down.
+// background must equal chatBackground: otherwise the app draws service text
+// (date pills, empty-chat label) in pure white (Appearance.swift chatServiceItemTextColor)
+background = #0b0e14
 chatBackground = #0b0e14
-listBackground = #0b0e14
+listBackground = #07090d
 grayHighlight = #151a23
 grayBackground = #161b24
 grayForeground = #1c212b
@@ -78,7 +80,7 @@ grayTextBubble_incoming = #8f8e89
 grayIconBubble_incoming = #737a87
 accentIconBubble_incoming = #d2a6ff
 linkBubble_incoming = #d2a6ff
-selectTextBubble_incoming = #463c5a
+selectTextBubble_incoming = #433956
 monospacedPreBubble_incoming = #bfbdb6
 monospacedCodeBubble_incoming = #95e6cb
 fileActivityBackgroundBubble_incoming = #d2a6ff
