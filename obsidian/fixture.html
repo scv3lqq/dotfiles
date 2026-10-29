@@ -1,0 +1,333 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Obsidian theme fixture</title>
+<!-- Order as in the app: core app.css, then the theme. theme.css may be absent (404 is ignored). -->
+<link rel="stylesheet" href="app.css">
+<link rel="stylesheet" id="theme-css" href="theme.css">
+<!-- Subset of the CodeMirror 6 baseTheme (@codemirror/view), injected by CM at runtime as .ͼ1 rules;
+     same specificity, so app.css rules on .markdown-source-view.mod-cm6 still win as in the app. -->
+<style id="cm-base">
+.cm-editor { position: relative; box-sizing: border-box; display: flex; flex-direction: column; }
+.cm-editor .cm-scroller { display: flex; align-items: flex-start; font-family: monospace; line-height: 1.4; height: 100%; overflow-x: auto; position: relative; z-index: 0; }
+.cm-editor .cm-content { margin: 0; flex-grow: 2; flex-shrink: 0; display: block; white-space: pre; word-wrap: normal; box-sizing: border-box; min-height: 100%; padding: 4px 0; outline: none; }
+.cm-editor .cm-lineWrapping { white-space: break-spaces; word-break: break-word; overflow-wrap: anywhere; flex-shrink: 1; }
+.cm-editor .cm-line { display: block; padding: 0 2px 0 6px; }
+#out { display: none; }
+</style>
+<script>
+// Query params: base=<px> (Settings > Appearance > Font size; core sets it inline),
+// css=<path> (theme stylesheet, default theme.css), plugins=minimal-settings (emulate the Minimal
+// Settings side effects), measure=1 (write the computed styles as JSON into pre#out).
+const Q = new URLSearchParams(location.search);
+const BASE = Number(Q.get('base') || 16);
+const PLUGINS = Q.get('plugins') || '';
+// Obsidian App.updateFontSize(): html font-size and body --font-text-size, both inline.
+document.documentElement.style.setProperty('font-size', `calc(${BASE}px * var(--preferred-text-scale, 1))`);
+if (Q.get('css')) document.getElementById('theme-css').href = Q.get('css');
+
+function applyEnv() {
+  const b = document.body;
+  b.classList.remove('theme-dark', 'theme-light');
+  b.classList.add(Q.get('theme') === 'light' ? 'theme-light' : 'theme-dark');
+  b.style.setProperty('--font-text-size', `${BASE}px`);
+  if (PLUGINS === 'minimal-settings') {
+    // obsidian-minimal-settings onload: classes + body.setCssProps (runs regardless of the active theme)
+    b.classList.add('minimal-theme', 'minimal-light', 'minimal-default-light', 'minimal-dark-black',
+      'minimal-macos-dark', 'colorful-headings', 'colorful-active', 'minimal-focus-mode', 'links-int-on',
+      'links-ext-on', 'full-width-media', 'labeled-nav', 'minimal-folding', 'minimal-readable',
+      'chart-default-width', 'table-default-width', 'img-default-width', 'iframe-default-width',
+      'map-default-width');
+    for (const [k, v] of Object.entries({ '--font-ui-small': '13px', '--line-height': '1.7',
+      '--line-width': '75rem', '--line-width-wide': '50rem', '--max-width': '70%' })) b.style.setProperty(k, v);
+  }
+}
+
+const SEL = {
+  body: 'body',
+  root: '.workspace-split.mod-root',
+  sizer: '.markdown-preview-sizer',
+  p: '.markdown-preview-sizer > div > p',
+  h1: '.markdown-preview-view h1', h2: '.markdown-preview-view h2',
+  h3: '.markdown-preview-view h3', h4: '.markdown-preview-view h4',
+  strong: '.markdown-preview-sizer > div > p strong',
+  link: '.markdown-preview-view a.internal-link:not(.is-unresolved)',
+  unresolved: '.markdown-preview-view a.internal-link.is-unresolved',
+  external: '.markdown-preview-view a.external-link',
+  tag: '.markdown-preview-view a.tag',
+  codeInline: '.markdown-preview-sizer > div > p code',
+  codeBlock: '.markdown-preview-view pre code',
+  tokKeyword: '.markdown-preview-view pre .token.keyword',
+  tokString: '.markdown-preview-view pre .token.string',
+  tokFunction: '.markdown-preview-view pre .token.function',
+  tokComment: '.markdown-preview-view pre .token.comment',
+  tokNumber: '.markdown-preview-view pre .token.number',
+  tokOperator: '.markdown-preview-view pre .token.operator',
+  tokPunct: '.markdown-preview-view pre .token.punctuation',
+  blockquote: '.markdown-preview-view blockquote p',
+  calloutTitle: '.markdown-preview-view .callout .callout-title-inner',
+  calloutContent: '.markdown-preview-view .callout .callout-content p',
+  th: '.markdown-preview-view th', td: '.markdown-preview-view td',
+  cmSizer: '.markdown-source-view .cm-sizer',
+  cmLine: '.markdown-source-view .cm-line:not(.HyperMD-header)',
+  cmH1: '.markdown-source-view .cm-line.HyperMD-header-1',
+  nav: '.nav-file-title:not(.is-active)',
+  navActive: '.nav-file-title.is-active',
+  tab: '.workspace-tab-header.is-active .workspace-tab-header-inner-title',
+  status: '.status-bar-item',
+};
+
+// Normalize any CSS color (oklch, color-mix, ...) to sRGB [r, g, b, a] through a 1x1 canvas.
+const CTX = document.createElement('canvas').getContext('2d', { willReadFrequently: true });
+CTX.canvas.width = 1; CTX.canvas.height = 1;
+function rgba(value) {
+  CTX.clearRect(0, 0, 1, 1);
+  CTX.fillStyle = '#000';
+  CTX.fillStyle = value;
+  CTX.fillRect(0, 0, 1, 1);
+  const d = CTX.getImageData(0, 0, 1, 1).data;
+  return [d[0], d[1], d[2], d[3] / 255];
+}
+
+// Opaque background: collect layers up to the first opaque one, composite from the outermost inward.
+function effectiveBg(el) {
+  const layers = [];
+  let base = [255, 255, 255];
+  for (let n = el; n; n = n.parentElement) {
+    const c = rgba(getComputedStyle(n).backgroundColor);
+    if (c[3] >= 0.999) { base = c.slice(0, 3); break; }
+    if (c[3] > 0) layers.push(c);
+  }
+  let out = base;
+  for (let i = layers.length - 1; i >= 0; i--) {
+    const [r, g, b, a] = layers[i];
+    out = [a * r + (1 - a) * out[0], a * g + (1 - a) * out[1], a * b + (1 - a) * out[2]];
+  }
+  return out.map(Math.round);
+}
+
+const px = (v, none) => (v === none ? null : parseFloat(v));
+
+function measure() {
+  const out = { meta: { base: BASE, viewport: [innerWidth, innerHeight], plugins: PLUGINS }, el: {} };
+  for (const [k, sel] of Object.entries(SEL)) {
+    const el = document.querySelector(sel);
+    if (!el) continue;
+    const cs = getComputedStyle(el);
+    out.el[k] = {
+      family: cs.fontFamily,
+      size: parseFloat(cs.fontSize),
+      lineHeight: px(cs.lineHeight, 'normal'),
+      weight: parseInt(cs.fontWeight, 10),
+      letterSpacing: cs.letterSpacing === 'normal' ? 0 : parseFloat(cs.letterSpacing),
+      maxWidth: px(cs.maxWidth, 'none'),
+      color: rgba(cs.color),
+      bg: effectiveBg(el),
+      decoration: rgba(cs.textDecorationColor),
+      boxShadow: cs.boxShadow,
+    };
+  }
+  document.getElementById('out').textContent = JSON.stringify(out);
+}
+
+document.addEventListener('DOMContentLoaded', applyEnv);
+window.addEventListener('load', () => { if (Q.has('measure')) document.fonts.ready.then(measure); });
+</script>
+</head>
+<body class="mod-macos is-frameless is-hidden-frameless obsidian-app theme-dark show-inline-title show-ribbon show-view-header is-focused">
+<div class="app-container">
+<div class="horizontal-main-container">
+<div class="workspace is-primary-sidedock-open is-left-sidedock-open">
+
+  <!-- ribbon -->
+  <div class="workspace-ribbon side-dock-ribbon mod-left">
+    <div class="sidebar-toggle-button mod-left" aria-label="Collapse"><div class="clickable-icon"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="svg-icon sidebar-toggle-icon"><rect x="3" y="3" width="18" height="18" rx="2"></rect><path d="M9 3v18"></path></svg></div></div>
+    <div class="side-dock-actions">
+      <div class="clickable-icon side-dock-ribbon-action" aria-label="Open quick switcher"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="svg-icon lucide-file-search"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><path d="M14 2v6h6"></path><circle cx="11.5" cy="14.5" r="2.5"></circle><path d="M13.3 16.3 15 18"></path></svg></div>
+      <div class="clickable-icon side-dock-ribbon-action" aria-label="Open graph view"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="svg-icon lucide-git-fork"><circle cx="12" cy="18" r="3"></circle><circle cx="6" cy="6" r="3"></circle><circle cx="18" cy="6" r="3"></circle><path d="M18 9v2c0 .6-.4 1-1 1H7c-.6 0-1-.4-1-1V9"></path><path d="M12 12v3"></path></svg></div>
+      <div class="clickable-icon side-dock-ribbon-action" aria-label="Open today's daily note"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="svg-icon lucide-calendar"><rect x="3" y="4" width="18" height="18" rx="2"></rect><path d="M16 2v4M8 2v4M3 10h18"></path></svg></div>
+    </div>
+    <div class="side-dock-settings">
+      <div class="clickable-icon side-dock-ribbon-action" aria-label="Settings"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="svg-icon lucide-settings"><circle cx="12" cy="12" r="3"></circle><path d="M12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"></path></svg></div>
+    </div>
+  </div>
+
+  <!-- left sidebar: file explorer -->
+  <div class="workspace-split mod-horizontal mod-sidedock mod-primary-split mod-left-split" style="width: 240px;">
+    <hr class="workspace-leaf-resize-handle">
+    <div class="workspace-tabs mod-top mod-top-left-space" style="flex-grow: 1;">
+      <hr class="workspace-leaf-resize-handle">
+      <div class="workspace-tab-header-container">
+        <div class="workspace-tab-header-container-inner">
+          <div class="workspace-tab-header tappable is-active mod-active" aria-label="Files" data-type="file-explorer"><div class="workspace-tab-header-inner"><div class="workspace-tab-header-inner-icon"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="svg-icon lucide-folder-closed"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"></path><path d="M2 10h20"></path></svg></div><div class="workspace-tab-header-inner-title">Files</div><div class="workspace-tab-header-status-container"></div></div></div>
+          <div class="workspace-tab-header tappable" aria-label="Search" data-type="search"><div class="workspace-tab-header-inner"><div class="workspace-tab-header-inner-icon"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="svg-icon lucide-search"><circle cx="11" cy="11" r="8"></circle><path d="m21 21-4.3-4.3"></path></svg></div><div class="workspace-tab-header-inner-title">Search</div><div class="workspace-tab-header-status-container"></div></div></div>
+          <div class="workspace-tab-header tappable" aria-label="Bookmarks" data-type="bookmarks"><div class="workspace-tab-header-inner"><div class="workspace-tab-header-inner-icon"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="svg-icon lucide-bookmark"><path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z"></path></svg></div><div class="workspace-tab-header-inner-title">Bookmarks</div><div class="workspace-tab-header-status-container"></div></div></div>
+        </div>
+        <div class="workspace-tab-header-spacer"></div>
+        <div class="workspace-tab-header-tab-list"><div class="clickable-icon"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="svg-icon lucide-chevron-down"><path d="m6 9 6 6 6-6"></path></svg></div></div>
+      </div>
+      <div class="workspace-tab-container">
+        <div class="workspace-leaf" style="flex-grow: 1;">
+          <hr class="workspace-leaf-resize-handle">
+          <div class="workspace-leaf-content" data-type="file-explorer">
+            <div class="nav-header">
+              <div class="nav-buttons-container">
+                <div class="clickable-icon nav-action-button" aria-label="New note"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="svg-icon lucide-edit"><path d="M12 20h9"></path><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"></path></svg></div>
+                <div class="clickable-icon nav-action-button" aria-label="New folder"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="svg-icon lucide-folder-plus"><path d="M12 10v6M9 13h6"></path><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"></path></svg></div>
+                <div class="clickable-icon nav-action-button" aria-label="Change sort order"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="svg-icon lucide-sort-asc"><path d="m3 8 4-4 4 4M7 4v16M11 12h4M11 16h7M11 20h10"></path></svg></div>
+                <div class="clickable-icon nav-action-button" aria-label="Collapse all"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="svg-icon lucide-chevrons-down-up"><path d="m7 20 5-5 5 5M7 4l5 5 5-5"></path></svg></div>
+              </div>
+            </div>
+            <div class="nav-files-container node-insert-event" style="position: relative;">
+              <div class="tree-item nav-folder mod-root">
+                <div class="tree-item-children nav-folder-children">
+                  <div class="tree-item nav-folder">
+                    <div class="tree-item-self is-clickable mod-collapsible nav-folder-title" data-path="Projects">
+                      <div class="tree-item-icon collapse-icon"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="svg-icon right-triangle"><path d="M3 8L12 17L21 8"></path></svg></div>
+                      <div class="tree-item-inner nav-folder-title-content">Projects</div>
+                    </div>
+                    <div class="tree-item-children nav-folder-children">
+                      <div class="tree-item nav-file"><div class="tree-item-self is-clickable nav-file-title tappable" data-path="Projects/Roadmap.md"><div class="tree-item-inner nav-file-title-content">Roadmap</div></div></div>
+                      <div class="tree-item nav-file"><div class="tree-item-self is-clickable nav-file-title tappable is-active" data-path="Projects/Theme fixture.md"><div class="tree-item-inner nav-file-title-content">Theme fixture</div></div></div>
+                      <div class="tree-item nav-file"><div class="tree-item-self is-clickable nav-file-title tappable" data-path="Projects/Kafka delivery semantics.md"><div class="tree-item-inner nav-file-title-content">Kafka delivery semantics</div></div></div>
+                    </div>
+                  </div>
+                  <div class="tree-item nav-folder is-collapsed">
+                    <div class="tree-item-self is-clickable mod-collapsible nav-folder-title" data-path="Reading notes">
+                      <div class="tree-item-icon collapse-icon is-collapsed"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="svg-icon right-triangle"><path d="M3 8L12 17L21 8"></path></svg></div>
+                      <div class="tree-item-inner nav-folder-title-content">Reading notes</div>
+                    </div>
+                  </div>
+                  <div class="tree-item nav-file"><div class="tree-item-self is-clickable nav-file-title tappable" data-path="Getting started.md"><div class="tree-item-inner nav-file-title-content">Getting started</div></div></div>
+                  <div class="tree-item nav-file"><div class="tree-item-self is-clickable nav-file-title tappable" data-path="Inbox.md"><div class="tree-item-inner nav-file-title-content">Inbox</div></div></div>
+                  <div class="tree-item nav-file"><div class="tree-item-self is-clickable nav-file-title tappable" data-path="Weekly review.md"><div class="tree-item-inner nav-file-title-content">Weekly review</div></div></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- root split: reading view (left) + live preview (right) -->
+  <div class="workspace-split mod-vertical mod-root">
+    <hr class="workspace-leaf-resize-handle">
+
+    <div class="workspace-tabs mod-top mod-active" style="flex-grow: 66;">
+      <hr class="workspace-leaf-resize-handle">
+      <div class="workspace-tab-header-container">
+        <div class="workspace-tab-header-container-inner">
+          <div class="workspace-tab-header tappable is-active mod-active" aria-label="Theme fixture" data-type="markdown"><div class="workspace-tab-header-inner"><div class="workspace-tab-header-inner-icon"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="svg-icon lucide-file"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"></path><path d="M14 2v6h6"></path></svg></div><div class="workspace-tab-header-inner-title">Theme fixture</div><div class="workspace-tab-header-status-container"></div><div class="workspace-tab-header-inner-close-button" aria-label="Close"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="svg-icon lucide-x"><path d="M18 6 6 18M6 6l12 12"></path></svg></div></div></div>
+          <div class="workspace-tab-header tappable" aria-label="Roadmap" data-type="markdown"><div class="workspace-tab-header-inner"><div class="workspace-tab-header-inner-icon"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="svg-icon lucide-file"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"></path><path d="M14 2v6h6"></path></svg></div><div class="workspace-tab-header-inner-title">Roadmap</div><div class="workspace-tab-header-status-container"></div><div class="workspace-tab-header-inner-close-button" aria-label="Close"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="svg-icon lucide-x"><path d="M18 6 6 18M6 6l12 12"></path></svg></div></div></div>
+        </div>
+        <div class="workspace-tab-header-new-tab"><span class="clickable-icon" aria-label="New tab"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="svg-icon lucide-plus"><path d="M5 12h14M12 5v14"></path></svg></span></div>
+        <div class="workspace-tab-header-spacer"></div>
+        <div class="workspace-tab-header-tab-list"><span class="clickable-icon"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="svg-icon lucide-chevron-down"><path d="m6 9 6 6 6-6"></path></svg></span></div>
+      </div>
+      <div class="workspace-tab-container">
+        <div class="workspace-leaf mod-active" style="flex-grow: 1;">
+          <hr class="workspace-leaf-resize-handle">
+          <div class="workspace-leaf-content" data-type="markdown" data-mode="preview">
+            <div class="view-header">
+              <div class="view-header-left"><div class="view-header-nav-buttons">
+                <button class="clickable-icon" aria-label="Navigate back"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="svg-icon lucide-arrow-left"><path d="m12 19-7-7 7-7M19 12H5"></path></svg></button>
+                <button class="clickable-icon" aria-label="Navigate forward"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="svg-icon lucide-arrow-right"><path d="M5 12h14M12 5l7 7-7 7"></path></svg></button>
+              </div></div>
+              <div class="view-header-title-container mod-at-start"><div class="view-header-title-parent"><span class="view-header-breadcrumb">Projects</span><span class="view-header-breadcrumb-separator">/</span></div><div class="view-header-title" tabindex="-1">Theme fixture</div></div>
+              <div class="view-actions">
+                <button class="clickable-icon view-action" aria-label="Edit"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="svg-icon lucide-edit-3"><path d="M12 20h9"></path><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"></path></svg></button>
+                <button class="clickable-icon view-action" aria-label="More options"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="svg-icon lucide-more-vertical"><circle cx="12" cy="5" r="1"></circle><circle cx="12" cy="12" r="1"></circle><circle cx="12" cy="19" r="1"></circle></svg></button>
+              </div>
+            </div>
+            <div class="view-content">
+              <div class="markdown-reading-view" style="width: 100%; height: 100%;">
+                <div class="markdown-preview-view markdown-rendered node-insert-event is-readable-line-width allow-fold-headings show-indentation-guide allow-fold-lists show-properties" tabindex="-1" style="tab-size: 4;">
+                  <div class="markdown-preview-sizer markdown-preview-section">
+                    <div class="markdown-preview-pusher" style="width: 1px; height: 0.1px; margin-bottom: 0px;"></div>
+                    <div class="mod-header mod-ui"><div class="inline-title" tabindex="-1" enterkeyhint="done">Theme fixture</div></div>
+                    <div class="el-h1"><h1 data-heading="Heading one" dir="auto">Heading one</h1></div>
+                    <div class="el-p"><p dir="auto">The quick brown fox jumps over the lazy dog while the editor keeps a steady rhythm of lines, margins and spacing. A good reading theme lets the text breathe without wasting the width of the pane, so that a paragraph of eighty or more words still reads as one calm block. Here we mix <strong>bold text</strong>, <em>italic text</em> and <strong><em>both at once</em></strong>, a link to <a data-tooltip-position="top" aria-label="Getting started" data-href="Getting started" href="Getting started" class="internal-link" target="_blank" rel="noopener nofollow">Getting started</a>, a link to a <a data-href="Missing note" href="Missing note" class="internal-link is-unresolved" target="_blank" rel="noopener nofollow">Missing note</a>, an external link to <a rel="noopener nofollow" class="external-link" href="https://example.com" target="_blank">example.com</a>, a tag <a href="#theme" class="tag" target="_blank" rel="noopener nofollow">#theme</a> and some inline code such as <code>fmt.Println</code> to check the monospace size.</p></div>
+                    <div class="el-h2"><h2 data-heading="Heading two" dir="auto">Heading two</h2></div>
+                    <div class="el-p"><p dir="auto">Long notes are where typography matters most: line height decides how easily the eye finds the next line, the measure decides how far it has to travel, and the contrast between body text and muted text decides how much of the interface fades into the background. This second paragraph exists only to give the renderer enough words to wrap several times, so that the computed line height and the real number of characters per line can both be checked against the values the theme is supposed to produce on a wide screen.</p></div>
+                    <div class="el-h3"><h3 data-heading="Heading three" dir="auto">Heading three</h3></div>
+                    <div class="el-pre"><pre class="language-go"><code class="language-go is-loaded"><span class="token comment">// Greet returns a greeting for name.</span>
+<span class="token keyword">func</span> <span class="token function">Greet</span><span class="token punctuation">(</span>name <span class="token builtin">string</span><span class="token punctuation">)</span> <span class="token punctuation">(</span><span class="token builtin">string</span><span class="token punctuation">,</span> <span class="token builtin">error</span><span class="token punctuation">)</span> <span class="token punctuation">{</span>
+	<span class="token keyword">if</span> name <span class="token operator">==</span> <span class="token string">""</span> <span class="token punctuation">{</span>
+		<span class="token keyword">return</span> <span class="token string">""</span><span class="token punctuation">,</span> fmt<span class="token punctuation">.</span><span class="token function">Errorf</span><span class="token punctuation">(</span><span class="token string">"greet: %w"</span><span class="token punctuation">,</span> ErrEmpty<span class="token punctuation">)</span>
+	<span class="token punctuation">}</span>
+	n <span class="token operator">:=</span> <span class="token number">42</span> <span class="token operator">*</span> <span class="token function">len</span><span class="token punctuation">(</span>name<span class="token punctuation">)</span>
+	<span class="token keyword">return</span> fmt<span class="token punctuation">.</span><span class="token function">Sprintf</span><span class="token punctuation">(</span><span class="token string">"hello, %s (%d)"</span><span class="token punctuation">,</span> name<span class="token punctuation">,</span> n<span class="token punctuation">)</span><span class="token punctuation">,</span> <span class="token boolean">nil</span>
+<span class="token punctuation">}</span>
+</code><button class="copy-code-button"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="svg-icon lucide-copy"><rect x="8" y="8" width="14" height="14" rx="2"></rect><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"></path></svg></button></pre></div>
+                    <div class="el-blockquote"><blockquote dir="auto"><p dir="auto">A blockquote with a short thought that should read as quoted text, set apart by the border colour and spacing.</p></blockquote></div>
+                    <div class="el-div"><div data-callout-metadata="" data-callout-fold="" data-callout="note" class="callout"><div class="callout-title" dir="auto"><div class="callout-icon"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="svg-icon lucide-pencil"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"></path><path d="m15 5 4 4"></path></svg></div><div class="callout-title-inner">Note</div></div><div class="callout-content"><p dir="auto">Callout content with a <a data-href="Roadmap" href="Roadmap" class="internal-link" target="_blank" rel="noopener nofollow">Roadmap</a> link and <code>inline code</code>.</p></div></div></div>
+                    <div class="el-h4"><h4 data-heading="Heading four" dir="auto">Heading four</h4></div>
+                    <div class="el-table"><table><thead><tr><th dir="auto">Variable</th><th dir="auto">Default</th><th dir="auto">Scope</th></tr></thead><tbody><tr><td dir="auto"><code>--font-text-size</code></td><td dir="auto">16px</td><td dir="auto">body</td></tr><tr><td dir="auto"><code>--file-line-width</code></td><td dir="auto">700px</td><td dir="auto">body</td></tr></tbody></table></div>
+                    <div class="el-ul"><ul class="has-list-bullet"><li data-line="0" dir="auto"><span class="list-bullet"></span>First bullet item</li><li data-line="1" dir="auto"><span class="list-bullet"></span>Second bullet item with <strong>bold</strong></li></ul></div>
+                    <div class="el-ol"><ol><li data-line="0" dir="auto">First numbered item</li><li data-line="1" dir="auto">Second numbered item</li></ol></div>
+                    <div class="el-ul"><ul class="contains-task-list has-list-bullet"><li data-line="0" data-task="" class="task-list-item" dir="auto"><span class="list-bullet"></span><input data-line="0" type="checkbox" class="task-list-item-checkbox">Open task</li><li data-line="1" data-task="x" class="task-list-item is-checked" dir="auto"><span class="list-bullet"></span><input data-line="1" type="checkbox" class="task-list-item-checkbox" checked>Done task</li></ul></div>
+                    <div class="el-hr"><hr></div>
+                    <div class="el-p"><p dir="auto">Text after the rule.</p></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="workspace-tabs mod-top mod-top-right-space" style="flex-grow: 34;">
+      <hr class="workspace-leaf-resize-handle">
+      <div class="workspace-tab-header-container">
+        <div class="workspace-tab-header-container-inner">
+          <div class="workspace-tab-header tappable is-active" aria-label="Live preview" data-type="markdown"><div class="workspace-tab-header-inner"><div class="workspace-tab-header-inner-icon"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="svg-icon lucide-file"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"></path><path d="M14 2v6h6"></path></svg></div><div class="workspace-tab-header-inner-title">Live preview</div><div class="workspace-tab-header-status-container"></div><div class="workspace-tab-header-inner-close-button" aria-label="Close"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="svg-icon lucide-x"><path d="M18 6 6 18M6 6l12 12"></path></svg></div></div></div>
+        </div>
+        <div class="workspace-tab-header-new-tab"><span class="clickable-icon" aria-label="New tab"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="svg-icon lucide-plus"><path d="M5 12h14M12 5v14"></path></svg></span></div>
+        <div class="workspace-tab-header-spacer"></div>
+      </div>
+      <div class="workspace-tab-container">
+        <div class="workspace-leaf" style="flex-grow: 1;">
+          <hr class="workspace-leaf-resize-handle">
+          <div class="workspace-leaf-content" data-type="markdown" data-mode="source">
+            <div class="view-header">
+              <div class="view-header-title-container mod-at-start"><div class="view-header-title-parent"></div><div class="view-header-title" tabindex="-1">Live preview</div></div>
+              <div class="view-actions"></div>
+            </div>
+            <div class="view-content">
+              <div class="markdown-source-view cm-s-obsidian mod-cm6 node-insert-event is-readable-line-width is-live-preview is-folding show-properties">
+                <div class="cm-editor">
+                  <div tabindex="-1" class="cm-scroller">
+                    <div class="cm-sizer">
+                      <div class="inline-title" contenteditable="true" spellcheck="true" tabindex="-1" enterkeyhint="done">Live preview</div>
+                      <div class="cm-contentContainer">
+                        <div class="cm-content cm-lineWrapping" contenteditable="true" role="textbox" aria-multiline="true" data-language="hypermd" spellcheck="true" style="tab-size: 4;"><!-- no whitespace between lines: .cm-content is white-space: pre/break-spaces
+                          --><div class="HyperMD-header HyperMD-header-1 cm-line" dir="ltr"><span class="cm-header cm-header-1">Editor heading</span></div><!--
+                          --><div class="cm-line" dir="ltr">Plain editor line with <span class="cm-strong">bold</span>, <span class="cm-em">italic</span>, <span class="cm-inline-code">inline code</span> and a <span class="cm-hmd-internal-link"><span class="cm-underline">Getting started</span></span> link, long enough to wrap inside the pane.</div><!--
+                          --><div class="cm-line" dir="ltr"><br></div><!--
+                          --><div class="cm-active cm-line" dir="ltr">Active line: the caret sits here, so formatting stays visible <span class="cm-formatting cm-formatting-strong cm-strong">**</span><span class="cm-strong">like this</span><span class="cm-formatting cm-formatting-strong cm-strong">**</span>.</div><!--
+                          --><div class="HyperMD-header HyperMD-header-2 cm-line" dir="ltr"><span class="cm-header cm-header-2">Second level</span></div><!--
+                          --><div class="cm-line" dir="ltr">Another plain line to measure the editor body text against the reading view paragraph.</div></div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+</div>
+<div class="status-bar">
+  <div class="status-bar-item plugin-word-count"><span class="status-bar-item-segment">312 words</span></div>
+  <div class="status-bar-item plugin-word-count"><span class="status-bar-item-segment">1,984 characters</span></div>
+</div>
+</div>
+<pre id="out"></pre>
+</body>
+</html>
