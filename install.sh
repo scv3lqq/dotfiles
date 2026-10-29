@@ -474,6 +474,36 @@ if [[ "$OS" == "Darwin" ]]; then
 fi
 
 # =============================================================================
+# Obsidian: Ayu Ink theme from obsidian/
+# =============================================================================
+# obsidian.json lists the vaults. iCloud vaults are skipped: a synced link
+# points nowhere on the other devices.
+if [[ "$OS" == "Darwin" ]]; then
+  obsidian_json="$HOME/Library/Application Support/obsidian/obsidian.json"
+  if [[ ! -f "$obsidian_json" ]] || ! command -v jq >/dev/null 2>&1; then
+    echo "Skipping Obsidian theme: no obsidian.json or jq, start Obsidian once and rerun"
+  else
+    echo "Linking Obsidian theme into local vaults..."
+    while IFS= read -r vault; do
+      [[ -d "$vault/.obsidian" ]] || continue
+      case "$vault" in
+        "$HOME/Library/Mobile Documents/"*)
+          echo "Skipping $vault: iCloud vault"
+          continue
+          ;;
+      esac
+      dst="$vault/.obsidian/themes/Ayu Ink"
+      if [[ -e "$dst" && ! -L "$dst" ]]; then
+        echo "Skipping $dst: a regular directory, move it aside first"
+        continue
+      fi
+      mkdir -p "$vault/.obsidian/themes"
+      ln -sfn "$DOTFILES/obsidian/Ayu Ink" "$dst"
+    done < <(jq -r '.vaults[].path' "$obsidian_json")
+  fi
+fi
+
+# =============================================================================
 # Personal-data guard for this repo
 # =============================================================================
 # .githooks/pre-commit refuses staged lines matching ~/.claude/private/denylist
