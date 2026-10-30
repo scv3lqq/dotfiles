@@ -35,27 +35,36 @@ grep -F 'IMPLEMENTER: Claude Sonnet 5.5 (`claude-sonnet-5-5`), max effort' CLAUD
 grep -F '(`opus` in settings)' CLAUDE.md
 grep -F 'PLAN: the plan file' claude/agents/skill-dry-run.md
 grep -F 'With PLAN:' claude/agents/skill-dry-run.md
+grep -F 'task gates from the plan' claude/agents/implementer.md
 ```
 
 Expected: `EDITS OK: 8 edits`; both agent lines read `model: claude-sonnet-5-5 effort: max`; both
-haiku counts are 0; each of the four `grep -F` prints one line.
+haiku counts are 0; each of the five `grep -F` prints one line. Run without `set -e`: `grep -c` exits
+1 on a zero count.
 
-Full Gates add, after the commit:
+Full Gates add the checks below. They read `HEAD`, so for this plan the orchestrator commits T1 first
+and runs the full Gates after it.
 
 ```bash
-git diff -U0 922354b HEAD | python3 -c 'import sys; print(sum(chr(0x2014) in l for l in sys.stdin if l.startswith("+") and not l.startswith("+++")))'
-git diff --name-only 922354b HEAD
+BASE=$(git merge-base main HEAD)
+git diff -U0 "$BASE" HEAD -- . ':!plans/feature-agents-sonnet-max.md' | python3 -c 'import sys; print(sum(chr(0x2014) in l for l in sys.stdin if l.startswith("+") and not l.startswith("+++")))'
+git diff --name-only "$BASE" HEAD
 wc -l < CLAUDE.md
 ```
 
 Expected: `0`; exactly `CLAUDE.md`, `claude/agents/implementer.md`, `claude/agents/plan-reviewer.md`,
 `claude/agents/skill-dry-run.md`, `claude/skills/feature/SKILL.md`,
-`plans/feature-agents-sonnet-max.md`; under 200.
+`plans/feature-agents-sonnet-max.md`; `200`, the base count (this plan adds no lines to it).
+
+Frontmatter evidence, orchestrator only: T1's @plan-reviewer is dispatched with no `model` or `effort`
+override, then its transcript is grepped for `"model":` and `"effort":`. Anything but
+`claude-sonnet-5-5` and `max` means the session cached the old definition or `modelSettings` wins:
+settle it with a probe in a fresh `claude -p` session, before merging.
 
 Base result (`922354b`), task gates only: `FAIL: file differs from base + plan edits` (so all eight
 old blocks match once); agent lines `model: claude-haiku-5-5 effort: medium` and
 `model: claude-sonnet-5-5 effort: medium`; haiku counts 2 in `SKILL.md`, 1 in `implementer.md`; all
-four `grep -F` find nothing.
+five `grep -F` find nothing. `wc -l < CLAUDE.md` is 200.
 
 ## Shared definitions
 
@@ -75,7 +84,7 @@ Dependencies: none. Do not commit: the orchestrator commits.
 2. The other four files, with Edit, exactly the Old/New pairs under "Other files".
 
 Must not change: anything else in those files, including the em dashes already in `implementer.md`,
-`plan-reviewer.md` and `SKILL.md`. Task gates: the first block in Gates.
+`plan-reviewer.md` and `SKILL.md`, except the one E6 removes. Task gates: the first block in Gates.
 Done: the task gates print their expected results.
 
 ### SKILL.md edits
@@ -139,11 +148,11 @@ send the plan to @skill-dry-run (its PLAN input) before phase 3
 **E6.** Phase 3, 529 fallback.
 
 ```md E6-old
-another tier (haiku → sonnet, sonnet ⇄ opus)
+another tier (haiku → sonnet, sonnet ⇄ opus) — never
 ```
 
 ```md E6-new
-another tier (sonnet ⇄ opus)
+another tier (sonnet ⇄ opus), never
 ```
 
 **E7.** Phase 4, the validator also runs the full suite.
@@ -175,6 +184,7 @@ implementer on opus (via `model`)
 
 - Old: `model: claude-haiku-5-5` New: `model: claude-sonnet-5-5`
 - Old: `effort: medium` New: `effort: max`
+- Old: `Run the gate commands listed in the plan` New: `Run your task's task gates from the plan`
 
 `claude/agents/plan-reviewer.md`
 
@@ -207,7 +217,8 @@ None: one task.
 ## Not doing
 
 - `claude/settings.json`: `modelSettings` for Sonnet stays `medium`. It sets the session level, the
-  docs imply frontmatter wins over it but do not say so; the cycle's reviewer transcript checks it.
+  docs imply frontmatter wins over it but do not say so; the frontmatter evidence step in Gates checks it.
+- Trimming `CLAUDE.md` below its own 200-line limit: it is at 200 before and after this plan.
 - User-level `Explore.md` or `general-purpose.md` overrides: they would change every session, and the
   `general-purpose` override is undocumented.
 - `acceptance-validator` and `skill-dry-run` models, the main session's model.
