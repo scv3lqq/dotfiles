@@ -32,7 +32,7 @@ Main pieces:
 - `nvim/`: Neovim config (lazy.nvim, plugins under `nvim/lua/plugins/`).
 - `zsh/`, `tmux/tmux.conf`, `starship/starship.toml`: shell, multiplexer, prompt.
 
-No database, no migrations, no service/API, no CI, no test suite.
+No database, migrations, service/API or CI. `just check` validates shell and Codex setup.
 
 # Repository map
 
@@ -60,15 +60,14 @@ No database, no migrations, no service/API, no CI, no test suite.
   dir links; `CLAUDE.md`, `settings.json` on macOS only). Personal facts live in
   `~/.claude/private/`, never linked; `.githooks/pre-commit` refuses staged
   lines matching its `denylist`. Design: `plans/claude-*.md`.
+- `codex/`: native agents, guidance, skill adapters, Ayu theme and isolated setup checks.
 - `plans/`: PLANNER's implementation plans (`<task-name>.md`).
 - `notes/`: personal reference notes, not workflow docs.
-- `everything.md`: Russian cheatsheet of the whole stack and keymaps, derived
-  from the configs, so it lags them.
+- `everything.md`: Russian stack/keymap cheatsheet, derived from configs and sometimes stale.
 - `AGENTS.md`: symlink to this file for Codex; edit `CLAUDE.md`.
 - `README.md`: user-facing setup.
 - `assets/screenshots/`: README shots of a made-up demo; retake: `readme-screenshots` skill.
-- `.claude/skills/`: project skills `setup-dotfiles` (`/setup-dotfiles`), `docs-sync`,
-  `readme-screenshots`.
+- `.claude/skills/`: project skills `setup-dotfiles`, `docs-sync`, `readme-screenshots`.
 
 # Planning for the implementer
 

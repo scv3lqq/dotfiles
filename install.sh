@@ -443,6 +443,17 @@ else
 fi
 
 # =============================================================================
+# Codex: native agents, shared skills and Ayu syntax theme
+# =============================================================================
+if command -v python3 >/dev/null 2>&1 &&
+   python3 -c 'import sys; sys.exit(sys.version_info < (3, 11))'; then
+  echo "Configuring Codex..."
+  python3 "$DOTFILES/codex/setup.py" --apply
+else
+  echo "Skipping Codex setup: Python 3.11+ is required"
+fi
+
+# =============================================================================
 # Zen Browser: prefs and UI theme from zen/
 # =============================================================================
 # The profile exists only after Zen's first start; installs.ini names the one
