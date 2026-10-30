@@ -100,8 +100,11 @@ and no selected CLI syntax theme. Project .agents/ is untracked user content.
    existing config semantics unchanged except tui.theme, invalid config no
    writes, private backup/file modes, unsupported TOML shapes fail before writes,
    and Linux mac-* filtering.
-5. Live links resolve to repo sources; config selects ayu-claude, model and
-   unrelated settings match the backup; existing third-party entries remain.
+5. Live links resolve to repo sources; config selects ayu-claude. Compare model
+   and unrelated settings with the backup immediately after the setup transaction,
+   before launching Codex. Preserve that evidence; at final delivery verify owned
+   settings and existing third-party files, and report any subsequent config drift
+   without overwriting unrelated current settings.
 6. install.sh calls the setup helper in the Claude/Codex integration area;
    it skips with a clear message if Python 3.11+ is missing. Never run the full
    installer as a test or for live application in this task.
@@ -209,3 +212,51 @@ no link is silently replaced. No secrets enter git, plans or logs.
 No MCP/permission/auth changes, plugin reinstall, memory/history migration,
 Claude changes, terminal-wide palette changes, statusline/hooks translation,
 or promise of identical Codex CLI chrome colors. No broad repo refactoring.
+
+## Verification result
+
+- Independent T1, T2 and T3 reviews: PASS. Final acceptance: PASS on all eight
+  criteria, with the documented desktop UI access limitation.
+- `just check`: 15 isolated fixture tests, shell syntax and asset checks pass.
+  Both required mutations were caught in separate scratch copies.
+- Live application: 28 links including guidance; existing config semantics
+  except tui.theme, file mode and eight preexisting files remain unchanged.
+  Backup content and private modes verified. Repeated preview reports no changes.
+- Native Codex 0.166.0: all five roles found (four added plus existing Go reviewer),
+  22 personal skills enabled, zero loader errors, theme ayu-claude selected.
+- Actual CLI /theme menu shows `ayu-claude (custom) (current)` with its code
+  preview. No model task was sent; the test CLI exited successfully.
+- Desktop appearance requires manual Settings > Appearance because Computer Use
+  explicitly blocks controlling the application. Colors are recorded in README.
+- Scope decisions: preserve the current Codex model, share general skills by
+  links, adapt feature/retro, and retain existing third-party skill versions.
+  Sandbox escalation was necessary for official-doc download, checkout guard,
+  live home-directory writes and native CLI verification. No permissions,
+  credentials or authentication settings were changed by this setup.
+- Finalization encountered configured hook commands whose local script files
+  were missing. They blocked shell commands before execution. The user restored
+  the missing links from the existing claude/hooks sources; hook definitions
+  and enforcement settings were preserved.
+
+## Iteration 1: verification boundary
+
+The immediate post-apply comparison passed. A later comparison, after the CLI
+smoke test and hook recovery, found changes under four unrelated paths:
+`tui.model_availability_nux.gpt-6.1-sol`, `hooks.state`, `mcp_servers.doop`, and
+`mcp_servers.node_repl.args`. The source of each subsequent change is not known.
+Preserve current integration and trust state; do not restore an older full config.
+
+An independent review verified that setup.py changes only tui.theme, validates
+the candidate against exactly that semantic change, and invokes no Codex or hook
+migration process. A targeted synthetic check preserved all four unrelated paths
+and was byte-identical on repeat. No implementation or test change is warranted.
+Criterion 5 now distinguishes the setup transaction from later application writes.
+
+All six referenced hook scripts now resolve to repo sources. Synthetic native
+Bash payloads prove shell restrictions and git-subject validation still work.
+The existing no-em-dash and skill-note-sync hooks do not consume Codex apply_patch
+input; full hook translation remains outside this task. No notification, vault
+or tmux-state hooks were manually exercised by the audit.
+
+Revalidation after the correction: PASS. Current drift is limited to the four
+documented paths; model, reasoning, approval and sandbox parameters are unchanged.
