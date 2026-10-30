@@ -26,6 +26,13 @@ and no selected CLI syntax theme. Project .agents/ is untracked user content.
 - `codex --version`: 0.166.0. `--strict-config features list` is unsupported;
   do not use that command as a gate.
 - Checkout guard completed with real tmux access before creating the branch.
+- Requested recent-session audit: 8 recent primary sessions, 62 agent calls.
+  Scope ownership appeared in 41 calls, report format in 52, a plan reference
+  in 27; 58 calls inherited model settings. Confirmed workflow uses research,
+  plan dry-run, implementation, independent review, final acceptance, and repeat
+  validation after fixes. Preserve these practices and use send_message for a
+  running agent, followup_task for an idle one. Counts describe observed calls,
+  not verified task completion. No transcripts or private details are copied.
 
 ## Shared definitions
 
@@ -81,7 +88,8 @@ and no selected CLI syntax theme. Project .agents/ is untracked user content.
 1. Four role files parse as TOML with required fields and the efforts above;
    their instructions preserve scoped implementation and independent review.
 2. Both adapter skills have valid name/description and resolve required source
-   resources. Native skill discovery sees all 22 personal names after apply.
+   resources. Native skill discovery sees all 22 personal names on macOS after
+   apply (20 on Linux, excluding mac-audit and mac-space).
 3. Theme parses as plist with the specified base palette; native Codex selects
    the custom syntax theme. Desktop colors are applied through public UI when
    the requested surface includes desktop, with a visual check. Current desktop
@@ -165,6 +173,9 @@ README adds one compact Codex subsection near Claude setup with exact command
 `python3 codex/setup.py --apply`, paths and caveats from criterion 7.
 CLAUDE.md map adds codex/ in existing map, keeping <200 lines.
 For existing prose use plan_edits.py exact old/new workflow before dispatch.
+Exact prose blocks: plans/codex-claude-parity-readme.md for README.md and
+plans/codex-claude-parity-guidance.md for CLAUDE.md, both against base 9e75c74.
+Apply and check each with claude/skills/feature/plan_edits.py.
 Task gates: `just check`; `git diff --check`; `wc -l CLAUDE.md`.
 
 ### T4: live apply and validation
