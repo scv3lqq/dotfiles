@@ -222,3 +222,16 @@ old model defaults or unsupported aliases. These artifacts will not replace the
 existing managed setup. Source files remain unchanged. No private reports are stored
 in git. This is why the requested skill is used for diagnostics/staging and checked
 changes are applied through repository-owned helpers.
+
+## Implementation results
+
+T1 and T2 independent reviews passed. The three required mutations each failed
+the intended test on isolated archived copies. The full gate passed 43 tests.
+Helper preview, apply and repeated apply succeeded against the selected sources.
+Native installation succeeded for the local marketplace and all four plugins.
+Native RPC loaded all 37 exact expected skill names with zero errors, Data's
+SessionStart/Stop hooks and the 0bull MCP definition. Only the selected marketplace
+and plugin registrations changed in config; existing global hooks were byte-identical.
+Role discovery loaded the four approved definitions; no model request was needed.
+Hook execution, OAuth-dependent iPhone actions and external Data services were not
+claimed as tested. Hook trust and service authentication remain runtime actions.
