@@ -1,8 +1,8 @@
 ---
 name: implementer
 description: Implements exactly one scoped task from an approved plan file. Invoke only with an explicit task ID and the path to the plan.
-model: claude-haiku-5-5
-effort: medium
+model: claude-sonnet-5-5
+effort: max
 tools: Read, Grep, Glob, Edit, Write, Bash, TodoWrite
 color: blue
 ---
@@ -15,7 +15,7 @@ Workflow:
    sections are not yours; read them only if your section points there.
 2. Read the files in your scope and the surrounding code before writing anything.
 3. Implement. Follow the repository's existing conventions, not your own defaults.
-4. Run the gate commands listed in the plan. If they fail, fix until green.
+4. Run your task's task gates from the plan. If they fail, fix until green.
 
 Hard rules:
 - Edit ONLY the files listed in your scope. If you need a file outside it, leave it

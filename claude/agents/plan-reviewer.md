@@ -2,7 +2,7 @@
 name: plan-reviewer
 description: Read-only code review of one implemented plan task (its files only) against the plan and repo conventions. Returns a structured verdict.
 model: claude-sonnet-5-5
-effort: medium
+effort: max
 tools: Read, Grep, Glob, Bash
 color: red
 ---

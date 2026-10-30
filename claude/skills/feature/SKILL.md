@@ -17,6 +17,9 @@ goes through `implementer` subagents, code review goes through `plan-reviewer`, 
 - Create the branch the way the project `CLAUDE.md` prescribes: if it mandates worktrees, `git worktree add <its path> -b feat/<kebab-slug-from-task> <base>` and run everything (gates, commits, implementer/reviewer prompts) inside that worktree using its gate command form; otherwise `git switch -c feat/<kebab-slug-from-task>`. Everything after this happens there.
 
 ## Phase 1 — research
+Every Explore and general-purpose dispatch in this phase passes `model: sonnet` and `effort: max`:
+built-ins have no frontmatter of ours to carry them.
+
 Before dispatching research: `grep -H -m1 '^paths:' .claude/rules/*.md` (never `cat`/`sed` rule
 bodies just to list them — some rules are >10KB), then read only the rules whose `paths`
 match the task scope AND whose matching files you will NOT Read directly — path-scoped
@@ -78,14 +81,13 @@ Slice tasks so each one is self-contained: an agent sees only its prompt and thi
 Slice for parallelism: ONE source file per task (a test file is its own task, depending on
 the task whose file it tests). Give every task its own **task gates**: every full-Gates check
 that can be scoped to its file or package (formatter, vet/type-check, the repo linter), plus
-its package's tests, so a scoped gate never passes what the full Gates later reject. The full **Gates** run only in phase 4.
+its package's tests, so a scoped gate never passes what the full Gates later reject. Implementers never run the full **Gates**: the orchestrator runs them after each wave and in phase 4, the validator in phase 5.
 
-All design thinking happens here, in the orchestrator: implementers run on a small model
-and only transcribe the spec. Every decision (algorithm, data shape, names, edge-case
+All design thinking happens here, in the orchestrator: implementers
+only transcribe the spec. Every decision (algorithm, data shape, names, edge-case
 handling, error text) is made in the plan; a section that leaves a choice open is not ready.
 If a task's spec would amount to the whole file (over ~60 lines of non-obvious logic), do
-not write the file into the plan: give behavior, decisions and the spike's snippets, and
-dispatch that implementer with `model: sonnet`.
+not write the file into the plan: give behavior, decisions and the spike's snippets.
 Implementers read only **Shared definitions** plus their own task section,
 so each section is a complete spec, never "see T2" or "as discussed": the file and verified
 anchor lines; every symbol to add or change with its exact signature; behavior including
@@ -126,7 +128,7 @@ committed plan file is one more line in the branch diff: if an acceptance criter
 file set, say so in the Workflow block.
 
 When tasks transcribe prose that agents will follow (skills, agent definitions, commands
-they are told to run), send the plan to @skill-dry-run before phase 3 and fold its findings
+they are told to run), send the plan to @skill-dry-run (its PLAN input) before phase 3 and fold its findings
 in: found after implementation, each one costs a full iteration (2026-10-22: five
 iterations on one mutation-check paragraph). A NEW skill also needs its line in the vault
 skills index before an agent writes it: the `skill-note-sync` hook blocks the write otherwise.
@@ -185,15 +187,16 @@ If an agent dies (API error / usage limit): inspect `git diff` first; re-dispatc
 the missing part and finish mechanical leftovers (format) yourself. A usage-limit death
 (429): after the reset, resume the same agent via SendMessage (context intact; it restarts
 a half-done step on a fresh copy) instead of a new dispatch. On `529 Overloaded`
-re-dispatch at once with a `model` override to another tier (haiku → sonnet, sonnet ⇄ opus) — never
+re-dispatch at once with a `model` override to another tier (sonnet ⇄ opus), never
 retry the same model blind; it cost two dead dispatches on 2026-09-03.
 
 ## Phase 4 — gates
 Run build/test/lint yourself. Red is a fact — no reviewer needed, go straight to phase 6.
 Verify with `--stat` + gates; read an implementer's diff only when a later task consumes
 its API (check the signatures) or its report raises a doubt — full code review is phase 5.
-The full test suite is the orchestrator's alone: one run at a time, never two in parallel;
-every subagent prompt carries scoped gates plus "never the full suite". A run the harness
+The full test suite runs one at a time, never two in parallel: the orchestrator runs it, and the
+@acceptance-validator in phase 5 once no orchestrator run is active; every other subagent prompt
+carries scoped gates plus "never the full suite". A run the harness
 kills for memory pressure is restarted only on the user's word (2026-10-23).
 
 Exception to "go straight to phase 6": a red gate whose cause is obvious and confined to
@@ -242,7 +245,7 @@ the rest into the final report as documented follow-ups. Does not count as an it
 Stop conditions — honor them, no "just one more pass":
 - 5 iterations spent
 - the same finding three times in a row. After the second, its fix goes to a fresh
-  implementer one tier up (haiku → sonnet → opus, via `model`) whose prompt summarizes
+  implementer on opus (via `model`) whose prompt summarizes
   both failed attempts
 - a fix requires going outside the plan's boundaries
 - a gate does not run

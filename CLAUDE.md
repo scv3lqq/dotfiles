@@ -4,8 +4,8 @@ Claude Code (PLANNER/REVIEWER) is the thinking partner; a separate agent (the
 implementer) writes the code. Roles are configuration: change a name below and
 the workflow is unchanged.
 
-- PLANNER / REVIEWER: Claude Code, Opus 5.5 (`opus[1m]` in settings), xhigh effort.
-- IMPLEMENTER: Claude Haiku 5.5 (`claude-haiku-5-5`), medium effort; may also be Codex,
+- PLANNER / REVIEWER: Claude Code, Opus 5.5 (`opus` in settings), xhigh effort.
+- IMPLEMENTER: Claude Sonnet 5.5 (`claude-sonnet-5-5`), max effort; may also be Codex,
   which reads this file through the `AGENTS.md` symlink.
 
 PLANNER must:
