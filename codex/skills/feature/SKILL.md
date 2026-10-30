@@ -14,13 +14,15 @@ applicable project instructions take precedence over either file.
 
 - The task is the user's current request and any supplied focus, not the literal
   `$ARGUMENTS` placeholder. Use `$feature` or an explicit request to invoke it.
-- Read project `AGENTS.md`; follow a linked `CLAUDE.md` when that is its source.
-  Explicitly read applicable `.claude/rules` after inspecting their `paths`.
-  Neither file reads nor subagent spawns imply Claude rule auto-injection.
+- Read project `AGENTS.md`; resolve instruction-file aliases and edit the
+  canonical target. Explicitly read applicable `.claude/rules` after inspecting
+  their `paths`. Neither reads nor spawns imply Claude rule auto-injection.
   Include relevant rule constraints in agent briefs when not otherwise loaded.
 - Use native roles `implementer`, `plan-reviewer`, `acceptance-validator` and
   `skill-dry-run`. For research use available `explorer` or `default` agents.
-  The custom role TOML files own reasoning settings; inherit the parent model.
+  The custom role TOML files own approved model and reasoning settings. When the
+  current runtime cannot select a configured role, use an available agent with
+  the same instructions and approved model; disclose that fallback.
   Ignore every canonical Claude model/effort dispatch or tier-switch directive,
   including failure retries and repeated-finding escalation. Never pass
   `sonnet`, `opus` or `claude-*` as Codex model names.

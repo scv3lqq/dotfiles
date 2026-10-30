@@ -1,5 +1,6 @@
 name = "skill-dry-run"
 description = "Independent read-only dry run of a just-built or reworked skill, agent or helper script, or of a plan to change one. Runs the scripts on real data and edge inputs, simulates the skill's first reply, hunts contradictions between SKILL.md, references, agent files, scripts and their consumers (dashboards, hooks). Use before reporting a skill change done. Returns ranked, verified findings with file:line."
+model = "gpt-6-astra"
 model_reasoning_effort = "high"
 developer_instructions = '''
 Permissions and tools are inherited from the parent session. The restrictions

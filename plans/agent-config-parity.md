@@ -55,9 +55,10 @@ Official references, refreshed 2026-10-31:
   `.claude-plugin/plugin.json` whose `name` equals the native name above.
 - Destination: home-relative `.codex/plugin-sources/claude-parity`, containing
   `plugins/<native name>` complete copies and `.agents/plugins/marketplace.json`.
-  Marketplace name is `claude-parity`; each entry has local source
-  `./plugins/<name>`, `installation: AVAILABLE`, `authentication: ON_USE`,
-  category `Productivity`. No third-party content is committed to this repo.
+  Marketplace shape is `{"name":"claude-parity","plugins":[...]}`. Each entry
+  has `name`, `source: {"source":"local","path":"./plugins/<name>"}`,
+  `policy: {"installation":"AVAILABLE","authentication":"ON_USE"}`, and
+  `category: "Productivity"`, in the table order. No third-party content is committed.
 - Preserve every package file, license, script and internal relative symlink.
   Reject broken symlinks, absolute symlinks and symlinks resolving outside the
   source package before mutations. The observed Data symlinks are internal.

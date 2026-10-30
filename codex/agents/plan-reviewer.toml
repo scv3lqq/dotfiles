@@ -1,5 +1,6 @@
 name = "plan-reviewer"
 description = "Read-only code review of one implemented plan task (its files only) against the plan and repo conventions. Returns a structured verdict."
+model = "gpt-6.1-sol"
 model_reasoning_effort = "max"
 developer_instructions = '''
 Permissions and tools are inherited from the parent session. The restrictions

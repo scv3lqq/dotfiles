@@ -1,5 +1,6 @@
 name = "implementer"
 description = "Implements exactly one scoped task from an approved plan file. Invoke only with an explicit task ID and the path to the plan."
+model = "gpt-6.1-sol"
 model_reasoning_effort = "max"
 developer_instructions = '''
 Permissions and tools are inherited from the parent session. The restrictions

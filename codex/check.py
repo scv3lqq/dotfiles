@@ -8,10 +8,10 @@ import tomllib
 
 ROOT = Path(__file__).resolve().parent
 ROLES = (
-    ("implementer", "max"),
-    ("plan-reviewer", "max"),
-    ("acceptance-validator", "xhigh"),
-    ("skill-dry-run", "high"),
+    ("implementer", "gpt-6.1-sol", "max"),
+    ("plan-reviewer", "gpt-6.1-sol", "max"),
+    ("acceptance-validator", "gpt-6-astra", "xhigh"),
+    ("skill-dry-run", "gpt-6-astra", "high"),
 )
 PALETTE = frozenset({
     "#0B0E14", "#E8E6DD", "#CDA1FA", "#D2A6FF", "#303030", "#E6B450",
@@ -22,7 +22,7 @@ PALETTE = frozenset({
 
 
 def check_agents() -> None:
-    for name, effort in ROLES:
+    for name, model, effort in ROLES:
         path = ROOT / "agents" / f"{name}.toml"
         agent = tomllib.loads(path.read_text())
         assert agent.get("name") == name, f"{path}: wrong agent name"
@@ -30,8 +30,41 @@ def check_agents() -> None:
             value = agent.get(field)
             assert isinstance(value, str) and value.strip(), f"{path}: missing {field}"
         assert agent.get("model_reasoning_effort") == effort, f"{path}: wrong effort"
-        assert "model" not in agent, f"{path}: model must be inherited"
-    print("PASS: four native agents and inherited models")
+        assert agent.get("model") == model, f"{path}: wrong approved model"
+    print("PASS: four native agents with approved models and efforts")
+
+
+def check_guidance() -> None:
+    canonical = ROOT.parent / "AGENTS.md"
+    compatibility = ROOT.parent / "CLAUDE.md"
+    global_guidance = ROOT / "AGENTS.md"
+    assert canonical.is_file() and not canonical.is_symlink(), (
+        f"{canonical}: canonical guidance must be a regular file"
+    )
+    assert compatibility.is_symlink(), f"{compatibility}: compatibility guidance must be a symlink"
+    assert compatibility.readlink() == Path("AGENTS.md"), (
+        f"{compatibility}: compatibility symlink must have relative target AGENTS.md"
+    )
+    assert compatibility.read_bytes() == canonical.read_bytes(), (
+        f"{compatibility}: root guidance reads must be identical"
+    )
+    assert global_guidance.is_file() and not global_guidance.is_symlink(), (
+        f"{global_guidance}: global guidance must be a regular file"
+    )
+    for path in (canonical, global_guidance):
+        assert not re.search(r"claude|codex|anthropic|openai|opus|sonnet", path.read_text(), re.I), (
+            f"{path}: guidance must have no product, provider or model-family references"
+        )
+    assert len(canonical.read_text().splitlines()) < 200, (
+        f"{canonical}: canonical guidance must remain under 200 lines"
+    )
+    guard = ROOT.parent / "bin/wait-free-checkout.sh"
+    assert guard.is_symlink(), f"{guard}: checkout guard alias must be a symlink"
+    assert guard.readlink() == Path("../.claude/bin/wait-free-checkout.sh"), (
+        f"{guard}: checkout guard alias must have the existing relative target"
+    )
+    assert guard.is_file(), f"{guard}: checkout guard alias must resolve to a regular file"
+    print("PASS: neutral guidance, canonical file and compatibility links")
 
 
 def check_theme() -> None:
@@ -70,5 +103,6 @@ def check_skills() -> None:
 
 if __name__ == "__main__":
     check_agents()
+    check_guidance()
     check_theme()
     check_skills()
