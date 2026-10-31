@@ -178,6 +178,11 @@
       }
     ]
   },
+  "statusLine": {
+    "type": "command",
+    "command": "~/.claude/statusline.sh",
+    "refreshInterval": 30
+  },
   "enabledPlugins": {
     "0bull@anthropic-plugin-directory": true,
     "data@claude-plugins-official": true,
@@ -230,10 +235,5 @@
   "skipDangerousModePermissionPrompt": true,
   "theme": "custom:ayu",
   "preferredNotifChannel": "notifications_disabled",
-  "voiceEnabled": false,
-  "statusLine": {
-    "type": "command",
-    "command": "~/.claude/statusline.sh",
-    "refreshInterval": 30
-  }
+  "voiceEnabled": false
 }
