@@ -66,7 +66,7 @@
 - Subject ≤ 72 chars; count it before sending, and keep one `git commit` per Bash call: a denied subject aborts the whole chained command, `git add` included
 - My repos (origin `github.com/scv3lqq/*`): every commit SSH-signed; `git config gpg.format` empty → set it up repo-local first (block "Commit signing for this repo" in `~/dotfiles/install.sh`). Other repos: sign only if configured, never block on a missing key
 - Per-service SemVer tags: <service>/v<M>.<m>.<p>
-- Trunk-based; small PRs; a finished, verified change: commit and push without asking, then check its CI run
+- Trunk-based; small PRs; a finished, verified change: commit and push without asking, then wait for its CI run: `~/.claude/bin/ci-wait.sh` in background (a run listed right after a push may not exist yet)
 - Public repos: English only (UI text, prompts, test data too), nothing personal (hosts, IPs, ports, domains, home paths), no infra of mine unless I ask; publish and harden via skill `public-repo`
 - No AI attribution anywhere:
   - no `🤖 Generated with [Claude Code](...)` line
