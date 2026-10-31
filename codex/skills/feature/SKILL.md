@@ -21,8 +21,9 @@ applicable project instructions take precedence over either file.
 - Use native roles `implementer`, `plan-reviewer`, `acceptance-validator` and
   `skill-dry-run`. For research use available `explorer` or `default` agents.
   The custom role TOML files own approved model and reasoning settings. When the
-  current runtime cannot select a configured role, use an available agent with
-  the same instructions and approved model; disclose that fallback.
+  current runtime cannot select a configured role, read its TOML and pass the full
+  `developer_instructions`, approved model and effort to an available agent;
+  disclose that fallback.
   Ignore every canonical Claude model/effort dispatch or tier-switch directive,
   including failure retries and repeated-finding escalation. Never pass
   `sonnet`, `opus` or `claude-*` as Codex model names.
