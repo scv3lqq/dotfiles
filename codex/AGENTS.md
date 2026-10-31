@@ -13,6 +13,16 @@
 - Automate authorized steps around passwords, OAuth and GUI login; leave the user
   one short list of steps that require their participation.
 
+## Final report
+
+- After a task that edited files, ran checks or found problems, end with a short report: load the `work-report` skill and follow its template and rules
+- Without the skill, use this shape and skip empty sections: status icon (✅ done and verified, ⚠️ partly unverified, ❌ blocked) + a title saying what is true now, a one-sentence outcome, then **Changed**, **Checked**, **Next**, **Your call**; labels in the reply language
+- Lead with the outcome, not the process: the whole report fits on one screen (~15 lines, 20 max), one line per bullet, paths and commands in backticks (a path with its line number where it helps), no opener or closing offer
+- ✅ only for a check run in this session (by you or a dispatched agent) and seen passing; list skipped checks with the reason
+- **Next**: at most 3 concrete items, ranked 🔴 must / 🟡 should / ⚪ nice; **Your call**: at most one question
+- An active skill's own report items go into these sections (items that fit none follow as one short block); a layout the skill spells out replaces this shape
+- No template for questions, explanations, one-line fixes, text for colleagues (rule above) or a subagent's report to its orchestrator (its brief's or agent definition's format)
+
 ## Code quality
 
 - TDD: write meaningful tests first for behavioral changes, then implement.
