@@ -155,6 +155,9 @@ Commit the plan, print a short summary (goal, tasks, gates), and proceed to phas
 immediately — no approval needed.
 
 ## Phase 3 — dispatch
+Before each wave, `git branch --show-current` must print `feat/<slug>`: another session can
+switch a shared checkout (2026-10-31: moved to `main` between plan and first wave, caught only by
+the user). Otherwise stop, find who moved it, and `git switch feat/<slug>` once the checkout is free.
 One @implementer per ready task. The prompt must be self-contained:
 task ID · branch · path to the plan · scope · files · relevant paths from phase 1 ·
 conventions · definition of done · the task's task gates (not the full Gates). (Prohibitions and the report
