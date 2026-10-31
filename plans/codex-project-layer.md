@@ -51,10 +51,14 @@ the other skill and all six resources match the tracked sources exactly.
 5. `just check` passes before commits. Save command/exit/output logs privately
    and associate them with commits. Check `git diff --check 6e44010` before commit
    and `git diff --check 6e44010..HEAD` before finalization.
-6. Global config/hooks hashes and source skill files are unchanged; agent model
-   settings stay unchanged and the one role-body edit matches its exact prose plan. Run
-   native verification on the real already-trusted checkout and isolated fixtures,
-   without model requests or changes to the user's trust configuration.
+6. Source skill files and agent model settings stay unchanged; the one role-body
+   edit matches its exact prose plan. Preserve global config/hooks across task
+   writes and native verification. Compare the initial baseline and snapshots
+   before and after native checks. For unrelated concurrent drift, prove its
+   timing lies outside task writes, retain the current contents, and record the
+   exception privately. Never restore user settings merely to match an old hash.
+   Run native verification on the real already-trusted checkout and isolated
+   fixtures, without model requests or changes to the user's trust configuration.
 
 ## T1: Add and validate the project layer
 
