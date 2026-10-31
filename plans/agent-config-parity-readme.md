@@ -78,4 +78,3 @@ accent `#CDA1FA`, and code font `JetBrainsMono Nerd Font`.
 
 Run `just check` for shell syntax, isolated setup/plugin tests and asset checks.
 ```
-

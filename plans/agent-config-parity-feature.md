@@ -35,4 +35,3 @@ Base: `034acd6`. Apply and check with the canonical prose helper.
   Ignore every canonical Claude model/effort dispatch or tier-switch directive,
   including failure retries and repeated-finding escalation. Never pass
 ```
-

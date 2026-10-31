@@ -60,4 +60,3 @@ Base: `034acd6`. Apply and check with the canonical prose helper.
 - context7 supplies current library docs; firecrawl supplies page research when
   available. Use official source/schema evidence for exact behavior.
 ```
-

@@ -153,4 +153,3 @@ no duplication with `README.md`; under 200 lines (`AGENTS.md` is a link to it).
 ```md E10-new
 no duplication with `README.md`; keep the canonical `AGENTS.md` under 200 lines.
 ```
-
