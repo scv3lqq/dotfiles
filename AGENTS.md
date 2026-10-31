@@ -100,9 +100,9 @@ or not, with no OK wait. Use its available runtime adapter. Overrides here:
   dirty worktree, first run); edits under ~15 lines total make one task.
 - Its agents implement and independently review, using their report formats.
 - Branch: `git switch -c feat/<slug>` here, no worktree: gates read live paths.
-- Shared checkout: before `git switch -c` run `bin/wait-free-checkout.sh` in
-  the background (exit 0: clean `main`, no other busy pane reported by the
-  configured activity integration). A direct commit needs no open `feat/*`
+- Shared checkout: run `bin/wait-free-checkout.sh` in the background and wait
+  for exit 0 before `git switch -c` (clean `main`, no other busy pane reported
+  by the configured activity integration). A direct commit needs no open `feat/*`
   branch and is chained after a branch == `main` check.
 - Third-party targets outside git: back them up to the existing private backup
   directory before dispatch and gate on `diff` against the backup.
