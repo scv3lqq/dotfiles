@@ -173,7 +173,7 @@ The tracked `.agents/skills/` links the three project skills and their resources
 to `.claude/skills/`, plus the native `feature` and `retro` workflows from
 `codex/skills/`. The `codex/` directory remains the source for global setup.
 
-Codex shares 22 personal skills and has four native roles:
+Codex shares 23 personal skills and has four native roles:
 
 | Role | Model | Reasoning effort |
 | --- | --- | --- |
