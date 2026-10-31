@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import copy
 import hashlib
 import json
 import os
@@ -135,6 +136,25 @@ def _validate_mcp(source: Path, manifest: dict[str, JSONValue], name: str) -> No
         _object(_read_json(path, f"{name} MCP definition"), f"{name} MCP definition")
 
 
+def _codex_data_hooks(hooks: dict[str, JSONValue]) -> dict[str, JSONValue]:
+    adapted = copy.deepcopy(hooks)
+    stop = adapted.get("Stop")
+    if not isinstance(stop, list):
+        return adapted
+    cleanup = "uv run ${CLAUDE_PLUGIN_ROOT}/skills/analyzing-data/scripts/cli.py stop"
+    for entry in stop:
+        if not isinstance(entry, dict):
+            continue
+        handlers = entry.get("hooks")
+        if not isinstance(handlers, list):
+            continue
+        for handler in handlers:
+            if (isinstance(handler, dict) and handler.get("type") == "command"
+                    and handler.get("command") == cleanup):
+                handler["command"] = "{\n" + cleanup + "\n} >/dev/null"
+    return adapted
+
+
 def _adapter_additions(source: Path, name: str, version: str,
                        manifest: dict[str, JSONValue]) -> tuple[tuple[str, bytes], ...]:
     additions: dict[str, bytes] = {}
@@ -143,7 +163,7 @@ def _adapter_additions(source: Path, name: str, version: str,
         additions[".codex-plugin/plugin.json"] = _json_bytes({
             "name": name, "version": version, "skills": "./skills/", "hooks": "./hooks/hooks.json",
         })
-        additions["hooks/hooks.json"] = _json_bytes({"hooks": hooks})
+        additions["hooks/hooks.json"] = _json_bytes({"hooks": _codex_data_hooks(hooks)})
     elif name == "humanizer":
         additions[".codex-plugin/plugin.json"] = _json_bytes({
             "name": name, "version": version, "skills": "./skills/",
@@ -216,7 +236,10 @@ def _load_packages(home: Path) -> tuple[Package, ...]:
 
 def _source_digest(packages: tuple[Package, ...]) -> str:
     return _digest(iter((package.registry_id.encode(), package.version.encode(),
-                         package.source_sha256.encode()) for package in packages))
+                         package.source_sha256.encode(),
+                         _digest(iter((relative.encode(), content)
+                                      for relative, content in sorted(package.additions))).encode())
+                        for package in packages))
 
 
 def _ownership(destination: Path) -> Ownership | None:

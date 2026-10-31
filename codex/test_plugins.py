@@ -3,12 +3,15 @@
 from __future__ import annotations
 
 import contextlib
+import copy
 import io
 import json
 import os
 import stat
+import subprocess
 import tempfile
 import unittest
+from dataclasses import replace
 from pathlib import Path
 from unittest import mock
 
@@ -21,6 +24,9 @@ SELECTION = (
     ("humanizer-blader@anthropic-plugin-directory", "humanizer"),
 )
 HOOK_COMMAND = '"${CLAUDE_PLUGIN_ROOT}/scripts/session.sh" start --note \'quoted\'\n'
+CLEANUP_COMMAND = "uv run ${CLAUDE_PLUGIN_ROOT}/skills/analyzing-data/scripts/cli.py stop"
+CODEX_CLEANUP_COMMAND = "{\n" + CLEANUP_COMMAND + "\n} >/dev/null"
+STOP_JSON_COMMAND = "printf '%s\\n' '{\"decision\":\"block\",\"reason\":\"fixture\"}'"
 HUMANIZER_BODY = b"---\r\nname: humanizer\r\n---\r\nKeep exact bytes: \xc3\xa9.\r\n"
 
 
@@ -41,7 +47,11 @@ class PluginTests(unittest.TestCase):
             if name == "astronomer-data":
                 manifest["hooks"] = {
                     "SessionStart": [{"hooks": [{"type": "command", "command": HOOK_COMMAND}]}],
-                    "Stop": [{"hooks": [{"type": "command", "command": "fixture-stop --exact"}]}],
+                    "Stop": [{"matcher": "fixture", "hooks": [
+                        {"type": "command", "command": CLEANUP_COMMAND, "timeout": 17},
+                        {"type": "command", "command": STOP_JSON_COMMAND},
+                        {"type": "command", "command": "fixture-stop --exact"},
+                    ]}],
                 }
                 for index in range(34):
                     self.write(source / f"skills/data-{index:02d}/SKILL.md", f"Skill {index}\n")
@@ -144,9 +154,13 @@ class PluginTests(unittest.TestCase):
             "0bull", "frontend-design", "humanizer",
         })
 
-    def test_data_adapter_preserves_hook_commands_exactly(self) -> None:
+    def test_data_adapter_preserves_hooks_except_cleanup_stdout(self) -> None:
+        source = self.sources["astronomer-data"] / ".claude-plugin/plugin.json"
+        original = source.read_bytes()
         self.prepare()
+        self.assertEqual(source.read_bytes(), original)
         data = self.destination / "plugins/astronomer-data"
+        self.assertEqual((data / ".claude-plugin/plugin.json").read_bytes(), original)
         self.assertEqual(self.read_json(data / ".codex-plugin/plugin.json"), {
             "name": "astronomer-data", "version": "2.3.4",
             "skills": "./skills/", "hooks": "./hooks/hooks.json",
@@ -154,8 +168,95 @@ class PluginTests(unittest.TestCase):
         hooks = self.read_json(data / "hooks/hooks.json")
         self.assertEqual(hooks, {"hooks": {
             "SessionStart": [{"hooks": [{"type": "command", "command": HOOK_COMMAND}]}],
-            "Stop": [{"hooks": [{"type": "command", "command": "fixture-stop --exact"}]}],
+            "Stop": [{"matcher": "fixture", "hooks": [
+                {"type": "command", "command": CODEX_CLEANUP_COMMAND, "timeout": 17},
+                {"type": "command", "command": STOP_JSON_COMMAND},
+                {"type": "command", "command": "fixture-stop --exact"},
+            ]}],
         }})
+
+    def test_cleanup_command_suppresses_stdout_preserving_stderr_and_exit_status(self) -> None:
+        self.prepare()
+        hooks = self.read_json(self.destination / "plugins/astronomer-data/hooks/hooks.json")
+        command = hooks["hooks"]["Stop"][0]["hooks"][0]["command"]
+        uv = self.home / "bin/uv"
+        self.write(uv, "#!/bin/sh\nprintf 'Kernel not running\\n'\n"
+                       "printf 'fixture diagnostic\\n' >&2\nexit 7\n")
+        uv.chmod(0o700)
+        result = subprocess.run(
+            ["/bin/sh", "-c", command], capture_output=True, text=True, check=False,
+            env={"HOME": str(self.home), "PATH": str(uv.parent),
+                 "CLAUDE_PLUGIN_ROOT": str(self.destination / "plugins/astronomer-data")},
+        )
+        self.assertEqual(result.stdout, "")
+        self.assertEqual(result.stderr, "fixture diagnostic\n")
+        self.assertEqual(result.returncode, 7)
+
+    def test_data_hooks_copy_inputs_and_leave_malformed_or_unrelated_handlers(self) -> None:
+        hooks: dict[str, codex_plugins.JSONValue] = {
+            "SessionStart": [{"hooks": [{"type": "command", "command": CLEANUP_COMMAND}]}],
+            "Stop": [None, "opaque", {}, {"hooks": "opaque"}, {"hooks": [
+                None, "opaque", {}, {"type": "prompt", "command": CLEANUP_COMMAND},
+                {"type": "command", "command": CLEANUP_COMMAND + " --other"},
+                {"type": "command", "command": STOP_JSON_COMMAND},
+                {"type": "command", "command": CLEANUP_COMMAND, "timeout": 17},
+            ]}],
+        }
+        original = copy.deepcopy(hooks)
+        adapted = codex_plugins._codex_data_hooks(hooks)
+        expected = copy.deepcopy(original)
+        expected["Stop"][4]["hooks"][-1]["command"] = CODEX_CLEANUP_COMMAND
+        self.assertEqual(adapted, expected)
+        self.assertEqual(hooks, original)
+        self.assertIsNot(adapted, hooks)
+        for malformed in (None, "opaque", {"hooks": []}):
+            with self.subTest(stop=malformed):
+                value = {"Stop": malformed}
+                self.assertEqual(codex_plugins._codex_data_hooks(value), value)
+
+    def test_adapter_only_refresh_creates_one_backup_then_is_idempotent(self) -> None:
+        upstream = self.snapshot(self.home / "source-packages")
+        with mock.patch.object(codex_plugins, "_codex_data_hooks", side_effect=copy.deepcopy):
+            self.prepare()
+        old = self.snapshot(self.destination)
+        old_marker = self.read_json(self.destination / ".codex-parity.json")
+        self.prepare()
+        hooks = self.read_json(self.destination / "plugins/astronomer-data/hooks/hooks.json")
+        self.assertEqual(hooks["hooks"]["Stop"][0]["hooks"][0]["command"], CODEX_CLEANUP_COMMAND)
+        self.assertEqual(len(self.backups()), 1)
+        self.assertEqual(self.snapshot(self.backups()[0] / "claude-parity"), old)
+        marker = self.read_json(self.destination / ".codex-parity.json")
+        self.assertNotEqual(marker["source_sha256"], old_marker["source_sha256"])
+        for _, name in SELECTION[1:]:
+            prefix = f"plugins/{name}/"
+            self.assertEqual({key: (value[0], value[2])
+                              for key, value in self.snapshot(self.destination).items()
+                              if key.startswith(prefix)},
+                             {key: (value[0], value[2])
+                              for key, value in old.items() if key.startswith(prefix)})
+        self.assertEqual(self.snapshot(self.home / "source-packages"), upstream)
+        before = self.snapshot(self.home)
+        self.prepare()
+        self.assertEqual(self.snapshot(self.home), before)
+        self.assertEqual(len(self.backups()), 1)
+
+    def test_source_digest_includes_sorted_addition_paths_and_bytes(self) -> None:
+        package = codex_plugins._load_packages(self.home)[0]
+        baseline = codex_plugins._source_digest((package,))
+        self.assertEqual(codex_plugins._source_digest((replace(
+            package, additions=tuple(reversed(package.additions)),
+        ),)), baseline)
+        for additions in ((("other/path", b"original"),), (("same/path", b"changed"),),
+                          (("same/path", b"original"),)):
+            changed = replace(package, additions=additions)
+            self.assertNotEqual(codex_plugins._source_digest((changed,)), baseline)
+        path_changed = replace(package, additions=(("other/path", b"original"),))
+        byte_changed = replace(package, additions=(("same/path", b"changed"),))
+        original = replace(package, additions=(("same/path", b"original"),))
+        self.assertNotEqual(codex_plugins._source_digest((path_changed,)),
+                            codex_plugins._source_digest((original,)))
+        self.assertNotEqual(codex_plugins._source_digest((byte_changed,)),
+                            codex_plugins._source_digest((original,)))
 
     def test_humanizer_adapter_preserves_body_and_existing_manifests(self) -> None:
         self.prepare()
