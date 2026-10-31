@@ -58,3 +58,55 @@ model discovery, credentials, or unrelated configuration changes.
 
 `bin/wait-free-checkout.sh`: exit 0, free after two checks.
 The pre-change complete check result is recorded in private task evidence.
+
+## README exact edits
+
+Use `python3 claude/skills/feature/plan_edits.py apply plans/sol-high-agents.md README.md 64a72f9d6fd3e67d4ed42e3a8b7a951225225204`, then the same command with `check` as an additional task gate.
+
+**E1.** (lines 170-170)
+
+````md E1-old
+its config selects Astra with max reasoning, and its four agent definitions link
+````
+
+````md E1-new
+its config selects Sol with high reasoning, and its four agent definitions link
+````
+
+**E2.** (lines 180-183)
+
+````md E2-old
+| `implementer` | `gpt-6.1-sol` | `max` |
+| `plan-reviewer` | `gpt-6.1-sol` | `max` |
+| `acceptance-validator` | `gpt-6-astra` | `xhigh` |
+| `skill-dry-run` | `gpt-6-astra` | `high` |
+````
+
+````md E2-new
+| `implementer` | `gpt-6.1-sol` | `high` |
+| `plan-reviewer` | `gpt-6.1-sol` | `high` |
+| `acceptance-validator` | `gpt-6.1-sol` | `high` |
+| `skill-dry-run` | `gpt-6.1-sol` | `high` |
+````
+
+## Installed settings gate
+
+```bash
+python3 - <<'PYCODE'
+from pathlib import Path
+import tomllib
+root = Path.home() / '.codex'
+config = tomllib.loads((root / 'config.toml').read_text())
+assert config['model'] == 'gpt-6.1-sol'
+assert config['model_reasoning_effort'] == 'high'
+for path in (root / 'agents').glob('*.toml'):
+    agent = tomllib.loads(path.read_text())
+    assert agent.get('model', config['model']) == 'gpt-6.1-sol', path.name
+    assert agent.get('model_reasoning_effort', config['model_reasoning_effort']) == 'high', path.name
+print('PASS: installed agents use Sol/high')
+PYCODE
+```
+
+README exact-edit check above proves the documented settings. On the base the
+installed gate fails for the Astra role; the README exact-edit check fails for
+the unchanged prose. The baseline full suite passes.
