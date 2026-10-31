@@ -1,14 +1,14 @@
 #!/usr/bin/env bash
 # Session tree for `prefix + s`: sessions collapsed, right/left expand and
 # collapse, Enter opens a session's first window or the focused window.
-# Claude panes that are mid-turn or waiting on background agents are listed in
+# Assistant panes that are mid-turn or waiting on background agents are listed in
 # a section pinned to the bottom of the list, refreshed every 2 s; below them,
 # panes whose turn finished in the last 10 minutes, newest first.
 # State: pane options from claude/hooks/pane-state.sh.
 # List lines are "<session_id>\t<target>\t<aux>\t<display>":
 #   session line  $sid  (empty)   (empty)          tree row
 #   window line   $sid  @wid      session row N    tree row under an open session
-#   active row    $sid  %pid      (empty)          Claude pane mid-turn or finished
+#   active row    $sid  %pid      (empty)          assistant pane mid-turn or finished
 #   filler/rule   (empty)(empty)  U:D              non-selectable, U/D = rows to
 #                                                  jump to when moving up/down
 # --id-nth 1,2 gives every selectable line a unique key, so a reload that
@@ -89,19 +89,19 @@ render() {
         return sprintf("%dh%02dm", int(d / 3600), int(d % 3600 / 60))
       }
       {
-        claude = $10 ~ version || $10 == "claude"
+        client = $10 == "codex" ? "Codex" : ($10 ~ version || $10 == "claude" ? "Claude Code" : "")
         # Esc or a denied prompt ends a turn without a hook event; a working
         # Claude redraws its spinner (its background agents their timer) every
         # second, so a silent window is idle
         busy = $13 == "waiting" || (($13 == "working" || $13 == "agents") && now - $15 <= 5)
-        if (busy && claude) {
+        if (busy && client != "") {
           na++; asid[na] = $1; apid[na] = $3; aname[na] = $5; aw[na] = $7 "." $8
-          ast[na] = $13; asince[na] = $14; atitle[na] = strip($11); apath[na] = $12
+          ast[na] = $13; asince[na] = $14; atitle[na] = strip($11); apath[na] = $12; aclient[na] = client
         }
         # A finished turn stays listed for 10 minutes after its end
-        if (claude && $13 == "done" && $14 ~ /^[0-9]+$/ && now - $14 < 600) {
+        if (client != "" && $13 == "done" && $14 ~ /^[0-9]+$/ && now - $14 < 600) {
           nd++; dsid[nd] = $1; dpid[nd] = $3; dname[nd] = $5; dw[nd] = $7 "." $8
-          dend[nd] = $14 + 0; dtitle[nd] = strip($11); dpath[nd] = $12
+          dend[nd] = $14 + 0; dtitle[nd] = strip($11); dpath[nd] = $12; dclient[nd] = client
         }
         if ($4 != 1) next
         n++; sid[n] = $1; wid[n] = $2; sname[n] = $5; swin[n] = $6
@@ -121,7 +121,7 @@ render() {
             out++; srow = out
           }
           if (!open) continue
-          if (cmd[i] ~ version || cmd[i] == "claude") icon = c(yellow, "\363\260\232\251")
+          if (cmd[i] ~ version || cmd[i] == "claude" || cmd[i] == "codex") icon = c(yellow, "\363\260\232\251")
           else if (cmd[i] ~ /^n?vim$/) icon = c(green, "\356\230\253")
           else if (cmd[i] ~ /^(zsh|bash|sh|fish)$/) icon = c(cyan, "\356\236\225")
           else icon = c(fg, "\357\213\220")
@@ -139,7 +139,7 @@ render() {
           if (fill < 0) fill = 0
           ud = out ":" (out + fill + 2)
           for (i = 1; i <= fill; i++) printf "\t\t%s\t\n", ud
-          printf "\t\t%s\t%s\n", ud, c(dim, "  ── claude ──")
+          printf "\t\t%s\t%s\n", ud, c(dim, "  ── assistants ──")
           skip = fill + 1
         }
         for (i = 1; i <= na; i++) {
@@ -148,6 +148,7 @@ render() {
           else if (ast[i] == "agents") mk = c(cyan, "\357\203\200")
           else mk = c(cyan, "\357\204\220")
           t = atitle[i] != "" ? atitle[i] : short(apath[i])
+          t = aclient[i] " · " t
           printf "%s\t%s\t\t  %s %s  %s  %s\n", asid[i], apid[i], mk,
             c(w ? orange : fg, sprintf("%-" width "s › %-5s", aname[i], aw[i])),
             c(grey, sprintf("%5s", ago(asince[i]))), c(w ? orange : grey, t)
@@ -160,6 +161,7 @@ render() {
         for (k = 1; k <= nd; k++) {
           i = ord[k]
           t = dtitle[i] != "" ? dtitle[i] : short(dpath[i])
+          t = dclient[i] " · " t
           printf "%s\t%s\t\t  %s %s  %s  %s\n", dsid[i], dpid[i], c(green, "\357\200\214"),
             c(grey, sprintf("%-" width "s › %-5s", dname[i], dw[i])),
             c(grey, sprintf("%5s", ago(dend[i]))), c(grey, t)

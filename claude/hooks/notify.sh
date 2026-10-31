@@ -1,5 +1,5 @@
 #!/bin/bash
-# macOS notification for the Claude Code Stop hook.
+# macOS notification for assistant Stop hooks.
 # Stays silent when the originating tmux pane is already on screen.
 # Never writes to stdout and always exits 0 so it cannot disturb the session.
 
@@ -29,6 +29,16 @@ if [ "${1:-}" = "--focus" ]; then
     exit 0
 fi
 
+# Keep the invocation path: resolving the shared symlink loses client identity.
+agent=claude
+case "$SELF" in */.codex/hooks/*) agent=codex ;; esac
+if [ "${1:-}" = "--agent" ]; then agent="${2:-}"; fi
+case "$agent" in
+    codex) title="Codex: готово"; group_prefix=codex ;;
+    claude) title="Claude Code: готово"; group_prefix=claude-code ;;
+    *) exit 0 ;;
+esac
+
 [ "${CLAUDE_NOTIFY_DEBUG:-0}" = "1" ] || exec 2>/dev/null
 exec >/dev/null
 
@@ -55,7 +65,9 @@ cwd=$(read_field cwd)
 transcript=$(read_field transcript_path)
 
 # Headless runs (claude -p, SDK) inherit TMUX_PANE but nobody is waiting on them.
-[ "${CLAUDE_CODE_ENTRYPOINT:-cli}" = "cli" ] || exit 0
+if [ "$agent" = claude ]; then
+    [ "${CLAUDE_CODE_ENTRYPOINT:-cli}" = "cli" ] || exit 0
+fi
 
 # A turn that ends while background agents, workflows or shells are still running
 # is not the end of the work: their task-notification will start another turn.
@@ -104,7 +116,7 @@ sys.exit(0 if launched - finished else 1)
 PY
 }
 
-[ "$event" = "Stop" ] && has_pending_tasks && exit 0
+[ "$agent" = claude ] && [ "$event" = "Stop" ] && has_pending_tasks && exit 0
 [ -n "$cwd" ] || cwd="$PWD"
 
 project=$(basename "$cwd")
@@ -146,13 +158,12 @@ fi
 # Only end-of-turn is worth an alert; Notification events are noise.
 [ "$event" = "Notification" ] && exit 0
 
-title="Claude Code: готово"
 body="${message:-Ответ готов}"
 sound="Glass"
 
 if command -v terminal-notifier >/dev/null 2>&1; then
     args=(-title "$title" -subtitle "$context" -message "$body"
-          -sound "$sound" -group "claude-code-${pane:-nopane}")
+          -sound "$sound" -group "${group_prefix}-${pane:-nopane}")
     if [ "$in_tmux" = "1" ]; then
         args+=(-execute "$(printf '%q %q %q' "$SELF" --focus "$pane")")
     else
