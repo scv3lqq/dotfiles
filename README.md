@@ -167,7 +167,7 @@ macOS-only configs are skipped.
 
 The root `AGENTS.md` is the canonical, provider-neutral instruction file;
 `CLAUDE.md` links to it. The tracked `.codex/` is this repository's project layer:
-its config selects Astra with max reasoning, and its four agent definitions link
+its config selects Sol with high reasoning, and its four agent definitions link
 to the shared sources in `codex/agents/`. Project settings load for trusted projects.
 The tracked `.agents/skills/` links the three project skills and their resources
 to `.claude/skills/`, plus the native `feature` and `retro` workflows from
@@ -177,10 +177,10 @@ Codex shares 22 personal skills and has four native roles:
 
 | Role | Model | Reasoning effort |
 | --- | --- | --- |
-| `implementer` | `gpt-6.1-sol` | `max` |
-| `plan-reviewer` | `gpt-6.1-sol` | `max` |
-| `acceptance-validator` | `gpt-6-astra` | `xhigh` |
-| `skill-dry-run` | `gpt-6-astra` | `high` |
+| `implementer` | `gpt-6.1-sol` | `high` |
+| `plan-reviewer` | `gpt-6.1-sol` | `high` |
+| `acceptance-validator` | `gpt-6.1-sol` | `high` |
+| `skill-dry-run` | `gpt-6.1-sol` | `high` |
 
 The global setup preserves the current main model. The `feature` and `retro`
 skills have Codex adapters;

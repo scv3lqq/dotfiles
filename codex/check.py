@@ -8,10 +8,10 @@ import tomllib
 
 ROOT = Path(__file__).resolve().parent
 ROLES = (
-    ("implementer", "gpt-6.1-sol", "max"),
-    ("plan-reviewer", "gpt-6.1-sol", "max"),
-    ("acceptance-validator", "gpt-6-astra", "xhigh"),
-    ("skill-dry-run", "gpt-6-astra", "high"),
+    ("implementer", "gpt-6.1-sol", "high"),
+    ("plan-reviewer", "gpt-6.1-sol", "high"),
+    ("acceptance-validator", "gpt-6.1-sol", "high"),
+    ("skill-dry-run", "gpt-6.1-sol", "high"),
 )
 PALETTE = frozenset({
     "#0B0E14", "#E8E6DD", "#CDA1FA", "#D2A6FF", "#303030", "#E6B450",
@@ -74,7 +74,7 @@ def check_project() -> None:
         f"{config}: project config must be a regular file"
     )
     assert tomllib.loads(config.read_text()) == {
-        "model": "gpt-6-astra", "model_reasoning_effort": "max",
+        "model": "gpt-6.1-sol", "model_reasoning_effort": "high",
     }, f"{config}: project config must contain only the approved model and effort"
     for name, _model, _effort in ROLES:
         path = project / "agents" / f"{name}.toml"

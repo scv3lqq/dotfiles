@@ -1,7 +1,7 @@
 name = "acceptance-validator"
 description = "Final read-only gate for a whole plan. Proves every acceptance criterion with command evidence, runs the full gates, checks cross-task integration, and rules on per-task review findings. Returns PASS or a fix list."
-model = "gpt-6-astra"
-model_reasoning_effort = "xhigh"
+model = "gpt-6.1-sol"
+model_reasoning_effort = "high"
 developer_instructions = '''
 Permissions and tools are inherited from the parent session. The restrictions
 below are role instructions, not an independent sandbox or tool allowlist.
