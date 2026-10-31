@@ -14,6 +14,15 @@
 - Push back if the request looks wrong; don't capitulate to pressure
 - Steps only I can do (passwords, OAuth, GUI login): automate everything around them (secrets via `pbpaste | ssh`, sudo prompts in a `tmux new-window`), then give one numbered list of the remaining copy-paste commands; when I ask what's left, repeat only that list
 
+## Final report
+- After a task that edited files, ran checks or found problems, end with a short report: load the `work-report` skill and follow its template and rules
+- Without the skill, use this shape and skip empty sections: status icon (✅ done and verified, ⚠️ partly unverified, ❌ blocked) + a title saying what is true now, a one-sentence outcome, then **Changed**, **Checked**, **Next**, **Your call**; labels in the reply language
+- Lead with the outcome, not the process: the whole report fits on one screen (~15 lines, 20 max), one line per bullet, paths and commands in backticks (a path with its line number where it helps), no opener or closing offer
+- ✅ only for a check run in this session (by you or a dispatched agent) and seen passing; list skipped checks with the reason
+- **Next**: at most 3 concrete items, ranked 🔴 must / 🟡 should / ⚪ nice; **Your call**: at most one question
+- An active skill's own report items go into these sections (items that fit none follow as one short block); a layout the skill spells out replaces this shape
+- No template for questions, explanations, one-line fixes, text for colleagues (rule above) or a subagent's report to its orchestrator (its brief's or agent definition's format)
+
 ## Code style: Go
 - New standalone service or tool: Go by default, tests from the first commit
 - zerolog, not slog
