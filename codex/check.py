@@ -67,6 +67,40 @@ def check_guidance() -> None:
     print("PASS: neutral guidance, canonical file and compatibility links")
 
 
+def check_project() -> None:
+    project = ROOT.parent / ".codex"
+    config = project / "config.toml"
+    assert config.is_file() and not config.is_symlink(), (
+        f"{config}: project config must be a regular file"
+    )
+    assert tomllib.loads(config.read_text()) == {
+        "model": "gpt-6-astra", "model_reasoning_effort": "max",
+    }, f"{config}: project config must contain only the approved model and effort"
+    for name, _model, _effort in ROLES:
+        path = project / "agents" / f"{name}.toml"
+        assert path.is_symlink(), f"{path}: project agent must be a symlink"
+        assert path.readlink() == Path(f"../../codex/agents/{name}.toml"), (
+            f"{path}: project agent must have the exact relative source target"
+        )
+        assert path.is_file(), f"{path}: project agent source must exist"
+    for name, source in (
+        ("setup-dotfiles", ".claude"),
+        ("docs-sync", ".claude"),
+        ("readme-screenshots", ".claude"),
+        ("feature", "codex"),
+        ("retro", "codex"),
+    ):
+        path = ROOT.parent / ".agents/skills" / name
+        assert path.is_symlink(), f"{path}: project skill must be a symlink"
+        assert path.readlink() == Path(f"../../{source}/skills/{name}"), (
+            f"{path}: project skill must have the exact relative source target"
+        )
+        assert path.is_dir(), f"{path}: project skill source must exist"
+    resource = ROOT.parent / ".agents/skills/readme-screenshots/scripts/claude.c"
+    assert resource.is_file(), f"{resource}: linked screenshot resource must exist"
+    print("PASS: project configuration, shared agents and project skills")
+
+
 def check_theme() -> None:
     with (ROOT / "themes/ayu-claude.tmTheme").open("rb") as source:
         theme = plistlib.load(source)
@@ -104,5 +138,6 @@ def check_skills() -> None:
 if __name__ == "__main__":
     check_agents()
     check_guidance()
+    check_project()
     check_theme()
     check_skills()

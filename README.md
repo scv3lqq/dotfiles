@@ -166,8 +166,12 @@ macOS-only configs are skipped.
 ### Codex
 
 The root `AGENTS.md` is the canonical, provider-neutral instruction file;
-`CLAUDE.md` links to it. Global Codex assets live in tracked `codex/`, not a
-project-local `.codex/`: the setup helper links them into the user's home.
+`CLAUDE.md` links to it. The tracked `.codex/` is this repository's project layer:
+its config selects Astra with max reasoning, and its four agent definitions link
+to the shared sources in `codex/agents/`. Project settings load for trusted projects.
+The tracked `.agents/skills/` links the three project skills and their resources
+to `.claude/skills/`, plus the native `feature` and `retro` workflows from
+`codex/skills/`. The `codex/` directory remains the source for global setup.
 
 Codex shares 22 personal skills and has four native roles:
 
@@ -178,7 +182,8 @@ Codex shares 22 personal skills and has four native roles:
 | `acceptance-validator` | `gpt-6-astra` | `xhigh` |
 | `skill-dry-run` | `gpt-6-astra` | `high` |
 
-The main model is unchanged. The `feature` and `retro` skills have Codex adapters;
+The global setup preserves the current main model. The `feature` and `retro`
+skills have Codex adapters;
 existing third-party skills and the Go reviewer are preserved.
 The installer configures these assets when Python 3.11+ is available.
 Preview with `python3 codex/setup.py`; apply with `python3 codex/setup.py --apply`.
@@ -368,7 +373,9 @@ available on servers, and the markdown-preview.nvim build error on the first
 | `claude/skills/*/` | `~/.claude/skills/` | one directory link per skill, `/feature` among them; `mac-*` skills on macOS only |
 | `claude/agents/*.md`, `claude/hooks/*`, `claude/bin/*`, `claude/statusline.sh`, `claude/themes/ayu.json` | `~/.claude/` | one link per file: the `/feature` agents, the hooks `settings.json` wires (Stop alert, picker state, guards), `settings-edit.sh`, the status line and color theme |
 | `.githooks/pre-commit` | | refuses staged lines that match `~/.claude/private/denylist`; `install.sh` sets `core.hooksPath` |
-| `.claude/skills/` | | Claude Code skills of this repo: `/setup-dotfiles`, `docs-sync` |
+| `.claude/skills/` | | shared project skill sources: `setup-dotfiles`, `docs-sync`, `readme-screenshots` |
+| `.agents/skills/` | | relative links to three shared project skills and the native `feature`/`retro` workflows |
+| `.codex/` | | project configuration and relative links to shared native agents |
 | `notes/`, `plans/`, `everything.md` | | personal notes, implementation plans, Russian cheatsheet |
 | `assets/screenshots/` | | README screenshots of a made-up demo, recipe in `plans/readme-screenshots.md` |
 

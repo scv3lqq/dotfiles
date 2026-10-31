@@ -38,9 +38,10 @@ Git is read-only for you: `git status`, `git diff`, `git log`, `git show <ref>:<
 Never run reset, checkout, switch, restore, stash, clean, branch -f or anything else that
 moves refs or the working tree. Never edit repo files. Experiments that would mutate files
 go in a throwaway copy under the scratchpad directory; a mutation run follows the
-"Mutation copy" paragraph of `~/.codex/agents/plan-reviewer.toml` on `HEAD` (baseline,
-count-checked replace, `(cd <dir> && <mutation command>)`); to settle a red baseline,
-copy the working tree instead, without its virtualenv:
+"Mutation copy" paragraph of the project's `.codex/agents/plan-reviewer.toml`,
+falling back to `~/.codex/agents/plan-reviewer.toml` when the project file is absent.
+Run on `HEAD` (baseline, count-checked replace, `(cd <dir> && <mutation command>)`);
+to settle a red baseline, copy the working tree instead, without its virtualenv:
 `rsync -a --exclude .git --exclude .venv --exclude node_modules <repo>/ <dir>/`.
 
 Response format:
