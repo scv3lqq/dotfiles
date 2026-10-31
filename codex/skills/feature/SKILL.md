@@ -23,7 +23,9 @@ applicable project instructions take precedence over either file.
   The custom role TOML files own approved model and reasoning settings. When the
   current runtime cannot select a configured role, read its TOML and pass the full
   `developer_instructions`, approved model and effort to an available agent;
-  disclose that fallback.
+  disclose that fallback. After a custom-role availability rejection, use this
+  fallback for the remaining configured roles in the session unless runtime
+  capability evidence changes; do not repeat rejected capability probes.
   Ignore every canonical Claude model/effort dispatch or tier-switch directive,
   including failure retries and repeated-finding escalation. Never pass
   `sonnet`, `opus` or `claude-*` as Codex model names.
@@ -37,6 +39,9 @@ applicable project instructions take precedence over either file.
 - Limit each parallel wave to currently available child slots, not the canonical
   limit of twelve. Shared files and dependencies remain sequential. Do not
   duplicate a full/heavy test run while any agent is running it.
+- For test-first tasks, wait for the RED command to exit and its log to be saved
+  before dispatching source writers. Reuse that evidence; a baseline rerun in the
+  shared checkout can race with implementation and invalidate the baseline.
 - Do not end the user turn just because agents were dispatched. Continue useful
   independent work, receive results through the runtime's agent tools, and stay
   active through review, fixes, validation and the authorized completion steps.
@@ -64,7 +69,9 @@ applicable project instructions take precedence over either file.
   pass its path to the validator. A missing or failed check is not PASS.
   Reuse those logs for the same verified tree instead of canonical detached-worktree
   reruns solely to recreate archived evidence. Changed code or inputs require new
-  gates; the validator still runs the final Gates.
+  gates; the validator still runs the final Gates. Use that validator-owned run
+  for acceptance criteria it already covers, rather than rerunning scoped suites
+  solely to list passed tests. Changed inputs or unresolved results justify reruns.
   Check the full task diff against the plan's base, including committed changes,
   rather than relying on a working-tree-only diff check.
 - Preserve the canonical five-iteration and repeated-finding stop conditions.

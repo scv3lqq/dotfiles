@@ -157,4 +157,3 @@ summaries, relaxed approval rules, broad instruction rewrites or task product ed
   rather than relying on a working-tree-only diff check.
 - Preserve the canonical five-iteration and repeated-finding stop conditions.
 ````
-

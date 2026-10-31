@@ -31,4 +31,3 @@ Only `.claude/rules/tmux.md` is changed by this block.
   plus explicit executable permissions; `copy2` can fail while copying protected
   file flags through `chflags`.
 ````
-
