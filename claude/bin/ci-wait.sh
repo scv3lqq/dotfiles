@@ -5,6 +5,10 @@
 set -euo pipefail
 
 sha=$(git rev-parse "${1:-HEAD}")
+if [[ ! -d "$(git rev-parse --show-toplevel)/.github/workflows" ]]; then
+  echo "no .github/workflows: nothing to wait for"
+  exit 0
+fi
 ids=""
 # Right after a push the run is not listed yet; watching an empty id 404s.
 for _ in $(seq 1 30); do
