@@ -13,7 +13,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-BLOCK = re.compile(r"^```md E(\d+)-(old|new)\n(.*?)\n```$", re.MULTILINE | re.DOTALL)
+BLOCK = re.compile(r"^(`{3,})md E(\d+)-(old|new)\n(.*?)\n\1$", re.MULTILINE | re.DOTALL)
 
 
 def at_base(path: str, base: str) -> str:
@@ -23,14 +23,22 @@ def at_base(path: str, base: str) -> str:
 def stub(path: str, base: str, ranges: list[str]) -> None:
     lines = at_base(path, base).split("\n")
     spans = sorted((int(a), int(b or a)) for a, _, b in (r.partition("-") for r in ranges))
+    sections = []
     for n, (first, last) in enumerate(spans, 1):
         old = "\n".join(lines[first - 1 : last])
-        print(f"**E{n}.** (lines {first}-{last})\n\n```md E{n}-old\n{old}\n```\n\n```md E{n}-new\n{old}\n```\n")
+        longest_run = max((len(run) for run in re.findall(r"`+", old)), default=0)
+        fence = "`" * max(4, longest_run + 1)
+        sections.append(
+            f"**E{n}.** (lines {first}-{last})\n\n"
+            f"{fence}md E{n}-old\n{old}\n{fence}\n\n"
+            f"{fence}md E{n}-new\n{old}\n{fence}"
+        )
+    print("\n\n".join(sections))
 
 
 def expected(plan: str, path: str, base: str) -> tuple[str, int]:
     blocks: dict[int, dict[str, str]] = {}
-    for num, kind, body in BLOCK.findall(Path(plan).read_text()):
+    for _fence, num, kind, body in BLOCK.findall(Path(plan).read_text()):
         blocks.setdefault(int(num), {})[kind] = body
     if sorted(blocks) != list(range(1, len(blocks) + 1)) or any(len(b) != 2 for b in blocks.values()):
         sys.exit(f"FAIL: need E1..En, each with an old and a new block; got {sorted(blocks)}")
