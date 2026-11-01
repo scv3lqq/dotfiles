@@ -14,7 +14,8 @@ description: Run a task in a fresh interactive Claude Code session instead of th
    (that skill is user-invoke only) and names the exact branch to create.
    Last step of every prompt: write `PASS <short sha> <its scratchpad dir>` (step 5
    reruns its scratch gate scripts from there) or `FAIL <reason>` to
-   `<scratchpad>/<slug>.status` (an interactive session never closes its pane).
+   `<scratchpad>/<slug>.status` via a tmp file plus `mv` (an interactive session never
+   closes its pane). Slug: letters, digits, `-`, `_`, not all digits.
 2. Write the prompt to `<scratchpad>/<slug>-prompt.md`.
    Several sessions on one repo: one worktree each, never a shared tree. A repo whose
    CLAUDE.md forbids worktrees (dotfiles): one session at a time in the checkout, its
@@ -28,23 +29,27 @@ description: Run a task in a fresh interactive Claude Code session instead of th
 3. Launch (needs `$TMUX`; outside tmux, give the user the command instead):
    `tmux new-window -d -n <slug> -c <repo> "zsh ~/.claude/skills/session-handoff/launch.zsh <prompt-file> <slug> <mode>"`
    `<mode>` is `bypassPermissions` only when this session runs in bypass mode, else `manual`.
+   Before launch `rm -f <scratchpad>/<slug>.status*`; after it confirm
+   `tmux capture-pane -p -t ':=<slug>'` works.
 4. Tell the user the window name. Start ONE background Bash call (`run_in_background`):
    `zsh ~/.claude/skills/session-handoff/watch.zsh <slug> <scratchpad>/<slug>.status [cap-hours]`
    Cap 0.5 for direct edits, 4 (default) for a `/feature` cycle. It keeps the Mac awake,
    prints one line and exits; several sessions: one watch each, review the first, restart
-   the rest. It presses Enter itself on "Press enter to continue" (logged to
-   `<status-file>.log`), never answers a trust or permission dialog. Per exit line, act,
-   then restart the watch:
+   the rest. It presses Enter itself on the usage-limit "Press enter to continue" footer
+   (once, logged to `<status-file>.log`), never answers a trust or permission dialog.
+   Per exit line, act; restart the watch after PROMPT, IDLE, STALL and TIMEOUT only
+   (STATUS and WINDOW GONE are terminal):
 
    | Line | Main does |
    |---|---|
    | `STATUS ...` | step 5 |
    | `WINDOW GONE` | no status: read the repo state, report |
-   | `TIMEOUT` | `tmux capture-pane -p -t <slug>`; still working or usage-limit wait: restart |
-   | `PROMPT trust` | read the pane, confirm the folder is the one main launched, then Down + Enter |
+   | `TIMEOUT` | `tmux capture-pane -p -t ':=<slug>'`; still working or usage-limit wait: restart |
+   | `PROMPT trust` | read the pane, confirm the folder is the one main launched, then `send-keys -t ':=<slug>'` Down, Enter |
    | `PROMPT permission` | the dialog truncates long commands: read the full pending command from the newest transcripts in `~/.claude/projects/<dashed-cwd>/`; approve only if every target is provably confined (literal path, session scratchpad), else answer No and tell the user |
-   | `IDLE api-error` | `tmux send-keys -t <slug> -l 'continue'`, then `tmux send-keys -t <slug> Enter` |
-   | `STALL` | 30 min without pane change: `tmux capture-pane -p -t <slug>`, decide |
+   | `IDLE api-error` | `tmux send-keys -t ':=<slug>' -l 'continue'`, then `tmux send-keys -t ':=<slug>' Enter` |
+   | `STALL` | 30 min without pane change: `tmux capture-pane -p -t ':=<slug>'`, decide |
+   | `CAPTURE FAILED` | duplicate window name or tmux error: check `tmux list-windows`, fix, restart |
 5. On the notification: check the result against the spec (`git show --stat`, the diff,
    rerun the gates yourself) and report; the session's own report is on its screen.
    Combining branches: merge in a fresh worktree on the target branch, rerun the gates
