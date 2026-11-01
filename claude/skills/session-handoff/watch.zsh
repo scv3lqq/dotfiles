@@ -17,7 +17,7 @@ caffeinate -i -w $$ &
 cafpid=$!
 trap 'kill $cafpid 2>/dev/null' EXIT
 
-start=$SECONDS lasthash= lastchange=$SECONDS
+start=$SECONDS lasthash= lastchange=$SECONDS pressed=0
 while true; do
   if [[ -s $sfile ]]; then
     print -r -- "STATUS ${$(<$sfile)//$'\n'/ }"; exit 0
@@ -36,11 +36,17 @@ while true; do
   if print -r -- "$tail25" | grep -qE 'Do you want to proceed\?'; then
     print "PROMPT permission"; exit 0
   fi
-  if print -r -- "$tail25" | grep -qi 'Press enter to continue'; then
-    tmux send-keys -t ":=$slug" Enter
-    print -r -- "$(date '+%F %T') pressed Enter on 'Press enter to continue' in $slug" >>$log
-    lasthash= lastchange=$SECONDS
-    sleep $interval; continue
+  # footer line only: the transcript form "... · Press enter to continue" must not match
+  if print -r -- "$tail25" | grep -qE '^[[:space:]]*Press enter to continue[[:space:]]*$'; then
+    if (( ! pressed )); then
+      tmux send-keys -t ":=$slug" Enter
+      print -r -- "$(date '+%F %T') pressed Enter on 'Press enter to continue' in $slug" >>$log
+      pressed=1
+      lasthash= lastchange=$SECONDS
+      sleep $interval; continue
+    fi
+  else
+    pressed=0
   fi
   if print -r -- "$tail25" | grep -q 'API Error:' && ! print -r -- "$tail25" | grep -q 'esc to interrupt'; then
     print "IDLE api-error"; exit 0
