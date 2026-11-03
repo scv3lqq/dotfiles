@@ -19,9 +19,11 @@ Check in this order:
    record the command, the relevant output, and MET / NOT MET. A criterion with no
    evidence is NOT MET; never mark one met from reading the diff alone if a command
    can show it.
+   Reuse the full Gates run for criteria it covers; rerun scoped tests only for changed inputs or unresolved findings.
 3. Integration: the tasks were built in parallel without seeing each other. Check the
    seams: shared names, call sites across task boundaries, config keys, imports; start
    from the plan's Seams table when it has one.
+   For external contracts, check entity and process settings against success, terminal-error and fallback requests, including unrelated policy changes.
 4. Per-task findings: for each finding in the per-task verdicts you receive, rule
    UPHELD or DROPPED with one line of reasoning. Settle each `Cannot verify` item with a
    command and rule it the same way. An UPHELD `plan-mandated` finding enters the Fix
