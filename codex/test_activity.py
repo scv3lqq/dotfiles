@@ -9,6 +9,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import unicodedata
 import unittest
 import uuid
 from pathlib import Path
@@ -114,6 +115,41 @@ elif args[0] == "display-message":
 
 
 class PickerTests(ActivityFixture):
+    def test_codex_without_hook_state_is_open_at_its_actual_target(self) -> None:
+        rows = self.render(self.row("%7", "codex", "", activity=NOW - 600))
+        activity = self.activity_rows(rows)
+        self.assertEqual(len(activity), 1)
+        self.assertEqual(activity[0][:3], ["$1", "%7", ""])
+        display = activity[0][3]
+        self.assertTrue(display.endswith("Codex · Fixture task"), display)
+        self.assertRegex(display, r"\bopen\b")
+        self.assertNotRegex(display, r"\b(?:working|waiting|agents|done|[0-9]+[smh])\b")
+        self.assertIn("CIRCLE", unicodedata.name(display.split()[0]))
+        self.assertEqual(sum(row[3] == "  ── assistants ──" for row in rows), 1)
+
+    def test_empty_shell_and_claude_state_stays_out_of_assistant_section(self) -> None:
+        for command in ("zsh", "bash", "sh", "fish", "claude", "2.1.3"):
+            with self.subTest(command=command):
+                rows = self.render(self.row("%7", command, ""))
+                self.assertEqual(self.activity_rows(rows), [])
+                self.assertFalse(any("──" in row[3] for row in rows))
+
+    def test_open_codex_does_not_revive_stale_or_expired_hook_states(self) -> None:
+        rows = self.render(self.row("%7", "codex", "")
+                           + self.row("%8", "codex", "working", activity=NOW - 6)
+                           + self.row("%9", "codex", "done", since=NOW - 600))
+        self.assertEqual([row[1] for row in self.activity_rows(rows)], ["%7"])
+
+    def test_search_retains_open_codex_with_path_fallback_and_no_separator(self) -> None:
+        rows = self.render(self.row("%7", "codex", "", title="", path=str(self.home / "demo")), search="demo")
+        activity = self.activity_rows(rows)
+        self.assertEqual(len(activity), 1)
+        self.assertEqual(activity[0][:3], ["$1", "%7", ""])
+        self.assertTrue(activity[0][3].endswith("Codex · ~/demo"), activity)
+        self.assertRegex(activity[0][3], r"\bopen\b")
+        self.assertFalse(any("──" in row[3] for row in rows))
+        self.assertTrue(any(row[1].startswith("@") for row in rows))
+
     def test_mixed_working_waiting_and_completed_identities(self) -> None:
         fixtures = (("%7", "codex", "working", "Codex"),
                     ("%8", "codex", "waiting", "Codex"),

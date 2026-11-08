@@ -7,6 +7,21 @@ alias gpl='git pull'
 alias gl='git log --graph --decorate --pretty=format:"%C(yellow)%h%C(reset) %C(auto)%d%C(reset) %s%n%w(0,4,4)%b"'
 alias md='mkdir -p'
 
+# Keep tmux hook environment local to each Codex client.
+codex() {
+  local argument
+  for argument in "$@"; do
+    case "$argument" in
+      --) break ;;
+      --remote|--remote=*)
+        command codex "$@"
+        return $?
+        ;;
+    esac
+  done
+  command codex --no-daemon "$@"
+}
+
 # fzf
 alias nf='nvim $(fzf --preview "bat --color=always {}")'
 alias gcof='git branch --all | fzf --preview "git log --oneline -10 {}" | xargs git checkout'

@@ -94,9 +94,9 @@ render() {
         # Claude redraws its spinner (its background agents their timer) every
         # second, so a silent window is idle
         busy = $13 == "waiting" || (($13 == "working" || $13 == "agents") && now - $15 <= 5)
-        if (busy && client != "") {
+        if ((busy && client != "") || ($10 == "codex" && $13 == "")) {
           na++; asid[na] = $1; apid[na] = $3; aname[na] = $5; aw[na] = $7 "." $8
-          ast[na] = $13; asince[na] = $14; atitle[na] = strip($11); apath[na] = $12; aclient[na] = client
+          ast[na] = $13 == "" ? "open" : $13; asince[na] = $14; atitle[na] = strip($11); apath[na] = $12; aclient[na] = client
         }
         # A finished turn stays listed for 10 minutes after its end
         if (client != "" && $13 == "done" && $14 ~ /^[0-9]+$/ && now - $14 < 600) {
@@ -144,14 +144,15 @@ render() {
         }
         for (i = 1; i <= na; i++) {
           w = ast[i] == "waiting"
-          if (w) mk = c(orange, "\357\203\263")
+          if (ast[i] == "open") mk = c(grey, "○")
+          else if (w) mk = c(orange, "\357\203\263")
           else if (ast[i] == "agents") mk = c(cyan, "\357\203\200")
           else mk = c(cyan, "\357\204\220")
           t = atitle[i] != "" ? atitle[i] : short(apath[i])
           t = aclient[i] " · " t
           printf "%s\t%s\t\t  %s %s  %s  %s\n", asid[i], apid[i], mk,
             c(w ? orange : fg, sprintf("%-" width "s › %-5s", aname[i], aw[i])),
-            c(grey, sprintf("%5s", ago(asince[i]))), c(w ? orange : grey, t)
+            c(grey, sprintf("%5s", ast[i] == "open" ? "open" : ago(asince[i]))), c(w ? orange : grey, t)
         }
         # Finished rows, newest end first (insertion sort, stable on ties)
         for (i = 1; i <= nd; i++) {

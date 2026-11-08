@@ -111,5 +111,55 @@ This is a documented runtime limitation, not evidence that old hooks are repaire
 ## Not doing
 
 No daemon protocol changes, heuristic session mapping, DB/transcript scanning,
-private hook/config edits, active-session restarts, notification suppression or
-new notification label policy, resurrect plugin edits, documentation rewrites.
+private hook/config edits, active-session restarts, new notification titles or
+notification suppression policy, resurrect plugin edits, documentation rewrites.
+
+## Notification origin hardening amendment
+
+A no-daemon launch fixes future hook environments, but existing daemon hooks
+continue supplying the daemon TMUX_PANE. Protect current notification attribution
+without guessing a pane from cwd. Preserve project from payload cwd; tmux location,
+click target, visibility suppression and pane group require proven origin.
+
+Additional acceptance criterion 6: a Codex hook process whose parent ancestry does
+not reach the supplied pane shell PID emits subtitle demo (no tmux location),
+group codex-nopane and Ghostty activation rather than an execute command; it is
+not suppressed merely because the inherited wrong pane is visible. Embedded Codex
+with proven ancestry preserves subtitle demo plus its actual tmux location, pane
+group, visibility and click-focus behavior. Claude behavior is unchanged.
+
+### T3: Notification regression tests first
+
+Ownership: codex/test_activity.py only; depends on T0-T2 green commit.
+Extend fake tmux display-message for #{pane_pid} to return literal 123. Stub ps so
+its -o ppid= output returns 123 normally and 1 when FIXTURE_DAEMON_ORIGIN=1.
+Existing notification cases then represent proven embedded ancestry. Add explicit
+daemon tests: absent ancestry yields subtitle demo, group codex-nopane, -activate
+com.mitchellh.ghostty, no -execute. With FIXTURE_VISIBLE=1 the alert still fires
+because wrong daemon origin must not suppress another client. Preserve existing
+Claude cases and assert exact embedded subtitle demo plus fixture:2. Add a failing
+ps case that safely produces the same unbound alert (no proof, no pane trust).
+Gates: activity unittest suite (new daemon cases RED before T4), scoped ruff check
+and mypy --strict. Save RED privately, do not commit red tests.
+Named mutation: remove Codex ancestry rejection; daemon tests must fail.
+
+### T4: Prove notification pane ownership
+
+Ownership: claude/hooks/notify.sh only; depends on T3 RED.
+Add function pane_is_origin: read pane shell PID with tmux display-message -p -t
+"$pane" '#{pane_pid}'. Reject empty/nonnumeric PID and PID <=1. Starting at $PPID,
+walk parent PIDs with ps -o ppid= -p "$pid", strip whitespace via Bash parameter
+replacement, reject empty/nonnumeric results. Compare to shell PID before each
+parent query. Return success only upon exact ancestor match. Stop at PID <=1 or
+64 iterations, returning failure; missing tools/failed commands also fail closed.
+Within existing tmux detection, Codex uses tmux context only if pane_is_origin;
+on failed proof clear pane so group uses nopane and existing -activate fallback.
+Claude skips this additional proof and retains behavior. Keep --focus handling,
+stdout silence, always-zero exit, Linux no-op and Bash 3.2 compatibility.
+Gates: /bin/bash -n claude/hooks/notify.sh and activity unittest suite.
+
+Additional seam: T3 fake ancestry models pane shell PID 123; T4 consumes only
+standard tmux pane_pid and ps parent PID, never session database heuristics.
+The existing full Gates already cover these files. Existing running sessions
+still require resume for accurate working/waiting hooks; neutral open visibility
+and notification-origin protection apply through source symlinks immediately.
