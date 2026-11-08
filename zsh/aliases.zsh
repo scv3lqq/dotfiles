@@ -13,7 +13,7 @@ codex() {
   for argument in "$@"; do
     case "$argument" in
       --) break ;;
-      --remote|--remote=*)
+      --no-daemon|--remote|--remote=*)
         command codex "$@"
         return $?
         ;;

@@ -154,6 +154,10 @@ parent query. Return success only upon exact ancestor match. Stop at PID <=1 or
 64 iterations, returning failure; missing tools/failed commands also fail closed.
 Within existing tmux detection, Codex uses tmux context only if pane_is_origin;
 on failed proof clear pane so group uses nopane and existing -activate fallback.
+Initialize pane_origin_unverified=0 and set it to 1 on failed Codex proof;
+pane_is_visible returns failure immediately when it is 1, before its existing
+frontmost-app/non-tmux branch. Otherwise an unbound daemon alert could be
+suppressed merely because Ghostty is foreground.
 Claude skips this additional proof and retains behavior. Keep --focus handling,
 stdout silence, always-zero exit, Linux no-op and Bash 3.2 compatibility.
 Gates: /bin/bash -n claude/hooks/notify.sh and activity unittest suite.
@@ -163,3 +167,17 @@ standard tmux pane_pid and ps parent PID, never session database heuristics.
 The existing full Gates already cover these files. Existing running sessions
 still require resume for accurate working/waiting hooks; neutral open visibility
 and notification-origin protection apply through source symlinks immediately.
+
+
+### T5: Preserve an explicit embedded-mode flag
+
+Ownership: zsh/aliases.zsh and codex/test_launch.py; depends on T1 green commit.
+Installed CLI rejects duplicate --no-daemon with exit 2. Add a literal argv
+regression first: input [--no-daemon,resume,fixture-session] must remain exactly
+that vector and exit 0; record RED before editing source. Extend the wrapper
+passthrough case to exact --no-daemon in addition to the existing remote forms.
+Continue stopping detection at --. No changes to other tests or behavior.
+Gates: zsh -n zsh/aliases.zsh; launch unittest suite; scoped ruff check and
+mypy --strict for codex/test_launch.py. Named mutation: remove --no-daemon from
+the passthrough case; the explicit-flag regression must fail. This strengthens
+acceptance criterion 1: wrapper-added flags never duplicate an explicit flag.

@@ -62,6 +62,8 @@ elif args[0] == "display-message":
     fmt = args[-1]
     if fmt == "#{session_name}":
         print("fixture")
+    elif fmt == "#{pane_pid}":
+        print("123")
     elif "pane_active" in fmt:
         print(os.environ.get("FIXTURE_PANE_VISIBILITY", "1 1 1"))
     else:
@@ -245,6 +247,14 @@ class PickerTests(ActivityFixture):
 class NotificationTests(ActivityFixture):
     def setUp(self) -> None:
         super().setUp()
+        self.stub("ps", '''
+import os
+if len(sys.argv) != 5 or sys.argv[1:4] != ["-o", "ppid=", "-p"]:
+    sys.exit(2)
+if os.environ.get("FIXTURE_PS_EXIT"):
+    sys.exit(int(os.environ["FIXTURE_PS_EXIT"]))
+print("1" if os.environ.get("FIXTURE_DAEMON_ORIGIN") == "1" else "123")
+''')
         for name in ("terminal-notifier", "osascript", "open"):
             self.stub(name, f'''
 import os
@@ -281,6 +291,32 @@ else:
         self.assertEqual(args[args.index("-group") + 1], group)
         self.assertEqual(args[args.index("-message") + 1], "Fixture answer")
         self.assertEqual(args[args.index("-subtitle") + 1], "demo · fixture:2")
+
+    def assert_unbound_codex_notification(self) -> None:
+        calls = self.calls("terminal-notifier")
+        self.assertEqual(len(calls), 1, calls)
+        args = calls[0]
+        self.assertEqual(args[args.index("-title") + 1], "Codex: готово")
+        self.assertEqual(args[args.index("-message") + 1], "Fixture answer")
+        self.assertEqual(args[args.index("-subtitle") + 1], "demo")
+        self.assertEqual(args[args.index("-group") + 1], "codex-nopane")
+        self.assertEqual(args[args.index("-activate") + 1], "com.mitchellh.ghostty")
+        self.assertNotIn("-execute", args)
+
+    def test_daemon_origin_cannot_claim_inherited_tmux_pane(self) -> None:
+        self.env["FIXTURE_DAEMON_ORIGIN"] = "1"
+        self.notify("--agent", "codex")
+        self.assert_unbound_codex_notification()
+
+    def test_visible_inherited_daemon_pane_does_not_suppress_alert(self) -> None:
+        self.env.update(FIXTURE_DAEMON_ORIGIN="1", FIXTURE_VISIBLE="1")
+        self.notify("--agent", "codex")
+        self.assert_unbound_codex_notification()
+
+    def test_failed_parent_lookup_leaves_codex_notification_unbound(self) -> None:
+        self.env["FIXTURE_PS_EXIT"] = "1"
+        self.notify("--agent", "codex")
+        self.assert_unbound_codex_notification()
 
     def test_explicit_agent_identity_and_groups(self) -> None:
         for agent, title, group in (("codex", "Codex: готово", "codex-%7"),

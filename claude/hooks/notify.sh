@@ -119,14 +119,36 @@ PY
 [ "$agent" = claude ] && [ "$event" = "Stop" ] && has_pending_tasks && exit 0
 [ -n "$cwd" ] || cwd="$PWD"
 
+# Shared Codex daemons inherit a pane environment that may belong to another client.
+pane_is_origin() {
+    local shell_pid pid="$PPID" steps=0
+    shell_pid=$(tmux display-message -p -t "$pane" '#{pane_pid}' 2>/dev/null) || return 1
+    case "$shell_pid" in ''|*[!0-9]*) return 1 ;; esac
+    [ "$shell_pid" -gt 1 ] 2>/dev/null || return 1
+    while [ "$pid" -gt 1 ] && [ "$steps" -lt 64 ]; do
+        [ "$pid" = "$shell_pid" ] && return 0
+        pid=$(ps -o ppid= -p "$pid" 2>/dev/null) || return 1
+        pid=${pid//[[:space:]]/}
+        case "$pid" in ''|*[!0-9]*) return 1 ;; esac
+        steps=$((steps + 1))
+    done
+    return 1
+}
+
 project=$(basename "$cwd")
 context="$project"
 pane="${TMUX_PANE:-}"
 in_tmux=0
+pane_origin_unverified=0
 if [ -n "${TMUX:-}" ] && [ -n "$pane" ] && command -v tmux >/dev/null 2>&1; then
-    in_tmux=1
-    where=$(tmux display-message -p -t "$pane" '#{session_name}:#{window_index}' 2>/dev/null)
-    [ -n "$where" ] && context="$project · $where"
+    if [ "$agent" = codex ] && ! pane_is_origin; then
+        pane=""
+        pane_origin_unverified=1
+    else
+        in_tmux=1
+        where=$(tmux display-message -p -t "$pane" '#{session_name}:#{window_index}' 2>/dev/null)
+        [ -n "$where" ] && context="$project · $where"
+    fi
 fi
 
 frontmost_bundle_id() {
@@ -139,6 +161,7 @@ frontmost_bundle_id() {
 
 # True only when we can positively prove the pane is already in view.
 pane_is_visible() {
+    [ "$pane_origin_unverified" = "1" ] && return 1
     [ "$(frontmost_bundle_id)" = "$GHOSTTY_BUNDLE_ID" ] || return 1
     [ "$in_tmux" = "1" ] || return 0
     local state

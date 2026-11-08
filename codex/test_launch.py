@@ -57,6 +57,11 @@ sys.exit(int(os.environ["FIXTURE_EXIT"]))
                 self.assertEqual(result.returncode, 0, result.stderr)
                 self.assertEqual(recorded, ["--no-daemon", command, "fixture-session"])
 
+    def test_explicit_embedded_flag_passes_through_unchanged(self) -> None:
+        result, recorded = self.launch("--no-daemon", "resume", "fixture-session")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(recorded, ["--no-daemon", "resume", "fixture-session"])
+
     def test_spaces_empty_strings_and_globs_preserve_argument_boundaries(self) -> None:
         result, recorded = self.launch("--cd", "fixture directory", "", "literal * [text]", "say 'hello'")
         self.assertEqual(result.returncode, 0, result.stderr)
