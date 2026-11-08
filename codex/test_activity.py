@@ -318,6 +318,13 @@ else:
         self.notify("--agent", "codex")
         self.assert_unbound_codex_notification()
 
+    def test_missing_tmux_does_not_suppress_unbound_codex_notification(self) -> None:
+        (self.bin / "tmux").unlink()
+        self.assertIsNone(shutil.which("tmux", path=self.env["PATH"]))
+        self.env["FIXTURE_VISIBLE"] = "1"
+        self.notify("--agent", "codex")
+        self.assert_unbound_codex_notification()
+
     def test_explicit_agent_identity_and_groups(self) -> None:
         for agent, title, group in (("codex", "Codex: готово", "codex-%7"),
                                     ("claude", "Claude Code: готово", "claude-code-%7")):

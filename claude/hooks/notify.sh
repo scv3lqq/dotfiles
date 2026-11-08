@@ -140,11 +140,11 @@ context="$project"
 pane="${TMUX_PANE:-}"
 in_tmux=0
 pane_origin_unverified=0
-if [ -n "${TMUX:-}" ] && [ -n "$pane" ] && command -v tmux >/dev/null 2>&1; then
+if [ -n "${TMUX:-}" ] && [ -n "$pane" ]; then
     if [ "$agent" = codex ] && ! pane_is_origin; then
         pane=""
         pane_origin_unverified=1
-    else
+    elif command -v tmux >/dev/null 2>&1; then
         in_tmux=1
         where=$(tmux display-message -p -t "$pane" '#{session_name}:#{window_index}' 2>/dev/null)
         [ -n "$where" ] && context="$project · $where"

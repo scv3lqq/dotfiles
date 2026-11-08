@@ -181,3 +181,24 @@ Gates: zsh -n zsh/aliases.zsh; launch unittest suite; scoped ruff check and
 mypy --strict for codex/test_launch.py. Named mutation: remove --no-daemon from
 the passthrough case; the explicit-flag regression must fail. This strengthens
 acceptance criterion 1: wrapper-added flags never duplicate an explicit flag.
+
+
+## Iteration 1: Missing tmux must fail closed
+
+Independent review of 90fe13e reproduced an unavailable-tmux path that bypassed
+Codex ancestry proof, retained the inherited pane group and suppressed alerts
+when Ghostty was foreground. This violates T4 missing-tool behavior.
+
+### T6: Guard missing tmux before trusting pane
+
+Ownership: codex/test_activity.py and claude/hooks/notify.sh.
+Add test first: remove only the temporary fixture tmux executable, confirm tmux
+cannot be resolved on fixture PATH, set FIXTURE_VISIBLE=1, notify as Codex and
+assert the exact existing unbound-alert contract. Record RED before source edits.
+Change the outer TMUX/TMUX_PANE detection to enter even when tmux is unavailable.
+Run the Codex pane_is_origin proof first (a missing tmux command makes it fail
+closed); change its else branch to elif command -v tmux succeeds before assigning
+in_tmux/context. Claude retains its previous missing-tmux behavior. No other
+changes. Gates: activity suite, /bin/bash -n claude/hooks/notify.sh, scoped ruff
+and mypy on codex/test_activity.py. Full Gates are run by main after the fix.
+Named missing-tmux mutation: restore the outer command-v gate; new test must fail.
