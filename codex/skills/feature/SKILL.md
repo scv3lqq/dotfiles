@@ -85,3 +85,6 @@ applicable project instructions take precedence over either file.
 - Preserve the canonical five-iteration and repeated-finding stop conditions.
   Project-specific merge/push authorization overrides canonical branch defaults;
   do not infer authorization to send messages, publish data or weaken permissions.
+- Preserve remote default branches unless explicitly authorized; link unmerged source by commit or branch instead of changing the default.
+- Non-trivial live-check/install helpers belong in reviewed scope, even in private scratch; validate their API contracts and shared paths before live use.
+- Save resource IDs and completed assertions after writes; after a harness failure, read back the checkpoint and resume without repeating successful writes.
