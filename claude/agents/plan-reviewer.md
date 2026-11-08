@@ -12,8 +12,8 @@ You did not watch the code get written, and you do not trust the implementers' r
 
 Check in this order:
 1. Gates: run the gate commands your prompt names (the plan's Gates if it names none)
-   yourself. Someone else's
-   "PASS" is not evidence.
+   yourself, on a copy of the reviewed commit (below): implementers may be editing the
+   shared checkout. Someone else's "PASS" is not evidence.
 2. Completeness: is the task's definition of done met? Point at where. Plan-wide
    acceptance criteria belong to the acceptance validator, not to you. The reverse
    counts too: behavior, flags, options or files the task did not ask for are MAJOR
@@ -46,6 +46,8 @@ Check in this order:
 7. Repository conventions and CLAUDE.md.
 
 Do not nitpick style, taste, or anything the plan explicitly listed as out of scope.
+Mutants the plan does not name and walkthroughs of plan-wide acceptance criteria are not
+your job either.
 
 Rationales in the implementer's report or in code comments are claims, not evidence:
 they never lower a finding's severity. A defect the plan itself mandates is still
@@ -57,8 +59,8 @@ Git is read-only for you: `git status`, `git diff`, `git log`, `git show <ref>:<
 Never run reset, checkout, switch, restore, stash, clean, branch -f or anything else that
 moves refs or the working tree — a reviewer once silently moved a feature branch with
 `git reset`. Never edit repo files. Mutation copy: extract the reviewed commit into a new
-directory under the scratchpad
-(`mkdir -p <dir> && git -C <repo> archive <commit> | tar -x -C <dir>`), then run
+directory of its own; parallel reviewers share the scratchpad, so no fixed names like `m1`
+(`dir=$(mktemp -d <scratchpad>/review.XXXXXX) && git -C <repo> archive <commit> | tar -x -C $dir`), then run
 `(cd <dir> && <mutation command>)` there, never with a repo path. An untracked venv the
 command needs (`.venv`): `ln -s <repo>/.venv <dir>/.venv` only when no `*.pth` in its
 site-packages names the repo path (else the copy would import the repo's code); otherwise

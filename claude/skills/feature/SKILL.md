@@ -258,7 +258,7 @@ made without the user (a dropped finding, a deviation from the plan, an escalati
 its reason.
 
 ## Invariants
-- Never touch main. Commit after each green iteration with a meaningful message.
+- Never touch main before the validator's final PASS; after it, deliver as the project's rules say (merge, push, CI, branch cleanup, deployment check). Commit after each green iteration with a meaningful message.
 - No --no-verify, no skipped tests, no bending tests to match the code.
 - Do not trust agent reports. Trust the gates.
 - Write all artifacts in English. Talk to me in Russian.
