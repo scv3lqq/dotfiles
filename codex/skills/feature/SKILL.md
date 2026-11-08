@@ -5,6 +5,10 @@ description: Plan, delegate, implement and independently validate a non-trivial 
 
 # Feature workflow for Codex
 
+Before loading the canonical workflow, classify the request using the applicable
+micro-task rule. A micro task does not implicitly invoke this workflow; handle it
+directly unless the user explicitly requests this skill or project rules require it.
+
 Read the [canonical workflow](../../../claude/skills/feature/SKILL.md), resolving
 this skill's symlink first. It owns the plan sections, task contracts, gates,
 review formats and bounded fix loop. Apply the Codex overrides below throughout;
@@ -45,7 +49,9 @@ applicable project instructions take precedence over either file.
 - Do not end the user turn just because agents were dispatched. Continue useful
   independent work, receive results through the runtime's agent tools, and stay
   active through review, fixes, validation and the authorized completion steps.
-  Do not busy-poll or create fallback scheduled wakeups.
+  When waiting with `wait_agent`, use `timeout_ms: 60000`; messages wake it early.
+  After a timeout, give a brief progress update when due, then wait again without
+  repeated status reads or reminders. Do not create fallback scheduled wakeups.
 - After an agent failure inspect scoped changes before retrying. Resume the same
   agent when possible; redistribute only unfinished work when runtime guidance
   permits. Report unavailable models or persistent capacity errors. Do not invent
