@@ -24,6 +24,7 @@ applicable project instructions take precedence over either file.
   Include relevant rule constraints in agent briefs when not otherwise loaded.
 - Use native roles `implementer`, `plan-reviewer`, `acceptance-validator` and
   `skill-dry-run`. For research use available `explorer` or `default` agents.
+  Run skill-dry-run only for instruction/workflow changes, not ordinary product plans.
   The custom role TOML files own approved model and reasoning settings. When the
   current runtime cannot select a configured role, read its TOML and pass the full
   `developer_instructions`, approved model and effort to an available agent;
@@ -49,7 +50,8 @@ applicable project instructions take precedence over either file.
 - Do not end the user turn just because agents were dispatched. Continue useful
   independent work, receive results through the runtime's agent tools, and stay
   active through review, fixes, validation and the authorized completion steps.
-  When waiting with `wait_agent`, use `timeout_ms: 60000`; messages wake it early.
+  Use `wait_agent` with `timeout_ms: 60000` only for active agent work; resume tool
+  sessions when commands are the only pending work. Messages wake agent waits early.
   After a timeout, give a brief progress update when due, then wait again without
   repeated status reads or reminders. Do not create fallback scheduled wakeups.
 - After an agent failure inspect scoped changes before retrying. Resume the same
