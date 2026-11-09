@@ -21,7 +21,7 @@ already loaded the old role definitions; saved edits cannot attest a live reload
 ## Acceptance criteria
 1. Parse TOML and compare role/default settings with the role matrix below.
 2. Compare global parsed config before/after, excluding only the two [agents]
-   default keys, and preserve top-level main model/effort and all other settings.
+   default keys and four explicitly managed role registry declarations, and preserve top-level main model/effort and all other settings.
 3. Existing global Go reviewer bytes change only by insertion of explicit model
    and effort. Back it and global config up under the existing private convention.
 4. Fresh CLI process spawns all eight child roles without model/effort overrides;
@@ -193,11 +193,16 @@ The `feature` and `retro` skills have Codex adapters; existing third-party skill
 are preserved. The installer configures these assets with Python 3.11+.
 Preview with `python3 codex/setup.py`; apply with `python3 codex/setup.py --apply`.
 This links guidance, managed agents, personal skills and the Ayu syntax theme.
-Global config changes are limited to `tui.theme` and the two subagent defaults.
-Conflicting files are reported; replaced guidance and configuration are backed
-up privately outside the repo. Restart Codex to load saved defaults and role
-pins: an already-running session can retain its loaded settings. Verify actual
-child selection in fresh subagents, rather than inferring it from saved files.
+Global config changes are limited to `tui.theme`, the two subagent defaults
+and explicit declarations for managed roles. CLI 0.167.0 can discover a symlinked
+role yet reject its spawn. Each `[agents.<role>]` declaration supplies a supported
+`config_file` pointing to the canonical TOML, keeping the shared symlinks intact.
+Project paths are relative to the declaring config; global setup resolves them.
+Existing conflicting role files are skipped; conflicting explicit declarations
+fail before writes. Replaced guidance and configuration are backed up privately.
+Restart Codex to load saved defaults and declarations: an already-running
+session can retain its loaded settings. Verify actual child selection in fresh
+subagents, rather than inferring it from saved files.
 ````
 
 ## T4 private helper contract
@@ -225,3 +230,68 @@ helper policy. The private helper passed independent review with 14 fixtures;
 production implementation passed review including both named mutations.
 Delivery operations are post-PASS: integrate/push main, preserve the previous
 active feature's history by merging verified main, and restore the named stash.
+
+## Iteration 1: make symlinked roles spawnable
+Fresh native execution proved four existing symlinked roles unavailable on CLI
+0.167.0. An isolated regular/symlink/duplicate control isolated symlink discovery;
+a second control proved an explicit agents.<role>.config_file declaration restores
+native spawn from the same canonical file without replacing the symlink.
+This is required for criterion 4; do not weaken eight-role runtime acceptance.
+Official path contract: https://learn.chatgpt.com/docs/config-file/config-reference
+Relative config_file paths resolve from the declaring config file. Use relative
+paths in the public project config and resolved canonical paths only in private
+global config. Preserve role instructions, main settings and symlink layout.
+
+### T5: managed global registry setup
+Own codex/setup.py and codex/test_setup.py. Add pure
+agent_registry_config(original: bytes, registrations: tuple[tuple[str, str, str], ...])
+-> bytes, where each entry is role name, resolved canonical config_file, description.
+After existing theme/default transforms, configure computes registrations from the
+four managed role links, only when destination is absent or exactly the managed
+link. Existing user-owned conflicting destinations remain skipped. Read each source
+TOML's description, require a nonempty string, and perform all validation before
+any backup/write. Append missing literal [agents.<name>] tables with description
+and config_file as TOML basic strings (json.dumps provides safe escaping). Preserve
+newline style and every existing byte outside added tables. Existing declarations
+with the same config_file are preserved byte-for-byte including extra metadata;
+conflicting config_file or non-table role entries fail with SetupError before writes.
+Compare parsed candidate against deep-copy input plus only intended declarations.
+Keep all existing setup behaviors, backup/mode/idempotence/symlinks and errors.
+Write independent expected literal registry cases first; RED log before source edits.
+Add tests for first-run/existing config, preservation of main/other role settings,
+CRLF/comments, repeated apply, conflicting destination skip, conflicting registry
+fail-before-write and invalid description fail-before-write. Adapt exact existing
+config expectations minimally. Gate: python3 -B -m unittest discover -s codex -p test_setup.py.
+Named mutation: omit agent_registry_config call from configure, preserve other
+transforms; valid syntax but named registry tests must fail on an isolated copy.
+
+### T6: project registry, checker and README
+Own .codex/config.toml, codex/check.py and README.md. Add four literal role tables
+with canonical source descriptions and config_file = ../codex/agents/<role>.toml.
+Preserve main/top-level/default fields and all role symlinks. Extend exact checker
+expectations to require precisely these registries and verify each referenced path
+resolves to its existing canonical role source. README explains the CLI 0.167.0
+symlink discovery issue and explicit registration, with no private paths or logs.
+Use supplemental exact old/new README fences generated from 096bd52 before dispatch;
+update original E1-new fence to final desired README so its check remains applicable.
+Gates: python3 -B codex/check.py; exact README plan_edits check; git diff --check.
+
+T5 -> T6 shared contract: four managed names unchanged, registry tables include
+config_file plus description, direct canonical source retains role model/effort.
+Do not materialize role files or change Go reviewer ownership. After review, back
+up current private config then apply only approved registry transform, assert all
+other parsed settings against original backup, rerun the reviewed fresh probe.
+
+T5 closed details: error text for an existing conflicting/non-table registry is
+`config.toml: conflicting registry for <name>`; invalid/missing source description
+is `Missing description for <name>`. Existing same-path declarations retain all
+metadata, even a different description. Validation precedes any backup/write.
+Registered source paths are resolved absolute paths in private global config;
+source descriptions are read before mutations. Skip user-owned conflicting role
+destinations using the existing is_correct_link rule, never replace them.
+T5 comparison is exact string equality with the generated canonical absolute
+config_file value. A missing config_file, relative string or alias, even if it
+might resolve to the same file, is a conflicting explicit declaration and fails
+safely before writes. Do not resolve or rewrite existing user declarations; the
+current live config has no such declarations. This conservative boundary keeps
+the transform pure and avoids altering independently owned registrations.
