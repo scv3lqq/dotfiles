@@ -22,6 +22,9 @@ SKILLS = (
     "tech-note-review", "telegram-theme", "tmux-cleanup", "vpn-xray", "zen-browser",
 )
 ROLES = ("implementer", "plan-reviewer", "acceptance-validator", "skill-dry-run")
+DEFAULTS = (("default_subagent_model", "gpt-6.1-terra"),
+            ("default_subagent_reasoning_effort", "medium"))
+AGENTS = '\n[agents]\ndefault_subagent_model = "gpt-6.1-terra"\ndefault_subagent_reasoning_effort = "medium"\n'
 
 
 class SetupTests(unittest.TestCase):
@@ -84,7 +87,7 @@ class SetupTests(unittest.TestCase):
 
     def test_first_run_installs_exact_sources_and_private_config(self) -> None:
         self.configure()
-        self.assertEqual(tomllib.loads(self.config.read_text()), {"tui": {"theme": "ayu-claude"}})
+        self.assertEqual(tomllib.loads(self.config.read_text()), {"tui": {"theme": "ayu-claude"}, "agents": dict(DEFAULTS)})
         self.assertEqual(stat.S_IMODE(self.config.stat().st_mode), 0o600)
         self.assertEqual((self.home / ".codex/AGENTS.md").resolve(), self.repo / "codex/AGENTS.md")
         for role in ROLES:
@@ -109,9 +112,10 @@ class SetupTests(unittest.TestCase):
         self.config.chmod(0o640)
         self.configure()
         self.assertEqual(self.config.read_bytes(), before.replace('theme = "old"',
-                                                                  'theme = "ayu-claude"').encode())
+                                                                  'theme = "ayu-claude"').encode() + AGENTS.replace('\n', '\r\n').encode())
         expected = tomllib.loads(before)
         expected["tui"]["theme"] = "ayu-claude"
+        expected["agents"] = dict(DEFAULTS)
         self.assertEqual(tomllib.loads(self.config.read_text()), expected)
         self.assertEqual(stat.S_IMODE(self.config.stat().st_mode), 0o640)
         self.assertEqual(len(self.backups()), 1)
@@ -122,19 +126,48 @@ class SetupTests(unittest.TestCase):
         self.write(self.config, before)
         self.configure()
         self.assertEqual(self.config.read_text(), before.replace('[tui]\n',
-                                                                 '[tui]\ntheme = "ayu-claude"\n'))
+                                                                 '[tui]\ntheme = "ayu-claude"\n') + AGENTS)
 
     def test_adds_missing_table_and_preserves_original_without_final_newline(self) -> None:
         before = 'model = "fixture-model"\napproval_policy = "on-request"'
         self.write(self.config, before)
         self.configure()
-        self.assertEqual(self.config.read_text(), before + '\n\n[tui]\ntheme = "ayu-claude"\n')
+        self.assertEqual(self.config.read_text(), before + '\n\n[tui]\ntheme = "ayu-claude"\n' + AGENTS)
 
     def test_quoted_theme_key_is_supported(self) -> None:
         before = "[tui]\n  'theme' = 'old' # keep\n"
         self.write(self.config, before)
         self.configure()
-        self.assertEqual(self.config.read_text(), "[tui]\n  'theme' = \"ayu-claude\" # keep\n")
+        self.assertEqual(self.config.read_text(), "[tui]\n  'theme' = \"ayu-claude\" # keep\n" + AGENTS)
+
+    def test_subagent_defaults_preserve_existing_table_and_main_effort(self) -> None:
+        before = ("model_reasoning_effort = 'high'\r\n[agents] # keep\r\n"
+                  "'default_subagent_model' = 'old' # model comment\r\n"
+                  '"default_subagent_reasoning_effort" = "high" # effort comment\r\n'
+                  "max_threads = 3\r\n[agents.custom]\r\nname = 'keep'\r\n")
+        result = codex_setup.subagent_config(before.encode())
+        expected = (before.replace("'old' # model", '"gpt-6.1-terra" # model')
+                    .replace('"high" # effort', '"medium" # effort'))
+        self.assertEqual(result, expected.encode())
+        self.assertEqual(codex_setup.subagent_config(result), result)
+        parsed = tomllib.loads(result.decode())
+        self.assertEqual(parsed["model_reasoning_effort"], "high")
+        self.assertEqual(parsed["agents"]["custom"], {"name": "keep"})
+        self.assertEqual(parsed["agents"]["max_threads"], 3)
+
+    def test_subagent_defaults_added_to_existing_table(self) -> None:
+        before = b"[agents] # keep\nmax_threads = 2\n[agents.role]\nname = 'keep'\n"
+        result = codex_setup.subagent_config(before)
+        parsed = tomllib.loads(result.decode())
+        self.assertEqual({key: parsed["agents"][key] for key, _ in DEFAULTS}, dict(DEFAULTS))
+        self.assertEqual(parsed["agents"]["role"], {"name": "keep"})
+        self.assertIn(b"max_threads = 2\n", result)
+
+    def test_preview_reports_config_update(self) -> None:
+        self.write(self.config, '[tui]\ntheme = "ayu-claude"\n')
+        output = self.configure(apply=False)
+        self.assertIn("config update", output)
+        self.assertNotIn("CLI theme update", output)
 
     def test_repeat_apply_is_byte_and_metadata_identical(self) -> None:
         self.write(self.config, 'model = "fixture-model"\n')
@@ -216,6 +249,11 @@ class SetupTests(unittest.TestCase):
     def test_invalid_and_unsupported_config_fail_before_any_writes(self) -> None:
         for config in ('model = [', 'model = "a"\nmodel = "b"\n',
                        'tui = {theme = "old"}\n', 'tui.theme = "old"\n',
+                       'agents = {max_threads = 2}\n', 'agents.max_threads = 2\n',
+                       '[agents]\ndefault_subagent_model = """old\nvalue"""\n',
+                       '[agents]\ndefault_subagent_model = 42\n',
+                       '[agents]\ndefault_subagent_reasoning_effort = false\n',
+                       'description = """text\n[agents]\ntext"""\n',
                        '[tui]\ntheme = """old\ntheme"""\n'):
             with self.subTest(config=config):
                 self.write(self.config, config)

@@ -167,30 +167,39 @@ macOS-only configs are skipped.
 
 The root `AGENTS.md` is the canonical, provider-neutral instruction file;
 `CLAUDE.md` links to it. The tracked `.codex/` is this repository's project layer:
-its config selects Sol with high reasoning, and its four agent definitions link
-to the shared sources in `codex/agents/`. Project settings load for trusted projects.
+its top-level settings keep the main session on Sol/high, and its four agent
+links share sources in `codex/agents/`. Project settings load for trusted projects.
 The tracked `.agents/skills/` links the three project skills and their resources
 to `.claude/skills/`, plus the native `feature` and `retro` workflows from
 `codex/skills/`. The `codex/` directory remains the source for global setup.
 
-Codex shares 23 personal skills and has four native roles:
+Codex shares 23 personal skills. The saved role policy is:
 
 | Role | Model | Reasoning effort |
 | --- | --- | --- |
-| `implementer` | `gpt-6.1-sol` | `high` |
-| `plan-reviewer` | `gpt-6.1-sol` | `high` |
-| `acceptance-validator` | `gpt-6.1-sol` | `high` |
-| `skill-dry-run` | `gpt-6.1-sol` | `high` |
+| Main session (existing global/project settings preserved) | `gpt-6.1-sol` | `high` |
+| `default`, `worker`, `explorer` | `gpt-6.1-terra` | `medium` |
+| `implementer`, `acceptance-validator`, `skill-dry-run` | `gpt-6.1-terra` | `medium` |
+| `plan-reviewer`, `go-code-reviewer` | `gpt-6.1-sol` | `high` |
 
-The global setup preserves the current main model. The `feature` and `retro`
-skills have Codex adapters;
-existing third-party skills and the Go reviewer are preserved.
-The installer configures these assets when Python 3.11+ is available.
+The supported `[agents]` keys `default_subagent_model` and
+`default_subagent_reasoning_effort` set Terra/medium for built-in children.
+Explicit custom-role model/effort pins take precedence over these defaults.
+The four managed roles pin both fields. The existing user-owned Go reviewer
+must explicitly pin `model = "gpt-6.1-sol"` and `model_reasoning_effort = "high"`;
+setup preserves its file and instructions. Validate its resolved TOML with
+`python3 codex/check.py --reviewer <path-to-go-reviewer.toml>`.
+
+The global setup preserves the main model/effort and all unrelated settings.
+The `feature` and `retro` skills have Codex adapters; existing third-party skills
+are preserved. The installer configures these assets with Python 3.11+.
 Preview with `python3 codex/setup.py`; apply with `python3 codex/setup.py --apply`.
-This links guidance and agents into `~/.codex/`, personal skills into
-`~/.agents/skills/`, and the Ayu syntax theme into `~/.codex/themes/`.
-Only `tui.theme` is changed in the global config. Conflicting files are reported;
-replaced guidance and configuration are backed up privately outside the repo.
+This links guidance, managed agents, personal skills and the Ayu syntax theme.
+Global config changes are limited to `tui.theme` and the two subagent defaults.
+Conflicting files are reported; replaced guidance and configuration are backed
+up privately outside the repo. Restart Codex to load saved defaults and role
+pins: an already-running session can retain its loaded settings. Verify actual
+child selection in fresh subagents, rather than inferring it from saved files.
 
 Four additional plugin packages provide 37 shared skills: Astronomer Data (34),
 0bull, frontend-design and Humanizer (one each). With these plugins installed and
