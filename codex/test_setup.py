@@ -95,6 +95,13 @@ class SetupTests(unittest.TestCase):
         self.assertEqual(result, expected)
         self.assertEqual(codex_setup.agent_registry_config(result, registrations), result)
 
+    def test_registry_supports_non_bmp_unicode(self) -> None:
+        registrations = (("implementer", "/canonical/🚀/role.toml", "Role with 🚀"),)
+        result = codex_setup.agent_registry_config(b"[agents]\n", registrations)
+        self.assertEqual(tomllib.loads(result.decode())["agents"]["implementer"],
+                         {"description": "Role with 🚀", "config_file": "/canonical/🚀/role.toml"})
+        self.assertEqual(codex_setup.agent_registry_config(result, registrations), result)
+
     def test_registry_conflicts_fail_before_writes(self) -> None:
         path = str(self.repo / "codex/agents/implementer.toml")
         for declaration in ('implementer = 3', '[agents.implementer]\ndescription = "x"',

@@ -295,3 +295,9 @@ might resolve to the same file, is a conflicting explicit declaration and fails
 safely before writes. Do not resolve or rewrite existing user declarations; the
 current live config has no such declarations. This conservative boundary keeps
 the transform pure and avoids altering independently owned registrations.
+
+### T5 Unicode correction
+Use json.dumps(..., ensure_ascii=False) for both description and config_file.
+Default JSON surrogate-pair escapes for non-BMP characters are invalid TOML.
+Add independent literal description/path cases with non-BMP Unicode, assert
+parsed equality and byte-idempotence. Same T5 scope and task gate; no unrelated edits.

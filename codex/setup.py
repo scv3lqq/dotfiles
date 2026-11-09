@@ -179,8 +179,8 @@ def agent_registry_config(original: bytes, registrations: tuple[tuple[str, str, 
                 raise SetupError(f"config.toml: conflicting registry for {name}")
             continue
         agents[name] = {"description": description, "config_file": path}
-        additions.append(f'[agents.{name}]{newline}description = {json.dumps(description)}{newline}'
-                         f'config_file = {json.dumps(path)}{newline}')
+        additions.append(f'[agents.{name}]{newline}description = {json.dumps(description, ensure_ascii=False)}{newline}'
+                         f'config_file = {json.dumps(path, ensure_ascii=False)}{newline}')
     if not additions:
         return original
     expected["agents"] = agents
