@@ -1,5 +1,6 @@
 """Validate repository Codex assets without loading personal configuration."""
 
+import argparse
 from pathlib import Path
 import plistlib
 import re
@@ -8,10 +9,10 @@ import tomllib
 
 ROOT = Path(__file__).resolve().parent
 ROLES = (
-    ("implementer", "gpt-6.1-sol", "high"),
+    ("implementer", "gpt-6.1-terra", "medium"),
     ("plan-reviewer", "gpt-6.1-sol", "high"),
-    ("acceptance-validator", "gpt-6.1-sol", "high"),
-    ("skill-dry-run", "gpt-6.1-sol", "high"),
+    ("acceptance-validator", "gpt-6.1-terra", "medium"),
+    ("skill-dry-run", "gpt-6.1-terra", "medium"),
 )
 PALETTE = frozenset({
     "#0B0E14", "#E8E6DD", "#CDA1FA", "#D2A6FF", "#303030", "#E6B450",
@@ -32,6 +33,14 @@ def check_agents() -> None:
         assert agent.get("model_reasoning_effort") == effort, f"{path}: wrong effort"
         assert agent.get("model") == model, f"{path}: wrong approved model"
     print("PASS: four native agents with approved models and efforts")
+
+
+def check_reviewer(path: Path) -> None:
+    reviewer = tomllib.loads(path.read_text())
+    assert reviewer.get("name") == "go-code-reviewer", f"{path}: wrong reviewer name"
+    assert reviewer.get("model") == "gpt-6.1-sol", f"{path}: wrong reviewer model"
+    assert reviewer.get("model_reasoning_effort") == "high", f"{path}: wrong reviewer effort"
+    print("PASS: external Go reviewer pins")
 
 
 def check_guidance() -> None:
@@ -73,9 +82,27 @@ def check_project() -> None:
     assert config.is_file() and not config.is_symlink(), (
         f"{config}: project config must be a regular file"
     )
+    registrations = {
+        name: {
+            "description": tomllib.loads((ROOT / "agents" / f"{name}.toml").read_text())["description"],
+            "config_file": f"../codex/agents/{name}.toml",
+        }
+        for name, _model, _effort in ROLES
+    }
     assert tomllib.loads(config.read_text()) == {
         "model": "gpt-6.1-sol", "model_reasoning_effort": "high",
-    }, f"{config}: project config must contain only the approved model and effort"
+        "agents": {
+            "default_subagent_model": "gpt-6.1-terra",
+            "default_subagent_reasoning_effort": "medium",
+            **registrations,
+        },
+    }, f"{config}: project config must contain only approved settings"
+    for name, registration in registrations.items():
+        source = ROOT / "agents" / f"{name}.toml"
+        assert (project / registration["config_file"]).resolve() == source.resolve(), (
+            f"{config}: registry must resolve to the canonical source for {name}"
+        )
+        assert source.is_file(), f"{source}: canonical agent source must exist"
     for name, _model, _effort in ROLES:
         path = project / "agents" / f"{name}.toml"
         assert path.is_symlink(), f"{path}: project agent must be a symlink"
@@ -136,6 +163,11 @@ def check_skills() -> None:
 
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--reviewer", type=Path, help="explicit path to the Go reviewer TOML")
+    args = parser.parse_args()
+    if args.reviewer is not None:
+        check_reviewer(args.reviewer)
     check_agents()
     check_guidance()
     check_project()
