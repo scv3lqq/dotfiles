@@ -195,11 +195,16 @@ The `feature` and `retro` skills have Codex adapters; existing third-party skill
 are preserved. The installer configures these assets with Python 3.11+.
 Preview with `python3 codex/setup.py`; apply with `python3 codex/setup.py --apply`.
 This links guidance, managed agents, personal skills and the Ayu syntax theme.
-Global config changes are limited to `tui.theme` and the two subagent defaults.
-Conflicting files are reported; replaced guidance and configuration are backed
-up privately outside the repo. Restart Codex to load saved defaults and role
-pins: an already-running session can retain its loaded settings. Verify actual
-child selection in fresh subagents, rather than inferring it from saved files.
+Global config changes are limited to `tui.theme`, the two subagent defaults
+and explicit declarations for managed roles. CLI 0.167.0 can discover a symlinked
+role yet reject its spawn. Each `[agents.<role>]` declaration supplies a supported
+`config_file` pointing to the canonical TOML, keeping the shared symlinks intact.
+Project paths are relative to the declaring config; global setup resolves them.
+Existing conflicting role files are skipped; conflicting explicit declarations
+fail before writes. Replaced guidance and configuration are backed up privately.
+Restart Codex to load saved defaults and declarations: an already-running
+session can retain its loaded settings. Verify actual child selection in fresh
+subagents, rather than inferring it from saved files.
 
 Four additional plugin packages provide 37 shared skills: Astronomer Data (34),
 0bull, frontend-design and Humanizer (one each). With these plugins installed and

@@ -82,13 +82,27 @@ def check_project() -> None:
     assert config.is_file() and not config.is_symlink(), (
         f"{config}: project config must be a regular file"
     )
+    registrations = {
+        name: {
+            "description": tomllib.loads((ROOT / "agents" / f"{name}.toml").read_text())["description"],
+            "config_file": f"../codex/agents/{name}.toml",
+        }
+        for name, _model, _effort in ROLES
+    }
     assert tomllib.loads(config.read_text()) == {
         "model": "gpt-6.1-sol", "model_reasoning_effort": "high",
         "agents": {
             "default_subagent_model": "gpt-6.1-terra",
             "default_subagent_reasoning_effort": "medium",
+            **registrations,
         },
     }, f"{config}: project config must contain only approved settings"
+    for name, registration in registrations.items():
+        source = ROOT / "agents" / f"{name}.toml"
+        assert (project / registration["config_file"]).resolve() == source.resolve(), (
+            f"{config}: registry must resolve to the canonical source for {name}"
+        )
+        assert source.is_file(), f"{source}: canonical agent source must exist"
     for name, _model, _effort in ROLES:
         path = project / "agents" / f"{name}.toml"
         assert path.is_symlink(), f"{path}: project agent must be a symlink"

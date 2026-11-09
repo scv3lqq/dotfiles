@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import copy
+import json
 from dataclasses import dataclass
 from datetime import datetime, timezone
 import os
@@ -157,6 +158,43 @@ def subagent_config(original: bytes) -> bytes:
     return candidate.encode("utf-8")
 
 
+
+def agent_registry_config(original: bytes, registrations: tuple[tuple[str, str, str], ...]) -> bytes:
+    """Append missing managed registrations without changing existing metadata."""
+    try:
+        text = original.decode("utf-8")
+        parsed = tomllib.loads(text)
+    except (UnicodeDecodeError, tomllib.TOMLDecodeError) as error:
+        raise SetupError("config.toml is not valid UTF-8 TOML") from error
+    expected = copy.deepcopy(parsed)
+    agents = expected.get("agents", {})
+    if not isinstance(agents, dict):
+        raise SetupError("config.toml: agents must be a table")
+    newline = "\r\n" if "\r\n" in text else "\n"
+    additions = []
+    for name, path, description in registrations:
+        if name in agents:
+            entry = agents[name]
+            if not isinstance(entry, dict) or entry.get("config_file") != path:
+                raise SetupError(f"config.toml: conflicting registry for {name}")
+            continue
+        agents[name] = {"description": description, "config_file": path}
+        additions.append(f'[agents.{name}]{newline}description = {json.dumps(description)}{newline}'
+                         f'config_file = {json.dumps(path)}{newline}')
+    if not additions:
+        return original
+    expected["agents"] = agents
+    separator = newline if text and not text.endswith("\n") else ""
+    candidate = text + separator + "".join(newline + entry for entry in additions)
+    try:
+        actual = tomllib.loads(candidate)
+    except tomllib.TOMLDecodeError as error:
+        raise SetupError("config.toml: unsupported registry layout; no changes made") from error
+    if actual != expected:
+        raise SetupError("config.toml: registry edit would change other settings; no changes made")
+    return candidate.encode("utf-8")
+
+
 def desired_links(home: Path, repo: Path, system: str) -> list[Link]:
     links = [Link(repo / f"codex/agents/{role}.toml", home / f".codex/agents/{role}.toml")
              for role in ROLES]
@@ -227,6 +265,20 @@ def configure(home: Path, *, apply: bool = False, repo_root: Path | None = None,
     updated = subagent_config(theme_config(original))
     mode = stat.S_IMODE(config_target.stat().st_mode) if config_target.exists() else 0o600
     links = desired_links(home, repo, system or platform.system())
+    registrations = []
+    for link in links[:len(ROLES)]:
+        if (link.destination.exists() or link.destination.is_symlink()) and not is_correct_link(link):
+            continue
+        role = link.source.stem
+        try:
+            role_data = tomllib.loads(link.source.read_text(encoding="utf-8"))
+        except (UnicodeDecodeError, tomllib.TOMLDecodeError) as error:
+            raise SetupError(f"Missing description for {role}") from error
+        description = role_data.get("description")
+        if not isinstance(description, str) or not description.strip():
+            raise SetupError(f"Missing description for {role}")
+        registrations.append((role, str(link.source.resolve()), description))
+    updated = agent_registry_config(updated, tuple(registrations))
     guidance = Link(repo / "codex/AGENTS.md", home / ".codex/AGENTS.md")
     if not guidance.source.is_file():
         raise SetupError("Missing source: codex/AGENTS.md")

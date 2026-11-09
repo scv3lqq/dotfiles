@@ -38,7 +38,7 @@ class SetupTests(unittest.TestCase):
         self.write(self.repo / "codex/AGENTS.md", "Fixture guidance\n")
         self.write(self.repo / "codex/themes/ayu-claude.tmTheme", "Fixture theme\n")
         for role in ROLES:
-            self.write(self.repo / f"codex/agents/{role}.toml", f'name = "{role}"\n')
+            self.write(self.repo / f"codex/agents/{role}.toml", f'name = "{role}"\ndescription = "Fixture {role}"\n')
         for skill in SKILLS:
             self.write(self.repo / f"claude/skills/{skill}/SKILL.md", f"Source {skill}\n")
         for skill in ("feature", "retro"):
@@ -73,6 +73,54 @@ class SetupTests(unittest.TestCase):
     def backups(self) -> list[Path]:
         return sorted((self.home / ".claude/backups").glob("codex-*"))
 
+    def registry(self, newline: str = "\n") -> str:
+        return "".join(
+            f'\n[agents.{role}]\ndescription = "Fixture {role}"\n'
+            f'config_file = "{self.repo / "codex/agents" / (role + ".toml")}"\n'
+            for role in ROLES
+        ).replace("\n", newline)
+
+    def test_registry_preserves_existing_declaration_and_crlf(self) -> None:
+        before = (b'model_reasoning_effort = "high"\r\n[agents] # keep\r\n'
+                  b'max_threads = 2\r\n[agents.custom]\r\nname = "keep"\r\n'
+                  b'[agents.implementer] # retained\r\n'
+                  b'config_file = "/canonical/role.toml"\r\n'
+                  b'description = "user text"\r\nextra = true\r\n')
+        registrations = (("implementer", "/canonical/role.toml", "new text"),
+                         ("worker", "/canonical/worker.toml", 'A "quoted" role'))
+        expected = (before + b'\r\n[agents.worker]\r\n'
+                    b'description = "A \\"quoted\\" role"\r\n'
+                    b'config_file = "/canonical/worker.toml"\r\n')
+        result = codex_setup.agent_registry_config(before, registrations)
+        self.assertEqual(result, expected)
+        self.assertEqual(codex_setup.agent_registry_config(result, registrations), result)
+
+    def test_registry_conflicts_fail_before_writes(self) -> None:
+        path = str(self.repo / "codex/agents/implementer.toml")
+        for declaration in ('implementer = 3', '[agents.implementer]\ndescription = "x"',
+                            '[agents.implementer]\nconfig_file = "relative.toml"',
+                            f'[agents.implementer]\nconfig_file = "{path}/../implementer.toml"',
+                            '[agents.implementer]\nconfig_file = "/other.toml"'):
+            with self.subTest(declaration=declaration):
+                self.write(self.config, '[agents]\n' + declaration + '\n')
+                before = self.snapshot()
+                with self.assertRaisesRegex(codex_setup.SetupError, 'conflicting registry for implementer'):
+                    self.configure()
+                self.assertEqual(self.snapshot(), before)
+                self.assertEqual(self.backups(), [])
+
+    def test_invalid_role_description_fails_before_writes(self) -> None:
+        role = self.repo / "codex/agents/implementer.toml"
+        for content in ('name = "implementer"\n', 'description = 2\n', 'description = ""\n'):
+            with self.subTest(content=content):
+                self.write(role, content)
+                self.write(self.config, 'model = "keep"\n')
+                before = self.snapshot()
+                with self.assertRaisesRegex(codex_setup.SetupError, 'Missing description for implementer'):
+                    self.configure()
+                self.assertEqual(self.snapshot(), before)
+                self.assertEqual(self.backups(), [])
+
     def test_preview_does_not_create_home(self) -> None:
         output = self.configure(apply=False)
         self.assertFalse(self.home.exists())
@@ -87,7 +135,7 @@ class SetupTests(unittest.TestCase):
 
     def test_first_run_installs_exact_sources_and_private_config(self) -> None:
         self.configure()
-        self.assertEqual(tomllib.loads(self.config.read_text()), {"tui": {"theme": "ayu-claude"}, "agents": dict(DEFAULTS)})
+        self.assertEqual(tomllib.loads(self.config.read_text()), {"tui": {"theme": "ayu-claude"}, "agents": {**dict(DEFAULTS), **{role: {"description": f"Fixture {role}", "config_file": str(self.repo / "codex/agents" / (role + ".toml"))} for role in ROLES}}})
         self.assertEqual(stat.S_IMODE(self.config.stat().st_mode), 0o600)
         self.assertEqual((self.home / ".codex/AGENTS.md").resolve(), self.repo / "codex/AGENTS.md")
         for role in ROLES:
@@ -112,10 +160,10 @@ class SetupTests(unittest.TestCase):
         self.config.chmod(0o640)
         self.configure()
         self.assertEqual(self.config.read_bytes(), before.replace('theme = "old"',
-                                                                  'theme = "ayu-claude"').encode() + AGENTS.replace('\n', '\r\n').encode())
+                                                                  'theme = "ayu-claude"').encode() + (AGENTS + self.registry()).replace('\n', '\r\n').encode())
         expected = tomllib.loads(before)
         expected["tui"]["theme"] = "ayu-claude"
-        expected["agents"] = dict(DEFAULTS)
+        expected["agents"] = {**dict(DEFAULTS), **{role: {"description": f"Fixture {role}", "config_file": str(self.repo / "codex/agents" / (role + ".toml"))} for role in ROLES}}
         self.assertEqual(tomllib.loads(self.config.read_text()), expected)
         self.assertEqual(stat.S_IMODE(self.config.stat().st_mode), 0o640)
         self.assertEqual(len(self.backups()), 1)
@@ -126,19 +174,19 @@ class SetupTests(unittest.TestCase):
         self.write(self.config, before)
         self.configure()
         self.assertEqual(self.config.read_text(), before.replace('[tui]\n',
-                                                                 '[tui]\ntheme = "ayu-claude"\n') + AGENTS)
+                                                                 '[tui]\ntheme = "ayu-claude"\n') + AGENTS + self.registry())
 
     def test_adds_missing_table_and_preserves_original_without_final_newline(self) -> None:
         before = 'model = "fixture-model"\napproval_policy = "on-request"'
         self.write(self.config, before)
         self.configure()
-        self.assertEqual(self.config.read_text(), before + '\n\n[tui]\ntheme = "ayu-claude"\n' + AGENTS)
+        self.assertEqual(self.config.read_text(), before + '\n\n[tui]\ntheme = "ayu-claude"\n' + AGENTS + self.registry())
 
     def test_quoted_theme_key_is_supported(self) -> None:
         before = "[tui]\n  'theme' = 'old' # keep\n"
         self.write(self.config, before)
         self.configure()
-        self.assertEqual(self.config.read_text(), "[tui]\n  'theme' = \"ayu-claude\" # keep\n" + AGENTS)
+        self.assertEqual(self.config.read_text(), "[tui]\n  'theme' = \"ayu-claude\" # keep\n" + AGENTS + self.registry())
 
     def test_subagent_defaults_preserve_existing_table_and_main_effort(self) -> None:
         before = ("model_reasoning_effort = 'high'\r\n[agents] # keep\r\n"
@@ -221,6 +269,7 @@ class SetupTests(unittest.TestCase):
         self.assertEqual(theme.readlink(), other_theme)
         self.assertEqual(other_theme.read_text(), "user-theme")
         self.assertIn("Skipping", output)
+        self.assertNotIn("implementer", tomllib.loads(self.config.read_text())["agents"])
 
     def test_existing_config_symlink_is_preserved(self) -> None:
         target = self.home / "config-source/live.toml"
