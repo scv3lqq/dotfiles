@@ -11,6 +11,9 @@
 #   @claude_wait_agent  agent whose prompt is pending ("main" or a subagent id)
 #   @claude_wait_from   state before that prompt ("none" when unset)
 #   @claude_agents      subagents and workflows in flight at the last Stop
+#   @agent_unseen       1 when a finished turn's result was not opened yet
+#   @agent_failed       1 when that turn ended in StopFailure
+#   @agent_report       path of its final text; the three feed tmux/agent-inbox.sh
 # Esc and a denied prompt end the turn without any hook event, idle_prompt
 # included; the picker drops such a stale "working" by window activity and
 # never lists it as finished. Never writes to stdout (UserPromptSubmit stdout
@@ -26,10 +29,11 @@ exec >/dev/null 2>&1
 
 pane=$TMUX_PANE
 now=$(date +%s)
+payload=$(cat) || exit 0
 # kind: notification type, tool name, SessionStart source or SessionEnd reason.
 # Background shells and monitors outlive any work (dev servers), so only
 # subagents and workflows keep a finished turn listed
-fields=$(jq -r '.hook_event_name // "", .notification_type // .tool_name // .source // .reason // "", .agent_id // "",
+fields=$(printf '%s' "$payload" | jq -r '.hook_event_name // "", .notification_type // .tool_name // .source // .reason // "", .agent_id // "",
   ([.background_tasks[]? | select(.type == "subagent" or .type == "workflow")] | length)') || exit 0
 { read -r event; read -r kind; read -r agent; read -r bg; } <<EOF
 $fields
@@ -46,6 +50,10 @@ clear_state() {
   tmux set -pu -t "$pane" @claude_state \; set -pu -t "$pane" @claude_since \; \
     set -pu -t "$pane" @claude_wait_agent \; set -pu -t "$pane" @claude_wait_from \; \
     set -pu -t "$pane" @claude_agents
+  clear_result
+  old=$(tmux display -p -t "$pane" '#{@agent_report}')
+  [ -z "$old" ] || rm -f "$old"
+  tmux set -pu -t "$pane" @agent_report
 }
 
 # Turn over and nothing of it runs: the picker lists it as finished since $1
@@ -70,10 +78,45 @@ wait_on_user() {
   tmux set -p -t "$pane" @claude_state waiting \; set -p -t "$pane" @claude_wait_agent "$me"
 }
 
+clear_result() {
+  tmux set -pu -t "$pane" @agent_unseen \; set -pu -t "$pane" @agent_failed
+}
+
+# The turn's final text for tmux/agent-inbox.sh. Unseen unless the pane is in
+# front of an attached client. $1: 1 when the turn failed
+record_result() {
+  local dir=${XDG_STATE_HOME:-$HOME/.local/state}/agent-inbox
+  local file old
+  old=$(tmux display -p -t "$pane" '#{@agent_report}')
+  umask 077
+  if mkdir -p "$dir"; then
+    file="$dir/${pane#%}-$now.txt"
+    printf '%s' "$payload" |
+      jq -j '[(.error // empty | tostring), (.last_assistant_message // empty)] | join("\n\n")' |
+      head -c 65536 >"$file"
+    if [ -s "$file" ]; then
+      tmux set -p -t "$pane" @agent_report "$file"
+      [ -z "$old" ] || [ "$old" = "$file" ] || rm -f "$old"
+    else
+      rm -f "$file"
+      [ -z "$old" ] || rm -f "$old"
+      tmux set -pu -t "$pane" @agent_report
+    fi
+  fi
+  if [ "${1:-}" = 1 ]; then tmux set -p -t "$pane" @agent_failed 1
+  else tmux set -pu -t "$pane" @agent_failed; fi
+  if [ "$(tmux display -p -t "$pane" '#{pane_active}#{window_active}#{?session_attached,1,0}')" = 111 ]; then
+    tmux set -pu -t "$pane" @agent_unseen
+  else
+    tmux set -p -t "$pane" @agent_unseen 1
+  fi
+}
+
 case "$event" in
   UserPromptSubmit)
     tmux set -p -t "$pane" @claude_state working \; set -p -t "$pane" @claude_since "$now" \; \
-      set -pu -t "$pane" @claude_wait_agent \; set -pu -t "$pane" @claude_wait_from ;;
+      set -pu -t "$pane" @claude_wait_agent \; set -pu -t "$pane" @claude_wait_from
+    [ -n "$agent" ] || clear_result ;;
   PermissionRequest) wait_on_user ;;
   PreToolUse)
     if [ "$kind" = AskUserQuestion ]; then
@@ -105,13 +148,17 @@ case "$event" in
   Stop)
     # Every hand-back or kill of a background agent starts a turn whose Stop
     # reports the agents still in flight
-    if [ "${bg:-0}" -gt 0 ]; then await_agents "$bg"; else finish "$now"; fi ;;
+    if [ "${bg:-0}" -gt 0 ]; then await_agents "$bg"
+    else
+      finish "$now"
+      [ -n "$agent" ] || record_result
+    fi ;;
   StopFailure)
     # Subagents and summary forks report their own API errors here (agent_id
     # set). Main's payload has no background_tasks: the last Stop's count stands in
     if [ -n "$agent" ]; then :
     elif [ "${inflight:-0}" -gt 0 ]; then await_agents "$inflight"
-    else finish "$now"; fi ;;
+    else finish "$now"; record_result 1; fi ;;
   SessionStart | SessionEnd)
     case "$kind" in
       # Compaction, manual or automatic, is not a turn

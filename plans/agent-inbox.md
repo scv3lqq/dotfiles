@@ -172,13 +172,15 @@ record_result() {
   if mkdir -p "$dir"; then
     file="$dir/${pane#%}-$now.txt"
     printf '%s' "$payload" |
-      jq -r '[(.error // empty | tostring), (.last_assistant_message // empty)] | join("\n\n")' |
+      jq -j '[(.error // empty | tostring), (.last_assistant_message // empty)] | join("\n\n")' |
       head -c 65536 >"$file"
     if [ -s "$file" ]; then
       tmux set -p -t "$pane" @agent_report "$file"
       [ -z "$old" ] || [ "$old" = "$file" ] || rm -f "$old"
     else
       rm -f "$file"
+      [ -z "$old" ] || rm -f "$old"
+      tmux set -pu -t "$pane" @agent_report
     fi
   fi
   if [ "${1:-}" = 1 ]; then tmux set -p -t "$pane" @agent_failed 1
@@ -245,7 +247,7 @@ spike findings first; never use a tracked reload. Self path as in
   `#{session_name}:#{window_index}.#{pane_index}  #{pane_current_path}`. Blank
   line. Then for failed, ready, seen with `@agent_report` a readable file inside
   the D3 directory: its content; otherwise the last 40 lines of
-  `tmux capture-pane -ep -t <pane>`.
+  `tmux capture-pane -ep -t <pane>` after dropping trailing blank lines.
 - no argument: main. `export AGENT_INBOX_STATE=$(mktemp -d)` with `trap` cleanup,
   remove D3 files older than 7 days (`find ... -type f -name '*.txt' -mtime +7
   -delete`, skip when the directory is missing), render into `shown`, run fzf on
@@ -265,7 +267,8 @@ spike findings first; never use a tracked reload. Self path as in
 Task gates: `/bin/bash -n tmux/agent-inbox.sh`; `test -x tmux/agent-inbox.sh`.
 
 Definition of done includes this drive on an isolated server (`S` a scratch
-dir, `cp /bin/sleep "$S/codex"`; report BLOCKED if that copy will not run):
+dir, `cp /bin/sleep "$S/codex"; codesign -s - -f "$S/codex"`, macOS kills an
+unsigned copy; report BLOCKED if that copy will not run):
 `env -u TMUX tmux -L inbox -f /dev/null`, two windows each running
 `"$S/codex" 300` in session `a`, plus a third window with a shell to host the
 popup command. Set `@claude_state done`, `@claude_since`, `@agent_unseen 1` on

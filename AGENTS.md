@@ -42,8 +42,10 @@ No database, migrations, service/API or CI. `just check` validates shell and age
   with `env -i HOME=$HOME /bin/zsh -lc '...'`, a plain `zsh -lc` inherits PATH.
 - `topgrade/`: macOS Stow package; its launchd agent lives outside the repo,
   see `plans/topgrade-autoupdate.md`.
-- `tmux/tmux.conf`, `starship/starship.toml`: directly linked configs. `prefix + s` runs
-  `tmux/session-picker.sh` (fzf popup; design in `plans/tmux-session-tree-picker.md`).
+- `tmux/tmux.conf`, `starship/starship.toml`: directly linked configs.
+  `prefix + s` runs `tmux/session-picker.sh` (fzf popup; design in
+  `plans/tmux-session-tree-picker.md`). `prefix + a` runs `tmux/agent-inbox.sh`
+  (agent inbox and bar counters; design in `plans/agent-inbox.md`).
 - macOS Stow packages nest one level, the config lives at
   `aerospace/aerospace/aerospace.toml`, `ghostty/ghostty/config`,
   `karabiner/karabiner/karabiner.json`, `topgrade/topgrade/topgrade.toml`.

@@ -507,6 +507,7 @@ Prefix is `Ctrl+a`. The config needs tmux 3.3+.
 | `prefix` + `h/j/k/l` | Resize pane (repeatable) |
 | `prefix` + `m` | Zoom pane |
 | `prefix` + `s` | Session tree popup (fzf): `→` expand, `←` collapse, `Enter` opens the session's first window or the focused window, `Ctrl+d` kills the session or window; Claude panes mid-turn (working, or waiting on you) or waiting on background agents are listed live at the bottom, panes whose turn finished in the last 10 minutes below them, `Enter` jumps to the pane; tmux `choose-tree` when fzf < 0.73 |
+| `prefix` + `a` | Agent inbox popup (fzf): agents that need you on top, working ones below, seen ones folded (`Tab`), preview of the final text, `Enter` jumps and marks seen, `Ctrl+x` marks seen; needs fzf 0.73+ |
 | `prefix` + `r` | Reload `~/.tmux.conf` |
 | `prefix` + `C-l` | Clear screen (`Ctrl+l` itself is taken by vim-tmux-navigator) |
 | `Ctrl+h/j/k/l` | Move between nvim splits and tmux panes (vim-tmux-navigator) |
