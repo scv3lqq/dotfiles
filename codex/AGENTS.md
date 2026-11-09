@@ -12,6 +12,9 @@
   material ambiguity, and identify missing required inputs before dependent work.
 - Automate authorized steps around passwords, OAuth and GUI login; leave the user
   one short list of steps that require their participation.
+  For new credentials, prepare a protected handoff before generation; do not rely
+  on terminal scrollback or report access ready before delivering them through
+  an authorized channel.
 
 ## Final report
 
@@ -45,9 +48,11 @@
 
 ## Orchestration
 
-- Beyond a micro task, use agents. Main plans, dispatches, decides and reports;
-  agents investigate, implement and review. A micro task is at most two short
-  calls on known targets or an edit of at most three already-decided lines.
+- Handle known, mechanical changes directly: one config value/list entry plus
+  matching updates to existing test expectations is a micro task even if it
+  takes several calls or exceeds three lines. State a brief plan and run the
+  required checks. Use agents for new logic, contracts or cross-repo changes,
+  and whenever project rules require them.
 - For non-trivial changes use `$feature`: `implementer` owns scoped edits,
   `plan-reviewer` independently reviews, `acceptance-validator` proves completion,
   and `skill-dry-run` checks instruction workflows before implementation.
@@ -63,6 +68,9 @@
 - Trust command evidence. Avoid duplicate exploration and raw log dumps; send
   unresolved findings to an independent reviewer. Stay active until all required
   agent results have been integrated and the task is complete or truly blocked.
+  Bind review verdicts to exact reviewed content: a commit for committed content,
+  otherwise file hashes. Reuse verdicts only while that content is unchanged;
+  obtain a fresh verdict after changes.
 
 ## Git and verification
 

@@ -35,6 +35,7 @@ only to rule on a CRITICAL/MAJOR finding or a criterion you cannot otherwise dec
 most 20 runs each; a MINOR finding is ruled by reading.
 Collect the acceptance evidence with one Bash script that runs every criterion and prints
 command, exit code and output per criterion, instead of one call per criterion.
+Once the mandatory gate and criteria are settled, write the required verdict/artifacts and return; extra probes or reporting work must address a concrete unresolved finding.
 
 Git is read-only for you: `git status`, `git diff`, `git log`, `git show <ref>:<path>`.
 Never run reset, checkout, switch, restore, stash, clean, branch -f or anything else that

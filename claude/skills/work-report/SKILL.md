@@ -57,6 +57,8 @@ Status icon in the title:
 
 **Changed.** Up to 5 lines. With more files, list the important ones and add a line such as "+ 4 small edits in `tests/`". Add line numbers where they help someone jump to the code.
 
+For multi-repository commits, give each repository's exact directory name, commit hash and branch, plus push status; avoid labels such as "service" or "devops" alone.
+
 **Checked.** Only real commands with real results. ✅ means it ran in this session, by you or by an agent you dispatched, and you saw it pass in its output or in that agent's report. A check you did not run gets ⚠️ and the reason. Mark old failures "pre-existing" so nobody chases them.
 
 **Next.** At most 3 items, highest priority first, each concrete enough to act on without asking you. Include problems you noticed but did not fix: bugs, risks, tech debt. Drop generic advice such as "add more tests" or "improve documentation".
