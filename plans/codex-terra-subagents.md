@@ -29,7 +29,8 @@ already loaded the old role definitions; saved edits cannot attest a live reload
    unavailable fields or runtime limitations honestly; self-report is insufficient.
 5. just check passes, plus strict CLI startup config validation.
 6. Existing Excalidraw orchestration drawing is updated and visually checked.
-7. Scoped commits are reviewed, integrated and pushed per repository rules.
+7. Scoped commits are reviewed. Integration and push follow the final acceptance
+   PASS as delivery steps, with their results recorded separately.
 
 ## Shared definitions
 | Role | Model | Effort |
@@ -213,3 +214,14 @@ JSON, missing/duplicate roles, wrong effort and mismatched parent IDs. Scoped
 gates: compile helper and run synthetic parser fixtures. Independent reviewer
 checks exact helper hash before live execution. Existing session role-availability
 rejection must not be interpreted as fresh CLI capability evidence.
+
+## Verification contract clarification
+The fresh probe uses three exact waves of sizes 3, 3 and 2, each beginning only
+after the previous wave completes. Actual spawn arguments must omit model and
+effort overrides and use fork_turns none. Require successful parent and child
+task_complete records, reject aborts/errors, and inspect own turn_context fields.
+Independent fixture expectations must be literal rather than imported from the
+helper policy. The private helper passed independent review with 14 fixtures;
+production implementation passed review including both named mutations.
+Delivery operations are post-PASS: integrate/push main, preserve the previous
+active feature's history by merging verified main, and restore the named stash.
