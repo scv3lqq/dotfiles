@@ -24,6 +24,10 @@ INBOX = ROOT / "tmux/agent-inbox.sh"
 NOW = 2_000_000_000
 # What the hook asks tmux to learn whether its pane is in front of an attached client
 FRONT_FORMAT = "#{pane_active}#{window_active}#{?session_attached,1,0}"
+# What the hook asks tmux to learn the process of its pane (G1, origin)
+PANE_PID_FORMAT = "#{pane_pid}"
+# What a Stop of the pane itself sets: a foreign process must leave all of it unset
+STOP_OPTIONS = ("@agent_unseen", "@claude_state", "@claude_since", "@agent_report")
 # D5: the columns of `tmux list-panes -a -F`, in the order of the stub rows
 COLUMNS = (
     "#{session_id}", "#{window_id}", "#{pane_id}", "#{pane_active}", "#{window_active}",
@@ -36,17 +40,36 @@ COLUMNS = (
 ALERT = " #[fg=#F07178]!"
 ACCENT = " #[fg=#E6B450]●"
 
-# Hook cases: the front check answers from the file `front` (000 when absent), every
-# other call reaches the real server on the isolated socket
+# Hook cases: the front check answers from the file `front` (000 when absent), the pane
+# process from the file `pane_pid` when it exists (an empty file is a failed lookup),
+# every other call reaches the real server on the isolated socket
 HOOK_TMUX = f'''
 import os
 args = sys.argv[1:]
+pane_pid = Path(os.environ["FIXTURE_ROOT"]) / "pane_pid"
 if {FRONT_FORMAT!r} in args:
     front = Path(os.environ["FIXTURE_ROOT"]) / "front"
     print(front.read_text() if front.exists() else "000")
+elif {PANE_PID_FORMAT!r} in args and pane_pid.exists():
+    answer = pane_pid.read_text()
+    if not answer:
+        sys.exit(1)
+    print(answer)
 else:
     real = os.environ["FIXTURE_TMUX"]
     os.execv(real, [real, "-L", os.environ["FIXTURE_SOCKET"], "-f", "/dev/null", *args])
+'''
+
+# Hook cases: the runner is never below the fixture pane, so the `ps` of the origin guard
+# answers every pid with the file `parent` and fails while the file is absent
+HOOK_PS = '''
+import os
+if len(sys.argv) != 5 or sys.argv[1:4] != ["-o", "ppid=", "-p"]:
+    sys.exit(2)
+parent = Path(os.environ["FIXTURE_ROOT"]) / "parent"
+if not parent.exists():
+    sys.exit(1)
+print(parent.read_text())
 '''
 
 # Inbox cases: serves the files `rows` and `windows`, records every call as JSON
@@ -166,6 +189,9 @@ class HookTests(Fixture):
         self.digits = self.pane.lstrip("%")
         self.env.update(TMUX_PANE=self.pane, FIXTURE_TMUX=str(binary), FIXTURE_SOCKET=socket)
         self.stub("tmux", HOOK_TMUX)
+        self.stub("ps", HOOK_PS)
+        # The runner is never below the fixture pane: the first ps answer names the pane's own process
+        self.set_parent(self.tmux("display-message", "-p", "-t", self.pane, PANE_PID_FORMAT).strip())
 
     def stop_server(self) -> None:
         subprocess.run([*self.server, "kill-server"], env=self.env, capture_output=True, timeout=10, check=False)
@@ -190,9 +216,24 @@ class HookTests(Fixture):
     def set_front(self, flags: str) -> None:
         (self.root / "front").write_text(flags)
 
+    def set_parent(self, text: str | None) -> None:
+        """What the `ps` stub answers for every pid: None makes it fail."""
+        path = self.root / "parent"
+        if text is None:
+            path.unlink(missing_ok=True)
+        else:
+            path.write_text(text)
+
     def hook(self, event: str, **fields: object) -> None:
         result = self.run_script(HOOK, payload={"hook_event_name": event, **fields})
         self.assertEqual(result.stdout, "")
+
+    def assert_ignored(self) -> None:
+        """The hook of a foreign process left no option of a finished turn and no report."""
+        options = self.options()
+        for name in STOP_OPTIONS:
+            self.assertNotIn(name, options)
+        self.assertEqual(self.stored(), [])
 
     def test_h1_stop_unseen(self) -> None:
         self.hook("Stop", last_assistant_message="final text")
@@ -276,6 +317,43 @@ class HookTests(Fixture):
         self.hook("Stop", agent_id="agent-1", last_assistant_message="final text")
         self.assertNotIn("@agent_unseen", self.options())
         self.assertEqual(self.stored(), [])
+
+    def test_h11_daemon_origin_stop_ignored(self) -> None:
+        self.set_parent("1")
+        self.hook("Stop", last_assistant_message="final text")
+        self.assert_ignored()
+
+    def test_h12_daemon_origin_prompt_ignored(self) -> None:
+        self.hook("Stop", last_assistant_message="final text")
+        options = self.options()
+        stored = self.stored()
+        self.assertEqual(options.get("@agent_unseen"), "1")
+        self.assertEqual(options.get("@claude_state"), "done")
+        self.assertEqual(len(stored), 1)
+        self.set_parent("1")
+        self.hook("UserPromptSubmit")
+        self.assertEqual(self.options(), options)
+        self.assertEqual(self.stored(), stored)
+
+    def test_h13_origin_lookup_failure_is_silent(self) -> None:
+        pane_pid = self.root / "pane_pid"
+        own = (self.root / "parent").read_text()
+        # The last case lets ps answer 0 too: a chain ending there would match a pane process of 0,
+        # so only the check on pane_pid keeps the hook out
+        cases: tuple[tuple[str, str | None, str | None], ...] = (
+            ("ps fails", None, None),
+            ("ps answers text", "abc", None),
+            ("pane_pid lookup fails", own, ""),
+            ("pane_pid is 0", "0", "0"),
+        )
+        for name, parent, answer in cases:
+            with self.subTest(case=name):
+                self.set_parent(parent)
+                pane_pid.unlink(missing_ok=True)
+                if answer is not None:
+                    pane_pid.write_text(answer)
+                self.hook("Stop", last_assistant_message="final text")
+                self.assert_ignored()
 
 
 class InboxTests(Fixture):

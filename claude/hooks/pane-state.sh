@@ -28,6 +28,20 @@ command -v jq >/dev/null 2>&1 && command -v tmux >/dev/null 2>&1 || exit 0
 exec >/dev/null 2>&1
 
 pane=$TMUX_PANE
+# The shared Codex app-server daemon keeps the TMUX_PANE of the pane that
+# started it: only a process below the pane's own process speaks for it
+origin=$(tmux display -p -t "$pane" '#{pane_pid}') || exit 0
+case "$origin" in '' | *[!0-9]*) exit 0 ;; esac
+[ "$origin" -gt 1 ] || exit 0
+pid=$PPID
+steps=0
+while [ "$pid" != "$origin" ]; do
+  [ "$pid" -gt 1 ] && [ "$steps" -lt 64 ] || exit 0
+  pid=$(ps -o ppid= -p "$pid") || exit 0
+  pid=${pid//[[:space:]]/}
+  case "$pid" in '' | *[!0-9]*) exit 0 ;; esac
+  steps=$((steps + 1))
+done
 now=$(date +%s)
 payload=$(cat) || exit 0
 # kind: notification type, tool name, SessionStart source or SessionEnd reason.

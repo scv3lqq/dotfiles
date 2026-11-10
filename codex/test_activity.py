@@ -224,6 +224,9 @@ class PickerTests(ActivityFixture):
         isolated_tmux("new-session", "-d", "-s", "fixture", "-x", "80", "-y", "24", "/bin/sleep 120")
         pane = isolated_tmux("display-message", "-p", "-t", "fixture", "#{pane_id}").stdout.strip()
         self.env["TMUX_PANE"] = pane
+        pane_pid = isolated_tmux("display-message", "-p", "-t", pane, "#{pane_pid}").stdout.strip()
+        # The runner is never below the pane: the hook's origin guard needs ps to name the pane's process
+        self.stub("ps", f"print({pane_pid})")
         fake_tmux = (self.bin / "tmux").read_text()
         self.stub("tmux", f"import os; os.execv({str(tmux)!r}, {command!r} + sys.argv[1:])")
         observations: list[tuple[str, str]] = []
