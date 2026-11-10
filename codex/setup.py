@@ -16,7 +16,7 @@ import stat
 import sys
 import tempfile
 import tomllib
-from typing import Sequence
+from typing import Callable, Sequence
 
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -24,6 +24,10 @@ ROLES = ("implementer", "plan-reviewer", "acceptance-validator", "skill-dry-run"
 THEME = "ayu-claude"
 SUBAGENT_DEFAULTS = (("default_subagent_model", "gpt-6.1-terra"),
                      ("default_subagent_reasoning_effort", "medium"))
+HARNESS_ROLES = ("harness-orchestrator", "harness-explorer", "harness-implementer",
+                 "harness-reviewer", "harness-validator", "harness-archivist")
+HARNESS_BEGIN = "[harness managed begin]"
+HARNESS_END = "[harness managed end]"
 
 
 class SetupError(ValueError):
@@ -253,6 +257,248 @@ def atomic_write(path: Path, content: bytes, mode: int) -> None:
             os.unlink(temporary)
 
 
+def managed_harness_instructions(existing: str, router: str, skill: Path) -> str:
+    """Replace just the managed block; preserve any independent instructions."""
+    block = (f"{HARNESS_BEGIN}\n"
+             f"Canonical user-scope harness SKILL.md: {skill}\n"
+             f"{router}\n{HARNESS_END}")
+    begins, ends = existing.count(HARNESS_BEGIN), existing.count(HARNESS_END)
+    if begins == ends == 0:
+        return existing + ("\n\n" if existing else "") + block
+    if begins != 1 or ends != 1:
+        raise SetupError("config.toml: ambiguous harness instruction markers")
+    start = existing.index(HARNESS_BEGIN)
+    end = existing.index(HARNESS_END)
+    if end < start:
+        raise SetupError("config.toml: reversed harness instruction markers")
+    owner = f"{HARNESS_BEGIN}\nCanonical user-scope harness SKILL.md: {skill}\n"
+    if not existing[start:].startswith(owner):
+        raise SetupError("config.toml: unrecognized harness instruction block")
+    return existing[:start] + block + existing[end + len(HARNESS_END):]
+
+
+def set_simple_values(section: str, old: dict[str, object], values: dict[str, object],
+                      newline: str, label: str) -> str:
+    """Replace supported literal assignments without altering unrelated text."""
+    insertions: list[str] = []
+    for key, desired in values.items():
+        literal = json.dumps(desired, ensure_ascii=False)
+        if key not in old:
+            insertions.append(f"{key} = {literal}{newline}")
+            continue
+        if type(old[key]) is not type(desired):
+            raise SetupError(f"config.toml: {label}{key} has an unsupported type")
+        pattern = rf"^[ \t]*(?:{key}|'{key}'|\"{key}\")[ \t]*=[^\r\n]*"
+        matches = list(re.finditer(pattern, section, re.M))
+        if len(matches) != 1:
+            raise SetupError(f"config.toml: {label}{key} needs one simple assignment")
+        line = matches[0]
+        value = re.fullmatch(
+            rf"(?P<prefix>[ \t]*(?:{key}|'{key}'|\"{key}\")[ \t]*=[ \t]*)"
+            r"(?:\"(?:[^\"\\]|\\.)*\"|'[^']*'|true|false|[+-]?\d+)"
+            r"(?P<suffix>[ \t]*(?:#.*)?)", line.group(),
+        )
+        if value is None:
+            raise SetupError(f"config.toml: {label}{key} needs a simple literal")
+        if old[key] != desired:
+            replacement = value['prefix'] + literal + value['suffix']
+            section = section[:line.start()] + replacement + section[line.end():]
+    return section + ("" if not insertions or not section or section.endswith("\n") else newline) + "".join(insertions)
+
+
+def global_harness_config(original: bytes, router: str, skill: Path,
+                          registrations: tuple[tuple[str, str, str], ...]) -> bytes:
+    """Apply the approved global defaults and prove no other TOML value changed."""
+    try:
+        text = original.decode("utf-8")
+        parsed = tomllib.loads(text)
+    except (UnicodeDecodeError, tomllib.TOMLDecodeError) as error:
+        raise SetupError("config.toml is not valid UTF-8 TOML") from error
+    existing = parsed.get('developer_instructions', '')
+    if not isinstance(existing, str):
+        raise SetupError("config.toml: developer_instructions must be a string")
+    agents = parsed.get('agents', {})
+    if not isinstance(agents, dict) or 'max_threads' in agents:
+        raise SetupError("config.toml: unsupported agents layout or legacy max_threads")
+    newline = "\r\n" if "\r\n" in text else "\n"
+    root_values: dict[str, object] = {
+        'model': 'gpt-6.1-sol', 'model_reasoning_effort': 'medium',
+        'developer_instructions': managed_harness_instructions(existing, router, skill),
+    }
+    agent_values: dict[str, object] = {
+        'enabled': True, 'max_depth': 2, 'max_concurrent_threads_per_session': 3,
+        'default_subagent_model': 'gpt-6.1-terra', 'default_subagent_reasoning_effort': 'medium',
+    }
+    first_header = re.search(r'^[ \t]*\[', text, re.M)
+    root_end = first_header.start() if first_header else len(text)
+    root = set_simple_values(text[:root_end], parsed, root_values, newline, '')
+    text = root + text[root_end:]
+    headers = list(re.finditer(r'^[ \t]*\[agents\][ \t]*(?:#[^\r\n]*)?(?:\r?\n|$)', text, re.M))
+    if len(headers) > 1 or (agents and not headers):
+        raise SetupError("config.toml: agents must use one literal [agents] table")
+    if headers:
+        header = headers[0]
+        next_header = re.search(r'^[ \t]*\[', text[header.end():], re.M)
+        end = header.end() + next_header.start() if next_header else len(text)
+        section = text[header.end():end]
+        separator = '' if header.group().endswith('\n') else newline
+        text = text[:header.end()] + separator + set_simple_values(section, agents, agent_values, newline, 'agents.') + text[end:]
+    else:
+        separator = '' if not text or text.endswith('\n') else newline
+        text += separator + (newline if text else '') + '[agents]' + newline
+        text += set_simple_values('', {}, agent_values, newline, 'agents.')
+    expected = copy.deepcopy(parsed)
+    expected.update(root_values)
+    expected.setdefault('agents', {}).update(agent_values)
+    try:
+        if tomllib.loads(text) != expected:
+            raise SetupError("config.toml: unsupported layout would alter other settings")
+    except tomllib.TOMLDecodeError as error:
+        raise SetupError("config.toml: unsupported layout; no changes made") from error
+    return agent_registry_config(text.encode('utf-8'), registrations)
+
+
+def harness_links_and_registry(home: Path, repo: Path) -> tuple[list[Link], tuple[tuple[str, str, str], ...], str]:
+    skill = repo / 'codex/skills/harness'
+    script = skill / 'scripts/state.py'
+    protocol = skill / 'references/protocol.md'
+    if not (skill / 'SKILL.md').is_file() or not script.is_symlink() or script.readlink() != Path('../../../harness/state.py') or not script.is_file():
+        raise SetupError("harness skill or canonical state helper link is missing")
+    if not skill.resolve().is_relative_to(repo) or not (skill / 'SKILL.md').resolve().is_relative_to(repo):
+        raise SetupError("harness skill must resolve inside the repository")
+    if not protocol.is_file() or not protocol.resolve().is_relative_to(repo):
+        raise SetupError("harness protocol must be a file inside the repository")
+    if not script.resolve().is_relative_to(repo):
+        raise SetupError("harness state helper must resolve inside the repository")
+    try:
+        project = tomllib.loads((repo / '.codex/config.toml').read_text(encoding='utf-8'))
+        router = project['developer_instructions']
+    except (OSError, KeyError, UnicodeDecodeError, tomllib.TOMLDecodeError) as error:
+        raise SetupError("project's portable harness router is unavailable") from error
+    if not isinstance(router, str) or 'user-scope harness' not in router or 'codex/skills/harness' in router:
+        raise SetupError("project's harness router is not portable")
+    links = [Link(skill, home / '.agents/skills/harness')]
+    registrations: list[tuple[str, str, str]] = []
+    for name in HARNESS_ROLES:
+        source = repo / f'codex/agents/{name}.toml'
+        if not source.is_file() or not source.resolve().is_relative_to(repo):
+            raise SetupError(f"missing canonical harness role: {name}")
+        try:
+            data = tomllib.loads(source.read_text(encoding='utf-8'))
+        except (OSError, UnicodeDecodeError, tomllib.TOMLDecodeError) as error:
+            raise SetupError(f"invalid harness role: {name}") from error
+        description = data.get('description')
+        if data.get('name') != name or not isinstance(description, str) or not description.strip():
+            raise SetupError(f"missing name or description for harness role: {name}")
+        links.append(Link(source, home / f'.codex/agents/{name}.toml'))
+        registrations.append((name, str(source.resolve()), description))
+    for link in links:
+        if not link.destination.parent.resolve().is_relative_to(home):
+            raise SetupError(f"harness destination escapes home: {link.destination}")
+        if (link.destination.exists() or link.destination.is_symlink()) and not is_correct_link(link):
+            raise SetupError(f"conflicting harness destination: {link.destination}")
+    return links, tuple(registrations), router
+
+
+def backup_harness_config(home: Path, original: bytes) -> None:
+    """Use a private backup directory without changing an existing parent's mode."""
+    parent = home / '.claude/backups'
+    parent.mkdir(parents=True, exist_ok=True, mode=0o700)
+    timestamp = datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%S.%fZ')
+    backup = parent / f'codex-{timestamp}'
+    backup.mkdir(mode=0o700)
+    descriptor = os.open(backup / 'config.toml', os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+    with os.fdopen(descriptor, 'wb') as stream:
+        stream.write(original)
+    print(f'Backup: {backup}')
+
+
+def atomic_harness_write(config: Path, target: Path, original: bytes, existed: bool,
+                         mode: int, updated: bytes,
+                         replace: Callable[[str, Path], None]) -> None:
+    """Check observed drift immediately before replacing the prepared file."""
+    target.parent.mkdir(parents=True, exist_ok=True)
+    descriptor, temporary = tempfile.mkstemp(prefix='.codex-harness-', dir=target.parent)
+    try:
+        with os.fdopen(descriptor, 'wb') as stream:
+            stream.write(updated)
+            stream.flush()
+            os.fsync(stream.fileno())
+        os.chmod(temporary, mode)
+        if config.resolve() != target or target.exists() != existed:
+            raise SetupError('config.toml changed during harness setup')
+        if existed and (not target.is_file() or target.read_bytes() != original or stat.S_IMODE(target.stat().st_mode) != mode):
+            raise SetupError('config.toml changed during harness setup')
+        replace(temporary, target)
+    finally:
+        if os.path.exists(temporary):
+            os.unlink(temporary)
+
+
+def configure_harness(home: Path, *, apply: bool = False, repo_root: Path | None = None) -> None:
+    """Provision only the global harness after complete, non-mutating preflight."""
+    home = home.expanduser().resolve()
+    repo = (repo_root or REPO_ROOT).resolve()
+    config = home / '.codex/config.toml'
+    target = config.resolve()
+    existed = target.exists()
+    if existed and not target.is_file():
+        raise SetupError('config.toml must be a regular file or a file symlink')
+    original = target.read_bytes() if existed else b''
+    mode = stat.S_IMODE(target.stat().st_mode) if existed else 0o600
+    links, registrations, router = harness_links_and_registry(home, repo)
+    updated = global_harness_config(original, router, home / '.agents/skills/harness/SKILL.md', registrations)
+    ready = [link for link in links if not is_correct_link(link)]
+    print(f"{'Apply' if apply else 'Preview'} harness: {len(ready)} links, config {'update' if updated != original else 'unchanged'}")
+    if not apply or (not ready and updated == original):
+        return
+    if updated != original and existed:
+        backup_harness_config(home, original)
+    created: list[tuple[Link, int, int]] = []
+    prior_instructions = tomllib.loads(original.decode('utf-8')).get('developer_instructions', '')
+    active_before = isinstance(prior_instructions, str) and HARNESS_BEGIN in prior_instructions
+    replacement_attempted = False
+
+    def replace(source: str, destination: Path) -> None:
+        nonlocal replacement_attempted
+        replacement_attempted = True
+        os.replace(source, destination)
+
+    try:
+        for link in ready:
+            link.destination.parent.mkdir(parents=True, exist_ok=True)
+            link.destination.symlink_to(link.source, target_is_directory=link.source.is_dir())
+            info = link.destination.lstat()
+            created.append((link, info.st_dev, info.st_ino))
+        if not all(is_correct_link(link) for link in links):
+            raise SetupError('harness links changed during setup')
+        if updated != original:
+            atomic_harness_write(config, target, original, existed, mode, updated, replace)
+    except (OSError, SetupError):
+        active = active_before
+        uncertainty_reported = False
+        if replacement_attempted:
+            try:
+                active = config.read_bytes() == updated or active_before
+            except FileNotFoundError:
+                active = active_before
+            except OSError:
+                active = True
+                print('Harness activation could not be inspected; created links retained for safety.', file=sys.stderr)
+                uncertainty_reported = True
+        if active and created and not uncertainty_reported:
+            print('Harness may already be active; created links retained for safety.', file=sys.stderr)
+        if not active:
+            for link, device, inode in reversed(created):
+                try:
+                    info = link.destination.lstat()
+                    if (info.st_dev, info.st_ino) == (device, inode) and is_correct_link(link):
+                        link.destination.unlink()
+                except OSError:
+                    print(f'Could not remove an owned harness link: {link.destination}', file=sys.stderr)
+        raise
+
+
 def configure(home: Path, *, apply: bool = False, repo_root: Path | None = None,
               system: str | None = None) -> None:
     home = home.expanduser().resolve()
@@ -322,9 +568,13 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--home", type=Path, default=Path.home(), help="Destination home directory")
     parser.add_argument("--apply", action="store_true", help="Apply the previewed setup")
+    parser.add_argument("--global-harness", action="store_true", help="Configure only the global harness")
     args = parser.parse_args(argv)
     try:
-        configure(args.home, apply=args.apply)
+        if args.global_harness:
+            configure_harness(args.home, apply=args.apply)
+        else:
+            configure(args.home, apply=args.apply)
     except (SetupError, OSError) as error:
         print(f"Codex setup failed: {error}", file=sys.stderr)
         return 1

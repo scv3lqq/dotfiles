@@ -167,20 +167,24 @@ macOS-only configs are skipped.
 
 The root `AGENTS.md` is the canonical, provider-neutral instruction file;
 `CLAUDE.md` links to it. The tracked `.codex/` is this repository's project layer:
-its top-level settings keep the main session on Sol/high, and its four agent
-links share sources in `codex/agents/`. Project settings load for trusted projects.
+its top-level settings use Sol/medium and register the original managed roles plus
+six harness roles from `codex/agents/`. Project settings load for trusted projects.
 The tracked `.agents/skills/` links the three project skills and their resources
-to `.claude/skills/`, plus the native `feature` and `retro` workflows from
-`codex/skills/`. The `codex/` directory remains the source for global setup.
+to `.claude/skills/`, plus the native `feature`, `retro` and `harness` workflows
+from `codex/skills/`. The `codex/` directory remains the source for global setup.
 
-Codex shares 23 personal skills. The saved role policy is:
+The standard setup shares 23 personal skills; the harness is provisioned
+separately. The saved role policy is:
 
 | Role | Model | Reasoning effort |
 | --- | --- | --- |
-| Main session (existing global/project settings preserved) | `gpt-6.1-sol` | `high` |
+| Planner with global harness enabled | `gpt-6.1-sol` | `medium` |
 | `default`, `worker`, `explorer` | `gpt-6.1-terra` | `medium` |
 | `implementer`, `acceptance-validator`, `skill-dry-run` | `gpt-6.1-terra` | `medium` |
 | `plan-reviewer`, `go-code-reviewer` | `gpt-6.1-sol` | `high` |
+| `harness-orchestrator`, `harness-implementer`, `harness-validator`, `harness-archivist` | `gpt-6.1-terra` | `medium` |
+| `harness-explorer` | `gpt-6-luna` | `low` |
+| `harness-reviewer` | `gpt-6.1-sol` | `high` |
 
 The supported `[agents]` keys `default_subagent_model` and
 `default_subagent_reasoning_effort` set Terra/medium for built-in children.
@@ -190,7 +194,7 @@ must explicitly pin `model = "gpt-6.1-sol"` and `model_reasoning_effort = "high"
 setup preserves its file and instructions. Validate its resolved TOML with
 `python3 codex/check.py --reviewer <path-to-go-reviewer.toml>`.
 
-The global setup preserves the main model/effort and all unrelated settings.
+The standard global setup preserves the main model/effort and all unrelated settings.
 The `feature` and `retro` skills have Codex adapters; existing third-party skills
 are preserved. The installer configures these assets with Python 3.11+.
 Preview with `python3 codex/setup.py`; apply with `python3 codex/setup.py --apply`.
@@ -205,6 +209,21 @@ fail before writes. Replaced guidance and configuration are backed up privately.
 Restart Codex to load saved defaults and declarations: an already-running
 session can retain its loaded settings. Verify actual child selection in fresh
 subagents, rather than inferring it from saved files.
+
+To provision the global harness separately, preview with
+`python3 -B codex/setup.py --global-harness` and apply with
+`python3 -B codex/setup.py --global-harness --apply`. This mode installs the
+user-scope harness skill and its six native roles, then sets the Planner to
+Sol/medium. It preserves unrelated settings, permissions and existing roles.
+After provisioning, start `codex` normally in the desired directory: no profile,
+skill or agent selection is required. The Planner handles questions read-only
+and asks for plan approval before implementation. Runtime reports and checkpoints
+are placed in the selected working root's `.harness/` directory. The root is the
+Git top-level directory when available, otherwise the launch directory. An approved
+change prepares narrow ignore rules; existing rules are preserved and conflicts
+stop the run. A trusted project's explicit developer instructions or model settings
+can override user defaults. New settings apply to new sessions; process restart
+after interruption is not automatic.
 
 Four additional plugin packages provide 37 shared skills: Astronomer Data (34),
 0bull, frontend-design and Humanizer (one each). With these plugins installed and

@@ -1,7 +1,11 @@
 model = "gpt-6.1-sol"
-model_reasoning_effort = "high"
+model_reasoning_effort = "medium"
+developer_instructions = "You are the Planner. For each request, first read the installed user-scope harness skill at $HOME/.agents/skills/harness/SKILL.md and classify intent before opening detailed source. Answer single-fact or single-concept information directly in read-only mode. Information research involving several substantial files, implementation versus protocol, or several failure or recovery paths MUST be delegated to a short-lived harness-explorer with a private temporary report path; receive only a compact result. Do not open detailed research, implementation, review or validation reports, baseline manifests or full state.json to duplicate specialist work. Use compact envelopes and state.py show, link artifacts, and delegate any further synthesis or verification. Do not launch Orchestrator or implementation for information. For intended changes, discuss a plan and obtain explicit approval before delegating implementation to harness-orchestrator. Follow project coding and architecture rules, but do not let lower-priority workflow instructions bypass intent routing or plan approval. Respect explicit user instructions, existing authorization, constraints and permissions. Never commit or push without separate explicit user approval. Never implement project changes yourself. Select relevant domain skills automatically without recursively invoking feature orchestration."
 
 [agents]
+enabled = true
+max_depth = 2
+max_concurrent_threads_per_session = 3
 default_subagent_model = "gpt-6.1-terra"
 default_subagent_reasoning_effort = "medium"
 
@@ -20,3 +24,27 @@ config_file = "../codex/agents/acceptance-validator.toml"
 [agents.skill-dry-run]
 description = "Independent read-only dry run of a just-built or reworked skill, agent or helper script, or of a plan to change one. Runs the scripts on real data and edge inputs, simulates the skill's first reply, hunts contradictions between SKILL.md, references, agent files, scripts and their consumers (dashboards, hooks). Use before reporting a skill change done. Returns ranked, verified findings with file:line."
 config_file = "../codex/agents/skill-dry-run.toml"
+
+[agents.harness-orchestrator]
+description = "Coordinate approved changes using compact state and artifact handoffs."
+config_file = "../codex/agents/harness-orchestrator.toml"
+
+[agents.harness-explorer]
+description = "Investigate one focused question read-only and return a compact file-backed report."
+config_file = "../codex/agents/harness-explorer.toml"
+
+[agents.harness-implementer]
+description = "Implement one approved scoped task and write an immutable result artifact."
+config_file = "../codex/agents/harness-implementer.toml"
+
+[agents.harness-reviewer]
+description = "Independently review scoped changes and report actionable findings with fingerprints."
+config_file = "../codex/agents/harness-reviewer.toml"
+
+[agents.harness-validator]
+description = "Independently validate reviewed content, checks and integration against the approved plan."
+config_file = "../codex/agents/harness-validator.toml"
+
+[agents.harness-archivist]
+description = "Record evidence-based retrospective facts and propose improvements without applying them."
+config_file = "../codex/agents/harness-archivist.toml"

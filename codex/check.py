@@ -14,6 +14,14 @@ ROLES = (
     ("acceptance-validator", "gpt-6.1-terra", "medium"),
     ("skill-dry-run", "gpt-6.1-terra", "medium"),
 )
+HARNESS_ROLES = (
+    ("harness-orchestrator", "gpt-6.1-terra", "medium"),
+    ("harness-explorer", "gpt-6-luna", "low"),
+    ("harness-implementer", "gpt-6.1-terra", "medium"),
+    ("harness-reviewer", "gpt-6.1-sol", "high"),
+    ("harness-validator", "gpt-6.1-terra", "medium"),
+    ("harness-archivist", "gpt-6.1-terra", "medium"),
+)
 PALETTE = frozenset({
     "#0B0E14", "#E8E6DD", "#CDA1FA", "#D2A6FF", "#303030", "#E6B450",
     "#11151C", "#EA6C73", "#7FD962", "#F9AF4F", "#53BDFA", "#90E1C6",
@@ -87,11 +95,26 @@ def check_project() -> None:
             "description": tomllib.loads((ROOT / "agents" / f"{name}.toml").read_text())["description"],
             "config_file": f"../codex/agents/{name}.toml",
         }
-        for name, _model, _effort in ROLES
+        for name, _model, _effort in (*ROLES, *HARNESS_ROLES)
     }
-    assert tomllib.loads(config.read_text()) == {
-        "model": "gpt-6.1-sol", "model_reasoning_effort": "high",
+    actual = tomllib.loads(config.read_text())
+    developer_instructions = actual.get("developer_instructions")
+    assert isinstance(developer_instructions, str) and developer_instructions.strip(), (
+        f"{config}: missing planner instructions"
+    )
+    assert "user-scope harness" in developer_instructions, (
+        f"{config}: planner must route to the harness skill"
+    )
+    assert "codex/skills/harness/SKILL.md" not in developer_instructions, (
+        f"{config}: planner routing must not depend on the target project"
+    )
+    assert actual == {
+        "model": "gpt-6.1-sol", "model_reasoning_effort": "medium",
+        "developer_instructions": developer_instructions,
         "agents": {
+            "enabled": True,
+            "max_depth": 2,
+            "max_concurrent_threads_per_session": 3,
             "default_subagent_model": "gpt-6.1-terra",
             "default_subagent_reasoning_effort": "medium",
             **registrations,
@@ -103,7 +126,7 @@ def check_project() -> None:
             f"{config}: registry must resolve to the canonical source for {name}"
         )
         assert source.is_file(), f"{source}: canonical agent source must exist"
-    for name, _model, _effort in ROLES:
+    for name, _model, _effort in (*ROLES, *HARNESS_ROLES):
         path = project / "agents" / f"{name}.toml"
         assert path.is_symlink(), f"{path}: project agent must be a symlink"
         assert path.readlink() == Path(f"../../codex/agents/{name}.toml"), (
@@ -116,6 +139,7 @@ def check_project() -> None:
         ("readme-screenshots", ".claude"),
         ("feature", "codex"),
         ("retro", "codex"),
+        ("harness", "codex"),
     ):
         path = ROOT.parent / ".agents/skills" / name
         assert path.is_symlink(), f"{path}: project skill must be a symlink"
@@ -126,6 +150,47 @@ def check_project() -> None:
     resource = ROOT.parent / ".agents/skills/readme-screenshots/scripts/claude.c"
     assert resource.is_file(), f"{resource}: linked screenshot resource must exist"
     print("PASS: project configuration, shared agents and project skills")
+
+
+def check_harness() -> None:
+    check_project()
+    for name, model, effort in HARNESS_ROLES:
+        path = ROOT / "agents" / f"{name}.toml"
+        role = tomllib.loads(path.read_text())
+        assert role.get("name") == name, f"{path}: wrong agent name"
+        assert role.get("model") == model, f"{path}: wrong model"
+        assert role.get("model_reasoning_effort") == effort, f"{path}: wrong effort"
+        for field in ("description", "developer_instructions"):
+            value = role.get(field)
+            assert isinstance(value, str) and value.strip(), f"{path}: missing {field}"
+        assert "user-scope harness" in role["developer_instructions"], (
+            f"{path}: missing user-scope skill reference"
+        )
+        assert "references/protocol.md" in role["developer_instructions"], (
+            f"{path}: missing protocol reference"
+        )
+        assert "codex/skills/harness/" not in role["developer_instructions"], (
+            f"{path}: protocol reference must not depend on the target project"
+        )
+    skill = ROOT / "skills/harness/SKILL.md"
+    text = skill.read_text()
+    sections = text.split("---", 2)
+    assert text.startswith("---\n") and len(sections) == 3, f"{skill}: no frontmatter"
+    assert re.search(r"^name: harness$", sections[1], re.M), f"{skill}: wrong name"
+    assert re.search(r"^description: \S.+$", sections[1], re.M), f"{skill}: no description"
+    for target in re.findall(r"\]\(([^)]+)\)", sections[2]):
+        assert (skill.parent / target).resolve().is_file(), f"{skill}: missing {target}"
+    helper = skill.parent / "scripts/state.py"
+    assert helper.is_symlink(), f"{helper}: helper must be a shared symlink"
+    assert helper.readlink() == Path("../../../harness/state.py"), (
+        f"{helper}: helper must point to the canonical source"
+    )
+    assert helper.is_file(), f"{helper}: canonical helper source must exist"
+    harness = ROOT.parent / ".harness"
+    assert (harness / "README.md").is_file(), f"{harness}: missing guide"
+    ignore = (harness / ".gitignore").read_text().splitlines()
+    assert ignore == ["*", "!.gitignore", "!README.md"], f"{harness}: unsafe ignore rules"
+    print("PASS: harness roles, skill and runtime artifact layout")
 
 
 def check_theme() -> None:
@@ -165,7 +230,11 @@ def check_skills() -> None:
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--reviewer", type=Path, help="explicit path to the Go reviewer TOML")
+    parser.add_argument("--harness", action="store_true", help="validate only project harness assets")
     args = parser.parse_args()
+    if args.harness:
+        check_harness()
+        raise SystemExit(0)
     if args.reviewer is not None:
         check_reviewer(args.reviewer)
     check_agents()
@@ -173,3 +242,4 @@ if __name__ == "__main__":
     check_project()
     check_theme()
     check_skills()
+    check_harness()
