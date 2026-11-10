@@ -4,7 +4,11 @@
 # prints the status bar counters and keeps the window marks.
 # State: pane options from claude/hooks/pane-state.sh (@claude_state,
 # @claude_since, @claude_agents, @agent_unseen, @agent_failed, @agent_report);
-# `status` writes the window option @agent_mark.
+# `status` writes the window option @agent_mark. A wrapper shell hides the agent
+# from pane_current_command, so a pane also counts when one process snapshot
+# shows an agent at most 4 levels below the pane process. Codex served by the
+# shared app-server has no hook state at all: its pane is working while its
+# window is active.
 # List lines are "<session_id>\t<pane_id>\t<class>\t<display>":
 #   agent row      $sid  %pid  blocked|failed|ready|working|seen  one text line
 #   header/filler  (empty)(empty)  U:D  non-selectable, U/D = rows to jump to
@@ -21,13 +25,19 @@ reports=${XDG_STATE_HOME:-$HOME/.local/state}/agent-inbox
 # $1: now (epoch seconds). $2: 1 for `status`, where a ready or failed pane in
 # front of an attached client counts as seen: it is reclassified, clear=1. One
 # left idle is still listed, with an empty class, so that its marks get cleared.
+# The tag comes from pane_current_command, else from the process snapshot.
 panes() {
-  tmux list-panes -a -F "$(printf '%s\t' '#{session_id}' '#{window_id}' '#{pane_id}' \
-    '#{pane_active}' '#{window_active}' '#{session_attached}' '#{pane_current_command}' \
-    '#{?#{==:#{pane_title},#{host}},,#{pane_title}}' '#{pane_current_path}' \
-    '#{@claude_state}' '#{@claude_since}' '#{window_activity}' '#{@agent_unseen}' \
-    '#{@agent_failed}' '#{@claude_agents}')" |
-    LC_ALL=C awk -F '\t' -v now="$1" -v clearfront="${2:-}" '
+  {
+    # One snapshot per call: `status` runs every 5 s. A failed ps leaves the
+    # tree empty, which is the plain command filter
+    ps -A -o pid=,ppid=,comm= 2>/dev/null
+    echo panes
+    tmux list-panes -a -F "$(printf '%s\t' '#{session_id}' '#{window_id}' '#{pane_id}' \
+      '#{pane_active}' '#{window_active}' '#{session_attached}' '#{pane_current_command}' \
+      '#{?#{==:#{pane_title},#{host}},,#{pane_title}}' '#{pane_current_path}' \
+      '#{@claude_state}' '#{@claude_since}' '#{window_activity}' '#{@agent_unseen}' \
+      '#{@agent_failed}' '#{@claude_agents}' '#{pane_pid}')"
+  } | LC_ALL=C awk -F '\t' -v now="$1" -v clearfront="${2:-}" '
       BEGIN {
         OFS = "\t"
         version = "^[0-9]+\\.[0-9]+\\.[0-9]+$"
@@ -42,8 +52,10 @@ panes() {
         if (unseen == "1" && failed == "1") return "failed"
         if (unseen == "1") return "ready"
         # Esc or a denied prompt ends a turn without a hook event; a working
-        # agent redraws every second, so a silent window is idle
-        if ((state == "working" || state == "agents") && act ~ /^[0-9]+$/ && now - act <= 5) return "working"
+        # agent redraws every second, so a silent window is idle. A Codex pane
+        # served by the shared app-server never gets hook state: output is its
+        # only signal
+        if ((state == "working" || state == "agents" || (state == "" && client == "cx")) && act ~ /^[0-9]+$/ && now - act <= 5) return "working"
         if (state == "done") return "seen"
         return ""
       }
@@ -52,9 +64,37 @@ panes() {
         if (rank[kls[a]] != rank[kls[b]]) return rank[kls[a]] > rank[kls[b]]
         return sec[a] < sec[b]
       }
+      # Every process up to 4 hops above an agent learns the tag of the nearest
+      # agent; on equal distance cc wins, so that the result does not depend on
+      # the order of for-in
+      function resolve(   p, q, d) {
+        for (p in kind) {
+          q = p
+          for (d = 0; d <= 4 && q + 0 > 1; d++) {
+            if (!(q in near) || d < near[q] || (d == near[q] && kind[p] == "cc")) { near[q] = d; via[q] = kind[p] }
+            if (!(q in par)) break
+            q = par[q]
+          }
+        }
+      }
+      # The snapshot comes first, then the marker, then the pane rows. The tag of
+      # a process is its comm without the directory: macOS prints full paths,
+      # blanks included
+      !rows && $0 == "panes" { rows = 1; resolve(); next }
+      !rows {
+        if (split($0, f, " ") < 3 || f[1] !~ /^[0-9]+$/ || f[2] !~ /^[0-9]+$/) next
+        c = $0
+        sub(/^[ \t]*[0-9]+[ \t]+[0-9]+[ \t]+/, "", c)
+        sub(/.*\//, "", c)
+        par[f[1]] = f[2]
+        if (c == "codex") kind[f[1]] = "cx"
+        else if (c == "claude") kind[f[1]] = "cc"
+        next
+      }
       {
         if ($7 == "codex") client = "cx"
         else if ($7 ~ version || $7 == "claude") client = "cc"
+        else if ($16 in via) client = via[$16]
         else next
         state = $10; act = $12
         cls = classify($13, $14)

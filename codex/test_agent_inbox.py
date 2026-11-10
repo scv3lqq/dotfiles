@@ -7,6 +7,7 @@ against a recording tmux stub. Synthetic panes, closed environment.
 from __future__ import annotations
 
 import json
+import os
 import re
 import shutil
 import stat
@@ -28,13 +29,13 @@ FRONT_FORMAT = "#{pane_active}#{window_active}#{?session_attached,1,0}"
 PANE_PID_FORMAT = "#{pane_pid}"
 # What a Stop of the pane itself sets: a foreign process must leave all of it unset
 STOP_OPTIONS = ("@agent_unseen", "@claude_state", "@claude_since", "@agent_report")
-# D5: the columns of `tmux list-panes -a -F`, in the order of the stub rows
+# D5 and V3: the columns of `tmux list-panes -a -F`, in the order of the stub rows
 COLUMNS = (
     "#{session_id}", "#{window_id}", "#{pane_id}", "#{pane_active}", "#{window_active}",
     "#{session_attached}", "#{pane_current_command}",
     "#{?#{==:#{pane_title},#{host}},,#{pane_title}}", "#{pane_current_path}",
     "#{@claude_state}", "#{@claude_since}", "#{window_activity}", "#{@agent_unseen}",
-    "#{@agent_failed}", "#{@claude_agents}",
+    "#{@agent_failed}", "#{@claude_agents}", "#{pane_pid}",
 )
 # D2: the window marks
 ALERT = " #[fg=#F07178]!"
@@ -60,16 +61,17 @@ else:
     os.execv(real, [real, "-L", os.environ["FIXTURE_SOCKET"], "-f", "/dev/null", *args])
 '''
 
-# Hook cases: the runner is never below the fixture pane, so the `ps` of the origin guard
-# answers every pid with the file `parent` and fails while the file is absent
+# Hook cases: the `ps` of the origin guard answers from the file `chain`, a JSON object of pid
+# to parent pid, right-aligned like BSD ps, and fails for a pid the chain does not name
 HOOK_PS = '''
 import os
 if len(sys.argv) != 5 or sys.argv[1:4] != ["-o", "ppid=", "-p"]:
     sys.exit(2)
-parent = Path(os.environ["FIXTURE_ROOT"]) / "parent"
-if not parent.exists():
+chain = Path(os.environ["FIXTURE_ROOT"]) / "chain"
+answers = json.loads(chain.read_text()) if chain.exists() else {}
+if sys.argv[4] not in answers:
     sys.exit(1)
-print(parent.read_text())
+print(answers[sys.argv[4]].rjust(8))
 '''
 
 # Inbox cases: serves the files `rows` and `windows`, records every call as JSON
@@ -87,6 +89,22 @@ elif args[0] in ("display-message", "display"):
     print("fixture:0.0  /work/demo")
 '''
 
+# Inbox cases: the process snapshot of V1. Every call is recorded in `ps.log` (not in
+# `calls.log`, which holds tmux alone), any other argv fails, the file `procs` is the
+# answer and its absence makes ps fail
+INBOX_PS = '''
+import os
+root = Path(os.environ["FIXTURE_ROOT"])
+with open(root / "ps.log", "a") as log:
+    log.write(json.dumps(sys.argv[1:]) + "\\n")
+if sys.argv[1:] != ["-A", "-o", "pid=,ppid=,comm="]:
+    sys.exit(2)
+procs = root / "procs"
+if not procs.exists():
+    sys.exit(1)
+print(procs.read_text(), end="")
+'''
+
 
 def strip(text: str) -> str:
     return re.sub(r"\x1b\[[0-9;:]*[A-Za-z]", "", text)
@@ -97,13 +115,14 @@ class Pane:
     """One `tmux list-panes -a` row.
 
     `front` holds pane_active, window_active and session_attached as three digits;
-    111 is the pane in front of an attached client.
+    111 is the pane in front of an attached client. `since` None leaves @claude_since
+    empty, as on a pane without hook state; `pid` is pane_pid (0 is in no process table).
     """
 
     pane_id: str
     command: str = "codex"
     state: str = ""
-    since: int = NOW - 30
+    since: int | None = NOW - 30
     activity: int = NOW - 600
     unseen: str = ""
     failed: str = ""
@@ -111,10 +130,12 @@ class Pane:
     path: str = "/work/demo"
     window: str = "@1"
     front: str = "000"
+    pid: int = 0
 
     def line(self) -> str:
+        since = "" if self.since is None else str(self.since)
         fields = ("$1", self.window, self.pane_id, *self.front, self.command, self.title, self.path,
-                  self.state, str(self.since), str(self.activity), self.unseen, self.failed, "")
+                  self.state, since, str(self.activity), self.unseen, self.failed, "", str(self.pid))
         return "\t".join(fields)
 
 
@@ -122,7 +143,7 @@ def mixed() -> tuple[Pane, ...]:
     """Every class and every ignored kind, worst first: only the sort can order them."""
     return (
         Pane("%8", command="zsh", state="waiting"),
-        Pane("%7", state="", activity=NOW),
+        Pane("%7", state=""),
         Pane("%6", state="done"),
         Pane("%5", state="working", activity=NOW - 6),
         Pane("%4", state="working", activity=NOW),
@@ -191,7 +212,8 @@ class HookTests(Fixture):
         self.stub("tmux", HOOK_TMUX)
         self.stub("ps", HOOK_PS)
         # The runner is never below the fixture pane: the first ps answer names the pane's own process
-        self.set_parent(self.tmux("display-message", "-p", "-t", self.pane, PANE_PID_FORMAT).strip())
+        self.origin = self.tmux("display-message", "-p", "-t", self.pane, PANE_PID_FORMAT).strip()
+        self.set_parent(self.origin)
 
     def stop_server(self) -> None:
         subprocess.run([*self.server, "kill-server"], env=self.env, capture_output=True, timeout=10, check=False)
@@ -216,13 +238,18 @@ class HookTests(Fixture):
     def set_front(self, flags: str) -> None:
         (self.root / "front").write_text(flags)
 
+    def set_chain(self, *answers: str) -> None:
+        """What the `ps` stub answers: the runner, which is the hook's $PPID because this
+        process starts it, has the parent answers[0], that one has answers[1], and so on."""
+        pids = [str(os.getpid()), *answers[:-1]]
+        (self.root / "chain").write_text(json.dumps(dict(zip(pids, answers))))
+
     def set_parent(self, text: str | None) -> None:
-        """What the `ps` stub answers for every pid: None makes it fail."""
-        path = self.root / "parent"
+        """What the `ps` stub answers for the runner's own pid: None makes every lookup fail."""
         if text is None:
-            path.unlink(missing_ok=True)
+            (self.root / "chain").unlink(missing_ok=True)
         else:
-            path.write_text(text)
+            self.set_chain(text)
 
     def hook(self, event: str, **fields: object) -> None:
         result = self.run_script(HOOK, payload={"hook_event_name": event, **fields})
@@ -337,7 +364,7 @@ class HookTests(Fixture):
 
     def test_h13_origin_lookup_failure_is_silent(self) -> None:
         pane_pid = self.root / "pane_pid"
-        own = (self.root / "parent").read_text()
+        own = self.origin
         # The last case lets ps answer 0 too: a chain ending there would match a pane process of 0,
         # so only the check on pane_pid keeps the hook out
         cases: tuple[tuple[str, str | None, str | None], ...] = (
@@ -355,19 +382,40 @@ class HookTests(Fixture):
                 self.hook("Stop", last_assistant_message="final text")
                 self.assert_ignored()
 
+    def test_h14_origin_walk_three_hops(self) -> None:
+        # Every step asks about the process just reached: a guard that asked about its own
+        # parent again would never leave the first answer
+        self.set_chain("41001", "41002", self.origin)
+        self.hook("Stop", last_assistant_message="final text")
+        self.assertEqual(self.options().get("@agent_unseen"), "1")
+
 
 class InboxTests(Fixture):
     def setUp(self) -> None:
         super().setUp()
         self.log = self.root / "calls.log"
+        self.ps_log = self.root / "ps.log"
         self.rows = self.root / "rows"
         self.windows = self.root / "windows"
         self.rows.write_text("")
         self.windows.write_text("")
         self.stub("tmux", INBOX_TMUX)
+        # The closed PATH would reach the live process table; an empty one is the plain command filter
+        self.stub("ps", INBOX_PS)
+        self.procs()
 
     def panes(self, *panes: Pane) -> None:
         self.rows.write_text("".join(pane.line() + "\n" for pane in panes))
+
+    def procs(self, *rows: tuple[int, int, str] | None) -> None:
+        """The process table `ps` prints, as (pid, ppid, comm) rows padded like BSD ps;
+        a None makes ps fail."""
+        path = self.root / "procs"
+        table = [row for row in rows if row is not None]
+        if len(table) < len(rows):
+            path.unlink(missing_ok=True)
+        else:
+            path.write_text("".join(f"{pid:>5} {ppid:>5} {comm}\n" for pid, ppid, comm in table))
 
     def set_windows(self, marks: dict[str, str]) -> None:
         self.windows.write_text("".join(f"{window}\t{mark}\n" for window, mark in marks.items()))
@@ -409,6 +457,10 @@ class InboxTests(Fixture):
         """Rows of `render` as session, pane, class (up:down for a header), display; colors stripped."""
         output = strip(self.run_script(INBOX, "render").stdout)
         return [line.split("\t", 3) for line in output.splitlines()]
+
+    def agents(self) -> list[list[str]]:
+        """The agent rows of `render`: session, pane, class, display."""
+        return [row for row in self.render() if row[1]]
 
     def status(self) -> str:
         return self.run_script(INBOX, "status").stdout
@@ -548,6 +600,75 @@ class InboxTests(Fixture):
         commands = self.commands()
         self.assertIn(["select-pane", "-t", "%3"], commands)
         self.assertIn(["switch-client", "-t", "$1"], commands)
+
+    def test_v1_wrapped_codex_with_state_listed(self) -> None:
+        cases = (
+            ("full path", "/opt/homebrew/bin/codex", "cx"),
+            ("blanks in the path", "/Users/x/Library/Application Support/Claude/claude", "cc"),
+        )
+        for name, comm, tag in cases:
+            with self.subTest(case=name):
+                self.panes(Pane("%1", command="bash", state="done", unseen="1", pid=500))
+                self.procs((500, 1, "sh"), (501, 500, comm))
+                agents = self.agents()
+                self.assertEqual([row[1:3] for row in agents], [["%1", "ready"]])
+                self.assertIn(f" {tag} ", agents[0][3])
+
+    def test_v2_stateless_active_is_working(self) -> None:
+        for name, activity in (("active", NOW), ("edge", NOW - 5)):
+            with self.subTest(case=name):
+                self.panes(Pane("%1", state="", since=None, activity=activity))
+                agents = self.agents()
+                self.assertEqual([row[1:3] for row in agents], [["%1", "working"]])
+                self.assertTrue(agents[0][3].startswith("◌   - cx"), agents[0][3])
+
+    def test_v3_stateless_quiet_is_hidden(self) -> None:
+        wrapped = ((500, 1, "sh"), (501, 500, "codex"))
+        cases = (
+            ("codex, quiet", Pane("%1", state="", since=None, activity=NOW - 6), ()),
+            # V2 is Codex only: Claude Code panes run their own hooks, an empty state is idle
+            ("claude, active", Pane("%1", command="claude", state="", since=None, activity=NOW), ()),
+            ("wrapped codex, quiet",
+             Pane("%1", command="bash", state="", since=None, activity=NOW - 6, pid=500), wrapped),
+        )
+        for name, pane, rows in cases:
+            with self.subTest(case=name):
+                self.panes(pane)
+                self.procs(*rows)
+                self.assertEqual(self.agents(), [])
+                self.assertEqual(self.status(), "")
+
+    def test_v4_shell_without_agent_not_listed(self) -> None:
+        self.panes(Pane("%1", command="zsh", state="waiting", activity=NOW, pid=500),
+                   Pane("%2", state="working", activity=NOW, pid=600))
+        self.procs((500, 1, "-zsh"), (501, 500, "nvim"), (502, 500, "/x/bin/codex-code-mode-host"),
+                   (600, 1, "codex"))
+        self.assertEqual([row[1] for row in self.agents()], ["%2"])
+        # An agent counts up to 4 hops below the pane process, a 5th hop hides it
+        for hops, listed in ((5, []), (4, ["%1"])):
+            with self.subTest(hops=hops):
+                shells = [(500 + step, 499 + step if step else 1, "sh") for step in range(hops)]
+                self.panes(Pane("%1", command="zsh", state="waiting", pid=500))
+                self.procs(*shells, (500 + hops, 499 + hops, "codex"))
+                self.assertEqual([row[1] for row in self.agents()], listed)
+
+    def test_v5_status_counts_fallback(self) -> None:
+        self.panes(Pane("%1", state="", since=None, activity=NOW),
+                   Pane("%2", command="bash", state="", since=None, activity=NOW, pid=500),
+                   Pane("%3", state="working", activity=NOW))
+        self.procs((500, 1, "sh"), (501, 500, "codex"))
+        self.assertEqual(self.status().splitlines(), ["#[fg=#7A8290]◌ 3"])
+        self.assertEqual(self.mark_calls(), [])
+        # One snapshot per status call, not one per pane
+        self.assertEqual(len(self.ps_log.read_text().splitlines()), 1)
+
+    def test_v6_ps_failure_falls_back(self) -> None:
+        for name, rows in (("ps fails", (None,)), ("empty snapshot", ())):
+            with self.subTest(case=name):
+                self.panes(Pane("%1", state="working", activity=NOW),
+                           Pane("%2", command="bash", state="done", unseen="1", pid=500))
+                self.procs(*rows)
+                self.assertEqual([row[1:3] for row in self.agents()], [["%1", "working"]])
 
 
 if __name__ == "__main__":
