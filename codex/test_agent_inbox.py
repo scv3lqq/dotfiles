@@ -71,7 +71,11 @@ def strip(text: str) -> str:
 
 @dataclass(frozen=True)
 class Pane:
-    """One `tmux list-panes -a` row; `front` is the pane in front of an attached client."""
+    """One `tmux list-panes -a` row.
+
+    `front` holds pane_active, window_active and session_attached as three digits;
+    111 is the pane in front of an attached client.
+    """
 
     pane_id: str
     command: str = "codex"
@@ -83,11 +87,10 @@ class Pane:
     title: str = ""
     path: str = "/work/demo"
     window: str = "@1"
-    front: bool = False
+    front: str = "000"
 
     def line(self) -> str:
-        flag = "1" if self.front else "0"
-        fields = ("$1", self.window, self.pane_id, flag, flag, flag, self.command, self.title, self.path,
+        fields = ("$1", self.window, self.pane_id, *self.front, self.command, self.title, self.path,
                   self.state, str(self.since), str(self.activity), self.unseen, self.failed, "")
         return "\t".join(fields)
 
@@ -269,6 +272,11 @@ class HookTests(Fixture):
         self.assertNotIn("@agent_report", self.options())
         self.assertEqual(self.stored(), [])
 
+    def test_h10_stop_subagent(self) -> None:
+        self.hook("Stop", agent_id="agent-1", last_assistant_message="final text")
+        self.assertNotIn("@agent_unseen", self.options())
+        self.assertEqual(self.stored(), [])
+
 
 class InboxTests(Fixture):
     def setUp(self) -> None:
@@ -292,15 +300,32 @@ class InboxTests(Fixture):
         records: list[list[str]] = [json.loads(line) for line in self.log.read_text().splitlines()]
         return records
 
-    def position(self, prefix: list[str]) -> int:
-        """Index of the first recorded call that starts with `prefix`."""
-        for index, call in enumerate(self.calls()):
-            if call[: len(prefix)] == prefix:
-                return index
-        self.fail(f"no call starts with {prefix}: {self.calls()}")
+    def reset_calls(self) -> None:
+        self.log.write_text("")
+
+    def commands(self) -> list[list[str]]:
+        """Recorded tmux commands in order: one call can chain several with `;`."""
+        commands: list[list[str]] = []
+        for call in self.calls():
+            command: list[str] = []
+            for word in call:
+                if word == ";":
+                    commands.append(command)
+                    command = []
+                else:
+                    command.append(word)
+            commands.append(command)
+        return commands
+
+    def position(self, command: list[str]) -> int:
+        """Index of `command` among the recorded commands."""
+        commands = self.commands()
+        if command not in commands:
+            self.fail(f"no command {command}: {commands}")
+        return commands.index(command)
 
     def mark_calls(self) -> list[list[str]]:
-        return [call for call in self.calls() if call[:2] in (["set", "-w"], ["set", "-wu"])]
+        return [command for command in self.commands() if command[:2] in (["set", "-w"], ["set", "-wu"])]
 
     def render(self) -> list[list[str]]:
         """Rows of `render` as session, pane, class (up:down for a header), display; colors stripped."""
@@ -350,6 +375,15 @@ class InboxTests(Fixture):
         self.assertEqual(len(agents), 1)
         self.assertEqual(agents[0][3], "●  2m cc dotfiles       Fix bar")
 
+    def test_r5_tie(self) -> None:
+        self.panes(Pane("%1", state="done", unseen="1", since=NOW - 20),
+                   Pane("%2", state="done", unseen="1", since=NOW - 10))
+        self.assertEqual([row[1] for row in self.render() if row[1]], ["%2", "%1"])
+
+    def test_r6_agents(self) -> None:
+        self.panes(Pane("%1", state="agents", activity=NOW))
+        self.assertEqual([row[1:3] for row in self.render() if row[1]], [["%1", "working"]])
+
     def test_s1_segment(self) -> None:
         self.panes(
             Pane("%1", state="waiting", window="@1"),
@@ -374,9 +408,9 @@ class InboxTests(Fixture):
                 self.assertEqual(self.status(), "")
 
     def test_s3_front(self) -> None:
-        self.panes(Pane("%3", state="done", unseen="1", front=True))
+        self.panes(Pane("%3", state="done", unseen="1", front="111"))
         self.assertEqual(self.status(), "")
-        self.assertIn(["set", "-pu", "-t", "%3", "@agent_unseen"], [call[:5] for call in self.calls()])
+        self.assertIn(["set", "-pu", "-t", "%3", "@agent_unseen"], self.commands())
 
     def test_s4_mark_priority(self) -> None:
         self.panes(Pane("%1", state="done", unseen="1"), Pane("%2", state="waiting"))
@@ -396,6 +430,31 @@ class InboxTests(Fixture):
         self.assertEqual(self.status(), "")
         self.assertEqual(self.mark_calls(), [["set", "-wu", "-t", "@1", "@agent_mark"]])
 
+    def test_s7_front_partial(self) -> None:
+        for zero, front in (("pane_active", "011"), ("window_active", "101"), ("session_attached", "110")):
+            with self.subTest(zero=zero):
+                self.reset_calls()
+                self.panes(Pane("%3", state="done", unseen="1", front=front))
+                self.assertEqual(self.status().splitlines(), ["#[fg=#E6B450,bold]● 1#[nobold]"])
+                self.assertEqual([command for command in self.commands() if command[:2] == ["set", "-pu"]], [])
+
+    def test_s8_front_failed(self) -> None:
+        self.panes(Pane("%3", state="done", unseen="1", failed="1", front="111"))
+        self.assertEqual(self.status(), "")
+        self.assertIn(["set", "-pu", "-t", "%3", "@agent_unseen"], self.commands())
+
+    def test_s9_mark_failed(self) -> None:
+        self.panes(Pane("%1", state="done", unseen="1", failed="1"))
+        self.set_windows({"@1": ""})
+        self.status()
+        self.assertEqual(self.mark_calls(), [["set", "-w", "-t", "@1", "@agent_mark", " #[fg=#F07178]!"]])
+
+    def test_s10_front_silent_working(self) -> None:
+        # Once cleared the pane is idle and leaves the list; the clear must not leave with it
+        self.panes(Pane("%3", state="working", unseen="1", activity=NOW - 100, front="111"))
+        self.assertEqual(self.status(), "")
+        self.assertIn(["set", "-pu", "-t", "%3", "@agent_unseen"], self.commands())
+
     def test_o1_open(self) -> None:
         self.run_script(INBOX, "open", "$1", "%3")
         seen = self.position(["set", "-pu", "-t", "%3", "@agent_unseen"])
@@ -405,6 +464,12 @@ class InboxTests(Fixture):
     def test_o2_seen_guard(self) -> None:
         self.run_script(INBOX, "seen", "abc")
         self.assertEqual(self.calls(), [])
+
+    def test_o3_open_jump(self) -> None:
+        self.run_script(INBOX, "open", "$1", "%3")
+        commands = self.commands()
+        self.assertIn(["select-pane", "-t", "%3"], commands)
+        self.assertIn(["switch-client", "-t", "$1"], commands)
 
 
 if __name__ == "__main__":

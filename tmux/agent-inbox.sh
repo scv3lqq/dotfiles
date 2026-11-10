@@ -19,7 +19,8 @@ reports=${XDG_STATE_HOME:-$HOME/.local/state}/agent-inbox
 # Classified agent panes, most urgent first, one tab-separated line each:
 #   session_id pane_id window_id class clear tag since title path agents
 # $1: now (epoch seconds). $2: 1 for `status`, where a ready or failed pane in
-# front of an attached client counts as seen: it is reclassified, clear=1.
+# front of an attached client counts as seen: it is reclassified, clear=1. One
+# left idle is still listed, with an empty class, so that its marks get cleared.
 panes() {
   tmux list-panes -a -F "$(printf '%s\t' '#{session_id}' '#{window_id}' '#{pane_id}' \
     '#{pane_active}' '#{window_active}' '#{session_attached}' '#{pane_current_command}' \
@@ -32,6 +33,8 @@ panes() {
         version = "^[0-9]+\\.[0-9]+\\.[0-9]+$"
         split("blocked failed ready working seen", names, " ")
         for (i = 1; i <= 5; i++) rank[names[i]] = i
+        # The empty class of a cleared idle pane sorts last
+        rank[""] = 6
       }
       # First match wins; the empty string is idle: never shown or counted
       function classify(unseen, failed) {
@@ -60,7 +63,7 @@ panes() {
           clr = 1
           cls = classify("", "")
         }
-        if (cls == "") next
+        if (cls == "" && !clr) next
         n++
         sid[n] = $1; wid[n] = $2; pid[n] = $3; kls[n] = cls; cl[n] = clr; tg[n] = client
         since[n] = $11; sec[n] = ($11 ~ /^[0-9]+$/) ? $11 + 0 : 0
@@ -133,6 +136,7 @@ render() {
     }
     function agent(i) { add(sid[i], pid[i], kls[i], text(i)) }
     function plain(s) { add("", "", "", c(dim, s)) }
+    $4 == "" { next }
     {
       n++
       sid[n] = $1; pid[n] = $2; kls[n] = $4; tg[n] = $6; since[n] = $7
@@ -190,6 +194,7 @@ status() {
     NF == 0 { next }
     !inwin {
       if ($5 == "1") print "clear" FS $2
+      if ($4 == "") next
       if ($4 == "blocked" || $4 == "failed") { n1++; hot[$3] = 1 }
       else if ($4 == "ready") { n2++; warm[$3] = 1 }
       else if ($4 == "working") n3++
