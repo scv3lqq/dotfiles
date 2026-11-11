@@ -13,6 +13,7 @@ import shutil
 import stat
 import sys
 import tempfile
+import tomllib
 from collections.abc import Iterator, Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime
@@ -71,6 +72,34 @@ def _object(value: JSONValue, label: str) -> dict[str, JSONValue]:
 
 def _json_bytes(value: JSONValue) -> bytes:
     return (json.dumps(value, ensure_ascii=False, indent=2) + "\n").encode("utf-8")
+
+
+def _compatible_claude_catalog(catalog: dict[str, JSONValue]) -> dict[str, JSONValue]:
+    result = copy.deepcopy(catalog)
+    entries = result.get("plugins")
+    if not isinstance(entries, list):
+        raise PreparationError("Claude marketplace plugins must be a list")
+    result["plugins"] = [entry for entry in entries if not (
+        isinstance(entry, dict) and entry.get("name") == "xcode"
+        and isinstance(entry.get("source"), dict)
+        and entry["source"].get("source") == "command"
+        and entry["source"].get("command") == "xcrun agent plugin path --plugin-format claude")]
+    return result
+
+
+def _compatible_ngs_manifest(manifest: dict[str, JSONValue]) -> dict[str, JSONValue]:
+    result = copy.deepcopy(manifest)
+    interface = result.get("interface")
+    if result.get("name") != "ngs-analysis" or not isinstance(interface, dict):
+        raise PreparationError("Expected ngs-analysis manifest with interface")
+    prompts = interface.get("defaultPrompt")
+    if not isinstance(prompts, list) or len(prompts) != 1 or not isinstance(prompts[0], str):
+        raise PreparationError("Expected a single ngs-analysis prompt")
+    if len(prompts[0]) > 128:
+        interface["defaultPrompt"] = [
+            "Guide NGS intake, inspect inputs, select a public pipeline, and validate and run supported local workflows."
+        ]
+    return result
 
 
 def _tree_entries(root: Path, *, exclude_marker: bool = False) -> Iterator[tuple[bytes, ...]]:
@@ -346,14 +375,91 @@ def prepare_marketplace(home: Path, *, apply: bool = False) -> Path:
     return destination
 
 
+def normalize_catalogs(home: Path, *, apply: bool = False) -> int:
+    """Normalize two known generated manifests, preserving private rollback copies."""
+    home = home.expanduser().resolve()
+    config_path = home / ".codex/config.toml"
+    try:
+        config_text = config_path.read_text()
+    except FileNotFoundError:
+        if config_path.is_symlink():
+            raise
+        config_text = ""
+    config = tomllib.loads(config_text)
+    plugins = config.get("plugins", {})
+    if isinstance(plugins, dict) and plugins.get("xcode@claude-plugins-official", {}).get("enabled"):
+        raise PreparationError("Cannot exclude enabled Xcode plugin")
+    paths = [home / ".codex/.tmp/marketplaces/claude-plugins-official/.claude-plugin/marketplace.json",
+             home / ".codex/.tmp/plugins/plugins/ngs-analysis/.codex-plugin/plugin.json"]
+    changes: list[tuple[Path, bytes, bytes]] = []
+    for path, transform in zip(paths, (_compatible_claude_catalog, _compatible_ngs_manifest)):
+        for component in (path, *path.parents):
+            if component == home:
+                break
+            if component.is_symlink():
+                raise PreparationError("Catalog paths cannot contain symlinks")
+        if not path.exists():
+            continue
+        original = path.read_bytes()
+        parsed = _object(_read_json(path, "catalog manifest"), "catalog manifest")
+        updated = transform(parsed)
+        if updated != parsed:
+            changes.append((path, original, _json_bytes(updated)))
+    if not apply or not changes:
+        return len(changes)
+    backup_parent = home / ".claude/backups"
+    _private_directory(backup_parent)
+    backup = backup_parent / datetime.now(UTC).strftime("codex-%Y%m%dT%H%M%S.%fZ")
+    backup.mkdir(mode=0o700)
+    names = {paths[0]: "marketplace.json", paths[1]: "ngs-plugin.json"}
+    installed: list[tuple[Path, bytes, bytes]] = []
+    try:
+        for path, original, updated in changes:
+            backup_file = backup / names[path]
+            fd = os.open(backup_file, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+            with os.fdopen(fd, "wb") as output:
+                output.write(original)
+            if backup_file.read_bytes() != original or path.read_bytes() != original:
+                raise PreparationError("Catalog changed during backup")
+            with tempfile.NamedTemporaryFile(dir=path.parent, prefix=".codex-compat-", delete=False) as staged:
+                staged_name = staged.name
+                staged.write(updated)
+                os.fchmod(staged.fileno(), stat.S_IMODE(path.stat().st_mode))
+            try:
+                if path.read_bytes() != original:
+                    raise PreparationError("Catalog changed during normalization")
+                os.replace(staged_name, path)
+            finally:
+                if os.path.exists(staged_name):
+                    os.unlink(staged_name)
+            installed.append((path, original, updated))
+            if path.read_bytes() != updated:
+                raise PreparationError("Catalog changed after normalization")
+    except BaseException:
+        for path, original, updated in reversed(installed):
+            if path.read_bytes() == updated:
+                with tempfile.NamedTemporaryFile(dir=path.parent, prefix=".codex-rollback-", delete=False) as staged:
+                    staged.write(original)
+                    os.fchmod(staged.fileno(), stat.S_IMODE(path.stat().st_mode))
+                    staged_name = staged.name
+                os.replace(staged_name, path)
+        raise
+    return len(changes)
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--home", type=Path, default=Path.home(), help="Home containing source plugins")
     parser.add_argument("--apply", action="store_true", help="Prepare the validated snapshot")
+    parser.add_argument("--normalize-catalogs", action="store_true", help="Normalize known generated catalogs")
     args = parser.parse_args(argv)
     try:
+        if args.normalize_catalogs:
+            count = normalize_catalogs(args.home, apply=args.apply)
+            print(f"{'Normalized' if args.apply else 'Would normalize'}: {count} catalog files")
+            return 0
         destination = prepare_marketplace(args.home, apply=args.apply)
-    except (PreparationError, OSError) as error:
+    except (PreparationError, OSError, tomllib.TOMLDecodeError) as error:
         print(f"ERROR: {error}", file=sys.stderr)
         return 1
     print(f"{'Ready' if args.apply else 'Preview'}: {destination}")

@@ -24,6 +24,7 @@ SKILLS = (
 ROLES = ("implementer", "plan-reviewer", "acceptance-validator", "skill-dry-run")
 DEFAULTS = (("default_subagent_model", "gpt-6.1-terra"),
             ("default_subagent_reasoning_effort", "medium"))
+ANALYTICS = '\n[analytics]\nenabled = false\n'
 AGENTS = '\n[agents]\ndefault_subagent_model = "gpt-6.1-terra"\ndefault_subagent_reasoning_effort = "medium"\n'
 
 
@@ -80,6 +81,55 @@ class SetupTests(unittest.TestCase):
             for role in ROLES
         ).replace("\n", newline)
 
+    def test_catalog_normalization_runs_preview_and_apply_when_present(self) -> None:
+        paths = (self.home / ".codex/.tmp/marketplaces/claude-plugins-official/.claude-plugin/marketplace.json",
+                 self.home / ".codex/.tmp/plugins/plugins/ngs-analysis/.codex-plugin/plugin.json")
+        for path in paths:
+            self.write(path, "{}")
+        self.write(self.config, 'model = "fixture-model"\n')
+        with mock.patch.object(codex_setup.subprocess, "run") as run:
+            self.configure(apply=False)
+            self.assertEqual(run.call_count, 1)
+            self.assertNotIn("--apply", run.call_args.args[0])
+            run.reset_mock()
+            self.configure()
+            self.assertEqual(run.call_count, 2)
+            self.assertNotIn("--apply", run.call_args_list[0].args[0])
+            self.assertIn("--apply", run.call_args_list[1].args[0])
+
+    def test_catalog_normalization_runs_for_one_existing_catalog(self) -> None:
+        path = self.home / ".codex/.tmp/plugins/plugins/ngs-analysis/.codex-plugin/plugin.json"
+        self.write(path, "{}")
+        self.write(self.config, 'model = "fixture-model"\n')
+        with mock.patch.object(codex_setup.subprocess, "run") as run:
+            self.configure()
+        self.assertEqual(run.call_count, 2)
+        self.assertIn("--apply", run.call_args_list[1].args[0])
+
+    def test_catalog_normalization_skips_missing_generated_catalogs(self) -> None:
+        with mock.patch.object(codex_setup.subprocess, "run") as run:
+            self.configure()
+        run.assert_not_called()
+
+    def test_analytics_opt_out_preserves_config_and_is_idempotent(self) -> None:
+        for before in (b'model = "fixture"\n',
+                       b'[analytics] # retained\r\nenabled = true # old\r\nother = "keep"\r\n'):
+            with self.subTest(before=before):
+                result = codex_setup.analytics_config(before)
+                expected = tomllib.loads(before.decode())
+                expected.setdefault("analytics", {})["enabled"] = False
+                self.assertEqual(tomllib.loads(result.decode()), expected)
+                self.assertEqual(codex_setup.analytics_config(result), result)
+
+    def test_analytics_rejects_unsupported_inline_table(self) -> None:
+        with self.assertRaises(codex_setup.SetupError):
+            codex_setup.analytics_config(b'analytics = { enabled = true }\n')
+
+    def test_configure_disables_analytics(self) -> None:
+        self.write(self.config, 'model = "fixture-model"\n')
+        self.configure()
+        self.assertIs(tomllib.loads(self.config.read_text())["analytics"]["enabled"], False)
+
     def test_registry_preserves_existing_declaration_and_crlf(self) -> None:
         before = (b'model_reasoning_effort = "high"\r\n[agents] # keep\r\n'
                   b'max_threads = 2\r\n[agents.custom]\r\nname = "keep"\r\n'
@@ -133,6 +183,65 @@ class SetupTests(unittest.TestCase):
         self.assertFalse(self.home.exists())
         self.assertIn("Preview", output)
 
+    def test_managed_roles_use_only_registry_after_repeated_setup(self) -> None:
+        self.configure()
+        self.configure()
+        agents = tomllib.loads(self.config.read_text())["agents"]
+        for role in ROLES:
+            self.assertIn("config_file", agents[role])
+            self.assertFalse((self.home / f".codex/agents/{role}.toml").exists())
+
+    def test_migration_backs_up_links_and_restores_them_on_failure(self) -> None:
+        links = [codex_setup.Link(self.repo / f"codex/agents/{role}.toml",
+                                  self.home / f".codex/agents/{role}.toml") for role in ROLES[:2]]
+        links[0].destination.parent.mkdir(parents=True)
+        for link in links:
+            link.destination.symlink_to(link.source)
+        unlink = Path.unlink
+        def fail_second(path: Path, *args: object, **kwargs: object) -> None:
+            if path == links[1].destination:
+                raise OSError("fixture unlink failure")
+            unlink(path, *args, **kwargs)
+        with mock.patch.object(Path, "unlink", fail_second):
+            with self.assertRaisesRegex(OSError, "fixture unlink failure"):
+                codex_setup.migrate_role_links(self.home, links)
+        self.assertTrue(all(codex_setup.is_correct_link(link) for link in links))
+        self.assertTrue(all((self.backups()[0] / link.destination.name).is_symlink() for link in links))
+
+    def test_migration_preserves_link_replaced_before_snapshot(self) -> None:
+        source = self.repo / 'codex/agents/implementer.toml'
+        destination = self.home / '.codex/agents/implementer.toml'
+        destination.parent.mkdir(parents=True)
+        destination.symlink_to(source)
+        unrelated = self.home / 'unrelated.toml'
+        self.write(unrelated, 'user data')
+        correct = codex_setup.is_correct_link
+
+        def replace_after_check(link: codex_setup.Link) -> bool:
+            result = correct(link)
+            destination.unlink()
+            destination.symlink_to(unrelated)
+            return result
+
+        with mock.patch.object(codex_setup, 'is_correct_link', side_effect=replace_after_check):
+            with self.assertRaises(codex_setup.SetupError):
+                codex_setup.migrate_role_links(self.home, [codex_setup.Link(source, destination)])
+        self.assertEqual(destination.readlink(), unrelated)
+        self.assertEqual(unrelated.read_text(), 'user data')
+
+    def test_setup_migrates_existing_managed_link_once(self) -> None:
+        link = self.home / '.codex/agents/implementer.toml'
+        link.parent.mkdir(parents=True)
+        target = self.repo / 'codex/agents/implementer.toml'
+        link.symlink_to(target)
+        self.configure()
+        backups = self.backups()
+        self.assertEqual(len(backups), 1)
+        self.assertEqual((backups[0] / link.name).readlink(), target)
+        self.assertFalse(link.is_symlink())
+        self.configure()
+        self.assertEqual(self.backups(), backups)
+
     def test_preview_preserves_existing_state_and_does_not_print_config(self) -> None:
         self.write(self.config, 'model = "fixture-model"\nopaque = "fixture-private-value"\n')
         before = self.snapshot()
@@ -140,14 +249,24 @@ class SetupTests(unittest.TestCase):
         self.assertEqual(self.snapshot(), before)
         self.assertNotIn("fixture-private-value", output)
 
+    def test_preview_reports_only_managed_role_links_to_remove(self) -> None:
+        for role in ROLES[:2]:
+            link = self.home / f'.codex/agents/{role}.toml'
+            link.parent.mkdir(parents=True, exist_ok=True)
+            link.symlink_to(self.repo / f'codex/agents/{role}.toml')
+        self.write(self.home / '.codex/agents/skill-dry-run.toml', 'foreign')
+        before = self.snapshot()
+        output = self.configure(apply=False)
+        self.assertIn('2 managed role links to remove', output)
+        self.assertEqual(before, self.snapshot())
+
     def test_first_run_installs_exact_sources_and_private_config(self) -> None:
         self.configure()
-        self.assertEqual(tomllib.loads(self.config.read_text()), {"tui": {"theme": "ayu-claude"}, "agents": {**dict(DEFAULTS), **{role: {"description": f"Fixture {role}", "config_file": str(self.repo / "codex/agents" / (role + ".toml"))} for role in ROLES}}})
+        self.assertEqual(tomllib.loads(self.config.read_text()), {"tui": {"theme": "ayu-claude"}, "analytics": {"enabled": False}, "agents": {**dict(DEFAULTS), **{role: {"description": f"Fixture {role}", "config_file": str(self.repo / "codex/agents" / (role + ".toml"))} for role in ROLES}}})
         self.assertEqual(stat.S_IMODE(self.config.stat().st_mode), 0o600)
         self.assertEqual((self.home / ".codex/AGENTS.md").resolve(), self.repo / "codex/AGENTS.md")
         for role in ROLES:
-            self.assertEqual((self.home / f".codex/agents/{role}.toml").resolve(),
-                             self.repo / f"codex/agents/{role}.toml")
+            self.assertFalse((self.home / f".codex/agents/{role}.toml").exists())
         self.assertEqual((self.home / ".codex/themes/ayu-claude.tmTheme").resolve(),
                          self.repo / "codex/themes/ayu-claude.tmTheme")
         skills = self.home / ".agents/skills"
@@ -167,9 +286,10 @@ class SetupTests(unittest.TestCase):
         self.config.chmod(0o640)
         self.configure()
         self.assertEqual(self.config.read_bytes(), before.replace('theme = "old"',
-                                                                  'theme = "ayu-claude"').encode() + (AGENTS + self.registry()).replace('\n', '\r\n').encode())
+                                                                  'theme = "ayu-claude"').encode() + (AGENTS + ANALYTICS + self.registry()).replace('\n', '\r\n').encode())
         expected = tomllib.loads(before)
         expected["tui"]["theme"] = "ayu-claude"
+        expected["analytics"] = {"enabled": False}
         expected["agents"] = {**dict(DEFAULTS), **{role: {"description": f"Fixture {role}", "config_file": str(self.repo / "codex/agents" / (role + ".toml"))} for role in ROLES}}
         self.assertEqual(tomllib.loads(self.config.read_text()), expected)
         self.assertEqual(stat.S_IMODE(self.config.stat().st_mode), 0o640)
@@ -181,19 +301,19 @@ class SetupTests(unittest.TestCase):
         self.write(self.config, before)
         self.configure()
         self.assertEqual(self.config.read_text(), before.replace('[tui]\n',
-                                                                 '[tui]\ntheme = "ayu-claude"\n') + AGENTS + self.registry())
+                                                                 '[tui]\ntheme = "ayu-claude"\n') + AGENTS + ANALYTICS + self.registry())
 
     def test_adds_missing_table_and_preserves_original_without_final_newline(self) -> None:
         before = 'model = "fixture-model"\napproval_policy = "on-request"'
         self.write(self.config, before)
         self.configure()
-        self.assertEqual(self.config.read_text(), before + '\n\n[tui]\ntheme = "ayu-claude"\n' + AGENTS + self.registry())
+        self.assertEqual(self.config.read_text(), before + '\n\n[tui]\ntheme = "ayu-claude"\n' + AGENTS + ANALYTICS + self.registry())
 
     def test_quoted_theme_key_is_supported(self) -> None:
         before = "[tui]\n  'theme' = 'old' # keep\n"
         self.write(self.config, before)
         self.configure()
-        self.assertEqual(self.config.read_text(), "[tui]\n  'theme' = \"ayu-claude\" # keep\n" + AGENTS + self.registry())
+        self.assertEqual(self.config.read_text(), "[tui]\n  'theme' = \"ayu-claude\" # keep\n" + AGENTS + ANALYTICS + self.registry())
 
     def test_subagent_defaults_preserve_existing_table_and_main_effort(self) -> None:
         before = ("model_reasoning_effort = 'high'\r\n[agents] # keep\r\n"

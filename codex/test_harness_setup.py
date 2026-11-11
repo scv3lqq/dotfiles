@@ -64,9 +64,7 @@ class GlobalHarnessSetupTests(unittest.TestCase):
         return output.getvalue()
 
     def link_paths(self) -> list[Path]:
-        return [self.home / ".agents/skills/harness", *[
-            self.home / f".codex/agents/{name}.toml" for name in ROLES
-        ]]
+        return [self.home / ".agents/skills/harness"]
 
     def backups(self) -> list[Path]:
         return sorted((self.home / ".claude/backups").glob("codex-*"))
@@ -79,6 +77,26 @@ class GlobalHarnessSetupTests(unittest.TestCase):
         self.assertEqual(before, self.config.read_bytes())
         self.assertFalse(any(path.exists() or path.is_symlink() for path in self.link_paths()))
         self.assertEqual([], self.backups())
+
+    def test_preview_reports_managed_role_links_to_remove(self) -> None:
+        for name in ROLES[:2]:
+            link = self.home / f'.codex/agents/{name}.toml'
+            link.parent.mkdir(parents=True, exist_ok=True)
+            link.symlink_to(self.repo / f'codex/agents/{name}.toml')
+        before = self.config.read_bytes()
+        result = self.run_setup()
+        self.assertIn('2 managed role links to remove', result)
+        self.assertEqual(before, self.config.read_bytes())
+        self.assertTrue(all((self.home / f'.codex/agents/{name}.toml').is_symlink() for name in ROLES[:2]))
+        self.assertEqual([], self.backups())
+
+    def test_managed_roles_use_only_registry_after_repeated_setup(self) -> None:
+        self.run_setup(apply=True)
+        self.run_setup(apply=True)
+        agents = tomllib.loads(self.config.read_text())["agents"]
+        for role in ROLES:
+            self.assertIn("config_file", agents[role])
+            self.assertFalse((self.home / f".codex/agents/{role}.toml").exists())
 
     def test_apply_preserves_settings_comments_mode_and_is_idempotent(self) -> None:
         before = tomllib.loads(self.config.read_text())
@@ -254,7 +272,7 @@ class GlobalHarnessSetupTests(unittest.TestCase):
         original = self.config.read_bytes()
         original_symlink = Path.symlink_to
         def fail_one(path: Path, target: os.PathLike[str] | str, target_is_directory: bool = False) -> None:
-            if path.name == 'harness-reviewer.toml':
+            if path.name == 'harness':
                 raise OSError('fixture link failure')
             original_symlink(path, target, target_is_directory=target_is_directory)
         with mock.patch.object(Path, 'symlink_to', fail_one):
@@ -318,23 +336,15 @@ class GlobalHarnessSetupTests(unittest.TestCase):
         self.run_setup(apply=True)
         original = self.config.read_bytes()
         skill = self.home / '.agents/skills/harness'
-        reviewer = self.home / '.codex/agents/harness-reviewer.toml'
         skill.unlink()
-        reviewer.unlink()
         self.write(self.repo / '.codex/config.toml',
                    'developer_instructions = "Updated user-scope harness routing."\n')
-        original_symlink = Path.symlink_to
-        def fail_reviewer(path: Path, target: os.PathLike[str] | str, target_is_directory: bool = False) -> None:
-            if path == reviewer:
-                raise OSError('fixture reviewer link failure')
-            original_symlink(path, target, target_is_directory=target_is_directory)
         stderr = io.StringIO()
-        with mock.patch.object(Path, 'symlink_to', fail_reviewer), contextlib.redirect_stderr(stderr):
-            with self.assertRaisesRegex(OSError, 'fixture reviewer link failure'):
+        with mock.patch.object(setup, 'atomic_harness_write', side_effect=OSError('fixture write failure')), contextlib.redirect_stderr(stderr):
+            with self.assertRaisesRegex(OSError, 'fixture write failure'):
                 self.run_setup(apply=True)
         self.assertEqual(original, self.config.read_bytes())
         self.assertTrue(skill.is_symlink())
-        self.assertFalse(reviewer.exists())
         self.assertIn('retained', stderr.getvalue())
 
     def test_symlinked_config_target_is_updated_without_replacing_link(self) -> None:

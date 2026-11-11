@@ -30,6 +30,106 @@ STOP_JSON_COMMAND = "printf '%s\\n' '{\"decision\":\"block\",\"reason\":\"fixtur
 HUMANIZER_BODY = b"---\r\nname: humanizer\r\n---\r\nKeep exact bytes: \xc3\xa9.\r\n"
 
 
+class CatalogCompatibilityTests(unittest.TestCase):
+    def test_missing_config_allows_read_only_preview_and_apply(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            home = Path(temporary)
+            catalog = home / '.codex/.tmp/marketplaces/claude-plugins-official/.claude-plugin/marketplace.json'
+            catalog.parent.mkdir(parents=True)
+            catalog.write_text(json.dumps({'plugins': [{'name': 'xcode', 'source': {
+                'source': 'command', 'command': 'xcrun agent plugin path --plugin-format claude'}}]}))
+            before = catalog.read_bytes()
+            self.assertEqual(codex_plugins.normalize_catalogs(home), 1)
+            self.assertEqual(catalog.read_bytes(), before)
+            self.assertFalse((home / '.claude').exists())
+            self.assertFalse((home / '.codex/config.toml').exists())
+            self.assertEqual(codex_plugins.normalize_catalogs(home, apply=True), 1)
+            self.assertEqual(json.loads(catalog.read_text())['plugins'], [])
+            self.assertFalse((home / '.codex/config.toml').exists())
+
+    def test_invalid_config_is_rejected(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            home = Path(temporary)
+            (home / '.codex').mkdir()
+            (home / '.codex/config.toml').write_text('[invalid')
+            with self.assertRaises(codex_plugins.tomllib.TOMLDecodeError):
+                codex_plugins.normalize_catalogs(home, apply=True)
+            self.assertFalse((home / '.claude').exists())
+
+    def test_normalization_handles_either_catalog_missing(self) -> None:
+        fixtures = (
+            ('.codex/.tmp/marketplaces/claude-plugins-official/.claude-plugin/marketplace.json',
+             {'plugins': [{'name': 'xcode', 'source': {'source': 'command',
+                          'command': 'xcrun agent plugin path --plugin-format claude'}}]}),
+            ('.codex/.tmp/plugins/plugins/ngs-analysis/.codex-plugin/plugin.json',
+             {'name': 'ngs-analysis', 'interface': {'defaultPrompt': ['x' * 313]}}),
+        )
+        for relative, value in fixtures:
+            with self.subTest(relative=relative), tempfile.TemporaryDirectory() as temporary:
+                home = Path(temporary)
+                path = home / relative
+                path.parent.mkdir(parents=True)
+                path.write_text(json.dumps(value))
+                (home / '.codex/config.toml').write_text('')
+                self.assertEqual(codex_plugins.normalize_catalogs(home, apply=True), 1)
+                self.assertEqual(codex_plugins.normalize_catalogs(home, apply=True), 0)
+
+    def test_normalization_is_idempotent_and_backed_up(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            home = Path(temporary)
+            catalog = home / '.codex/.tmp/marketplaces/claude-plugins-official/.claude-plugin/marketplace.json'
+            ngs = home / '.codex/.tmp/plugins/plugins/ngs-analysis/.codex-plugin/plugin.json'
+            for path, value in ((catalog, {'plugins': [{'name': 'gopls-lsp'}, {'name': 'xcode', 'source': {'source': 'command', 'command': 'xcrun agent plugin path --plugin-format claude'}}]}),
+                                (ngs, {'name': 'ngs-analysis', 'interface': {'defaultPrompt': ['x' * 313]}})):
+                path.parent.mkdir(parents=True)
+                path.write_text(json.dumps(value))
+            config = home / '.codex/config.toml'
+            config.write_text('[plugins."gopls-lsp@claude-plugins-official"]\nenabled = true\n')
+            before = (catalog.read_bytes(), ngs.read_bytes())
+            codex_plugins.normalize_catalogs(home, apply=True)
+            after = (catalog.read_bytes(), ngs.read_bytes())
+            self.assertNotEqual(before, after)
+            backups = list((home / '.claude/backups').glob('codex-*'))
+            self.assertEqual(len(backups), 1)
+            self.assertEqual((backups[0] / 'marketplace.json').read_bytes(), before[0])
+            self.assertEqual((backups[0] / 'ngs-plugin.json').read_bytes(), before[1])
+            codex_plugins.normalize_catalogs(home, apply=True)
+            self.assertEqual((catalog.read_bytes(), ngs.read_bytes()), after)
+            self.assertEqual(len(list((home / '.claude/backups').glob('codex-*'))), 1)
+
+    def test_normalization_rejects_enabled_xcode(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            home = Path(temporary)
+            (home / '.codex').mkdir()
+            (home / '.codex/config.toml').write_text('[plugins."xcode@claude-plugins-official"]\nenabled = true\n')
+            with self.assertRaises(codex_plugins.PreparationError):
+                codex_plugins.normalize_catalogs(home, apply=True)
+            self.assertFalse((home / '.claude').exists())
+
+    def test_marketplace_removes_only_unsupported_xcode(self) -> None:
+        catalog = {"plugins": [{"name": "gopls-lsp", "source": "./gopls"},
+                               {"name": "xcode", "source": {"source": "command",
+                                "command": "xcrun agent plugin path --plugin-format claude"}},
+                               {"name": "other", "source": "./other"}]}
+        original = copy.deepcopy(catalog)
+        result = codex_plugins._compatible_claude_catalog(catalog)
+        self.assertEqual(result["plugins"], [original["plugins"][0], original["plugins"][2]])
+        self.assertEqual(catalog, original)
+
+    def test_changed_xcode_source_is_preserved(self) -> None:
+        catalog = {"plugins": [{"name": "xcode", "source": "./plugins/xcode"}]}
+        self.assertEqual(codex_plugins._compatible_claude_catalog(catalog), catalog)
+
+    def test_ngs_prompt_is_shortened_without_changing_other_fields(self) -> None:
+        manifest = {"name": "ngs-analysis", "interface": {"defaultPrompt": ["x" * 313],
+                                                           "displayName": "NGS"}}
+        original = copy.deepcopy(manifest)
+        result = codex_plugins._compatible_ngs_manifest(manifest)
+        self.assertLessEqual(len(result["interface"]["defaultPrompt"][0]), 128)
+        self.assertEqual(result["interface"]["displayName"], "NGS")
+        self.assertEqual(manifest, original)
+
+
 class PluginTests(unittest.TestCase):
     def setUp(self) -> None:
         self.temp = tempfile.TemporaryDirectory()

@@ -13,6 +13,7 @@ from pathlib import Path
 import platform
 import re
 import stat
+import subprocess
 import sys
 import tempfile
 import tomllib
@@ -97,6 +98,51 @@ def theme_config(original: bytes) -> bytes:
         raise SetupError("config.toml: unsupported table layout; no changes made") from error
     if actual != expected:
         raise SetupError("config.toml: theme edit would change other settings; no changes made")
+    return candidate.encode("utf-8")
+
+
+def analytics_config(original: bytes) -> bytes:
+    """Disable optional analytics without altering unrelated configuration."""
+    try:
+        text = original.decode("utf-8")
+        parsed = tomllib.loads(text)
+    except (UnicodeDecodeError, tomllib.TOMLDecodeError) as error:
+        raise SetupError("config.toml is not valid UTF-8 TOML") from error
+    headers = list(re.finditer(r"^[ \t]*\[analytics\][ \t]*(?:#[^\r\n]*)?(?:\r?\n|$)", text, re.M))
+    analytics = parsed.get("analytics")
+    if (analytics is not None and (not isinstance(analytics, dict) or len(headers) != 1)) or len(headers) > 1:
+        raise SetupError("config.toml: analytics requires a literal table")
+    newline = "\r\n" if "\r\n" in text else "\n"
+    if not headers:
+        prefix = text + (newline if text and not text.endswith("\n") else "")
+        candidate = prefix + (newline if text else "") + "[analytics]" + newline + "enabled = false" + newline
+    else:
+        header = headers[0]
+        section_end = re.search(r"^[ \t]*\[", text[header.end():], re.M)
+        end = header.end() + section_end.start() if section_end else len(text)
+        section = text[header.end():end]
+        if "enabled" not in analytics:
+            separator = "" if header.group().endswith("\n") else newline
+            section = separator + "enabled = false" + newline + section
+        else:
+            if not isinstance(analytics["enabled"], bool):
+                raise SetupError("config.toml: analytics.enabled must be a boolean")
+            lines = list(re.finditer(r"^[ \t]*(?:enabled|'enabled'|\"enabled\")[ \t]*=[^\r\n]*", section, re.M))
+            if len(lines) != 1:
+                raise SetupError("config.toml: analytics.enabled needs one simple assignment")
+            match = re.fullmatch(r"(?P<prefix>[ \t]*(?:enabled|'enabled'|\"enabled\")[ \t]*=[ \t]*)(?:true|false)(?P<suffix>[ \t]*(?:#.*)?)", lines[0].group())
+            if match is None:
+                raise SetupError("config.toml: analytics.enabled needs a simple boolean")
+            section = section[:lines[0].start()] + match["prefix"] + "false" + match["suffix"] + section[lines[0].end():]
+        candidate = text[:header.end()] + section + text[end:]
+    expected = copy.deepcopy(parsed)
+    expected.setdefault("analytics", {})["enabled"] = False
+    try:
+        actual = tomllib.loads(candidate)
+    except tomllib.TOMLDecodeError as error:
+        raise SetupError("config.toml: unsupported analytics layout") from error
+    if actual != expected:
+        raise SetupError("config.toml: analytics edit would change other settings")
     return candidate.encode("utf-8")
 
 
@@ -223,6 +269,39 @@ def desired_links(home: Path, repo: Path, system: str) -> list[Link]:
 
 def is_correct_link(link: Link) -> bool:
     return link.destination.is_symlink() and link.destination.resolve() == link.source.resolve()
+
+
+def migrate_role_links(home: Path, links: list[Link]) -> None:
+    """Back up and remove only exact managed links, restoring them on failure."""
+    managed = [link for link in links if is_correct_link(link)]
+    if not managed:
+        return
+    snapshots = []
+    for link in managed:
+        info = link.destination.lstat()
+        target = link.destination.readlink()
+        if (link.destination.parent / target).resolve() != link.source.resolve():
+            raise SetupError(f'role link changed during setup: {link.destination}')
+        snapshots.append((link, info, target))
+    parent = home / '.claude/backups'
+    parent.mkdir(parents=True, exist_ok=True, mode=0o700)
+    backup = parent / f"codex-{datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%S.%fZ')}"
+    backup.mkdir(mode=0o700)
+    for link, _, target in snapshots:
+        (backup / link.destination.name).symlink_to(target)
+    removed: list[tuple[Link, Path]] = []
+    try:
+        for link, info, target in snapshots:
+            current = link.destination.lstat()
+            if (current.st_dev, current.st_ino) != (info.st_dev, info.st_ino) or link.destination.readlink() != target:
+                raise SetupError(f'role link changed during setup: {link.destination}')
+            link.destination.unlink()
+            removed.append((link, target))
+    except (OSError, SetupError):
+        for link, target in reversed(removed):
+            if not link.destination.exists() and not link.destination.is_symlink():
+                link.destination.symlink_to(target)
+        raise
 
 
 def backup_files(home: Path, paths: list[Path]) -> None:
@@ -448,9 +527,13 @@ def configure_harness(home: Path, *, apply: bool = False, repo_root: Path | None
     mode = stat.S_IMODE(target.stat().st_mode) if existed else 0o600
     links, registrations, router = harness_links_and_registry(home, repo)
     updated = global_harness_config(original, router, home / '.agents/skills/harness/SKILL.md', registrations)
+    role_links = links[1:]
+    links = links[:1]
     ready = [link for link in links if not is_correct_link(link)]
-    print(f"{'Apply' if apply else 'Preview'} harness: {len(ready)} links, config {'update' if updated != original else 'unchanged'}")
-    if not apply or (not ready and updated == original):
+    removals = sum(is_correct_link(link) for link in role_links)
+    print(f"{'Apply' if apply else 'Preview'} harness: {len(ready)} links, "
+          f"{removals} managed role links to remove, config {'update' if updated != original else 'unchanged'}")
+    if not apply or (not ready and updated == original and not any(is_correct_link(link) for link in role_links)):
         return
     if updated != original and existed:
         backup_harness_config(home, original)
@@ -474,6 +557,7 @@ def configure_harness(home: Path, *, apply: bool = False, repo_root: Path | None
             raise SetupError('harness links changed during setup')
         if updated != original:
             atomic_harness_write(config, target, original, existed, mode, updated, replace)
+        migrate_role_links(home, role_links)
     except (OSError, SetupError):
         active = active_before
         uncertainty_reported = False
@@ -499,6 +583,26 @@ def configure_harness(home: Path, *, apply: bool = False, repo_root: Path | None
         raise
 
 
+def normalize_generated_catalogs(home: Path, repo: Path, *, apply: bool) -> bool:
+    """Run the compatibility adapter when at least one generated catalog exists."""
+    catalogs = (
+        home / ".codex/.tmp/marketplaces/claude-plugins-official/.claude-plugin/marketplace.json",
+        home / ".codex/.tmp/plugins/plugins/ngs-analysis/.codex-plugin/plugin.json",
+    )
+    if not any(path.exists() for path in catalogs):
+        print("Catalog normalization skipped: generated catalogs are absent")
+        return False
+    command = [sys.executable, "-B", str(repo / "codex/plugins.py"),
+               "--home", str(home), "--normalize-catalogs"]
+    if apply:
+        command.append("--apply")
+    try:
+        subprocess.run(command, check=True)
+    except subprocess.CalledProcessError as error:
+        raise SetupError("Catalog normalization failed") from error
+    return True
+
+
 def configure(home: Path, *, apply: bool = False, repo_root: Path | None = None,
               system: str | None = None) -> None:
     home = home.expanduser().resolve()
@@ -508,9 +612,10 @@ def configure(home: Path, *, apply: bool = False, repo_root: Path | None = None,
     if config_target.exists() and not config_target.is_file():
         raise SetupError("config.toml must be a regular file or a file symlink")
     original = config_target.read_bytes() if config_target.exists() else b""
-    updated = subagent_config(theme_config(original))
+    updated = analytics_config(subagent_config(theme_config(original)))
     mode = stat.S_IMODE(config_target.stat().st_mode) if config_target.exists() else 0o600
     links = desired_links(home, repo, system or platform.system())
+    role_links = links[:len(ROLES)]
     registrations = []
     for link in links[:len(ROLES)]:
         if (link.destination.exists() or link.destination.is_symlink()) and not is_correct_link(link):
@@ -525,6 +630,7 @@ def configure(home: Path, *, apply: bool = False, repo_root: Path | None = None,
             raise SetupError(f"Missing description for {role}")
         registrations.append((role, str(link.source.resolve()), description))
     updated = agent_registry_config(updated, tuple(registrations))
+    links = links[len(ROLES):]
     guidance = Link(repo / "codex/AGENTS.md", home / ".codex/AGENTS.md")
     if not guidance.source.is_file():
         raise SetupError("Missing source: codex/AGENTS.md")
@@ -541,10 +647,15 @@ def configure(home: Path, *, apply: bool = False, repo_root: Path | None = None,
     replace_guidance = not is_correct_link(guidance)
     change_config = original != updated
     label = "Apply" if apply else "Preview"
-    print(f"{label}: {len(ready)} links, guidance {'update' if replace_guidance else 'unchanged'}, "
+    removals = sum(is_correct_link(link) for link in role_links)
+    print(f"{label}: {len(ready)} links, {removals} managed role links to remove, "
+          f"guidance {'update' if replace_guidance else 'unchanged'}, "
           f"config {'update' if change_config else 'unchanged'}")
+    catalogs_ready = normalize_generated_catalogs(home, repo, apply=False)
     if not apply:
         return
+    if catalogs_ready:
+        normalize_generated_catalogs(home, repo, apply=True)
 
     backups = []
     if change_config and config_target.exists():
@@ -562,6 +673,7 @@ def configure(home: Path, *, apply: bool = False, repo_root: Path | None = None,
     for link in ready:
         link.destination.parent.mkdir(parents=True, exist_ok=True)
         link.destination.symlink_to(link.source, target_is_directory=link.source.is_dir())
+    migrate_role_links(home, role_links)
 
 
 def main(argv: Sequence[str] | None = None) -> int:

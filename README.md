@@ -198,11 +198,12 @@ The standard global setup preserves the main model/effort and all unrelated sett
 The `feature` and `retro` skills have Codex adapters; existing third-party skills
 are preserved. The installer configures these assets with Python 3.11+.
 Preview with `python3 codex/setup.py`; apply with `python3 codex/setup.py --apply`.
-This links guidance, managed agents, personal skills and the Ayu syntax theme.
+This links guidance, personal skills and the Ayu syntax theme.
 Global config changes are limited to `tui.theme`, the two subagent defaults
 and explicit declarations for managed roles. CLI 0.167.0 can discover a symlinked
 role yet reject its spawn. Each `[agents.<role>]` declaration supplies a supported
-`config_file` pointing to the canonical TOML, keeping the shared symlinks intact.
+`config_file` pointing to the canonical TOML. Managed standalone role links are
+backed up and removed to avoid duplicate declarations.
 Project paths are relative to the declaring config; global setup resolves them.
 Existing conflicting role files are skipped; conflicting explicit declarations
 fail before writes. Replaced guidance and configuration are backed up privately.
@@ -244,6 +245,11 @@ It preserves local edits and backs up managed snapshots before updates.
 Plugin hook trust remains an explicit runtime review. iPhone control requires
 0bull OAuth; some Data workflows also require their documented command-line tools.
 Skill discovery alone does not prove those external workflows are ready.
+
+To normalize the known Xcode catalog entry and NGS prompt after a catalog
+refresh, preview `python3 codex/plugins.py --normalize-catalogs`, then add
+`--apply`. The helper keeps private backups and refuses an enabled Xcode entry.
+Catalog refreshes may replace these generated files; repeat after refresh.
 
 Restart Codex after applying. The CLI theme controls syntax highlighting;
 terminal background and text follow Ghostty. For the desktop app, use

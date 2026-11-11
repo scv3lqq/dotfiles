@@ -128,11 +128,9 @@ def check_project() -> None:
         assert source.is_file(), f"{source}: canonical agent source must exist"
     for name, _model, _effort in (*ROLES, *HARNESS_ROLES):
         path = project / "agents" / f"{name}.toml"
-        assert path.is_symlink(), f"{path}: project agent must be a symlink"
-        assert path.readlink() == Path(f"../../codex/agents/{name}.toml"), (
-            f"{path}: project agent must have the exact relative source target"
+        assert not path.exists() and not path.is_symlink(), (
+            f"{path}: duplicate standalone role registration"
         )
-        assert path.is_file(), f"{path}: project agent source must exist"
     for name, source in (
         ("setup-dotfiles", ".claude"),
         ("docs-sync", ".claude"),
