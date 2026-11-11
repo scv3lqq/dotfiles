@@ -307,6 +307,62 @@ fi
         self.assertEqual(args[args.index("-activate") + 1], "com.mitchellh.ghostty")
         self.assertNotIn("-execute", args)
 
+    def test_payload_field_rendering_with_jq_and_python_fallback(self) -> None:
+        for parser in ("jq", "python"):
+            if parser == "python":
+                (self.bin / "jq").unlink()
+                for command in ("cat", "basename", "sed"):
+                    (self.bin / command).symlink_to(shutil.which(command))
+                self.env["PATH"] = str(self.bin)
+                self.assertIsNone(shutil.which("jq", path=self.env["PATH"]))
+            cases = (
+                ("line one\nline two\n", "line one\nline two"),
+                ("$(touch injected) 'quote'", "$(touch injected) 'quote'"),
+                (False, "Ответ готов"),
+                (None, "Ответ готов"),
+                ({"value": "quoted \"value\""},
+                 '{\n  "value": "quoted \\\"value\\\""\n}' if parser == "jq"
+                 else "{'value': 'quoted \"value\"'}"),
+            )
+            for message, expected in cases:
+                with self.subTest(parser=parser, message=message):
+                    self.reset_calls()
+                    self.run_script(NOTIFY, "--agent", "codex",
+                                    payload={"hook_event_name": None, "message": message})
+                    calls = self.calls("terminal-notifier")
+                    self.assertEqual(len(calls), 1)
+                    self.assertEqual(calls[0][calls[0].index("-message") + 1], expected)
+            self.assertFalse((self.home / "injected").exists())
+            self.reset_calls()
+            result = subprocess.run(["/bin/bash", str(NOTIFY), "--agent", "codex"],
+                                    input="{bad json", text=True, capture_output=True,
+                                    env=self.env, cwd=self.home, timeout=15, check=False)
+            self.assertEqual((result.returncode, result.stdout), (0, ""))
+            calls = self.calls("terminal-notifier")
+            self.assertEqual(len(calls), 1)
+            self.assertEqual(calls[0][calls[0].index("-message") + 1], "Ответ готов")
+
+    def test_nul_in_hook_fields_matches_original_parsing(self) -> None:
+        for parser in ("jq", "python"):
+            if parser == "python":
+                (self.bin / "jq").unlink()
+                for command in ("cat", "basename", "sed"):
+                    (self.bin / command).symlink_to(shutil.which(command))
+                self.env["PATH"] = str(self.bin)
+            for message, expected in (("a\0b", "ab"), (r"a\0b", r"a\0b")):
+                with self.subTest(parser=parser, message=message):
+                    self.reset_calls()
+                    self.run_script(NOTIFY, "--agent", "codex",
+                                    payload={"hook_event_name": "Stop", "message": message})
+                    calls = self.calls("terminal-notifier")
+                    self.assertEqual(len(calls), 1)
+                    self.assertEqual(calls[0][calls[0].index("-message") + 1], expected)
+            self.reset_calls()
+            self.run_script(NOTIFY, "--agent", "codex",
+                            payload={"hook_event_name": "Notification\0", "message": "ignored"})
+            self.assertEqual(self.calls("terminal-notifier"), [])
+            self.assertEqual(self.calls("osascript"), [])
+
     def test_fixture_tmux_visibility_preserves_environment_value(self) -> None:
         for value, expected in ((None, "1 1 1\n"), ("", "\n"), ("-n", "-n\n"), ("видимость", "видимость\n")):
             with self.subTest(value=value):

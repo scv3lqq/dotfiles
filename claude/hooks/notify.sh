@@ -59,10 +59,37 @@ except Exception:
     fi
 }
 
-event=$(read_field hook_event_name)
-message=$(read_field message)
-cwd=$(read_field cwd)
-transcript=$(read_field transcript_path)
+# jq shell-quotes scalar values so one parse can safely populate all fields.
+# Keep the original per-field path for complex values, NUL and multiple inputs.
+fields=""
+if command -v jq >/dev/null 2>&1; then
+    fields=$(printf '%s' "$payload" | jq -sr '
+        if length != 1 or (.[0] | type) != "object" then error("unsupported payload") else .[0] end |
+        [.hook_event_name, .message, .cwd, .transcript_path] |
+        if any(.[]; type == "object" or type == "array" or
+            (if type == "string" then contains("\u0000") else false end))
+        then error("unsupported field") else . end |
+        ["event", "message", "cwd", "transcript"] as $names |
+        to_entries[] | $names[.key] + "=" + ((.value // "") | tostring | @sh)
+    ' 2>/dev/null) || fields=""
+fi
+if [ -n "$fields" ]; then
+    eval "$fields"
+    # Command substitution previously removed trailing newlines from each field.
+    for name in event message cwd transcript; do
+        while :; do
+            case "${!name}" in
+                *$'\n') printf -v "$name" '%s' "${!name%$'\n'}" ;;
+                *) break ;;
+            esac
+        done
+    done
+else
+    event=$(read_field hook_event_name)
+    message=$(read_field message)
+    cwd=$(read_field cwd)
+    transcript=$(read_field transcript_path)
+fi
 
 # Headless runs (claude -p, SDK) inherit TMUX_PANE but nobody is waiting on them.
 if [ "$agent" = claude ]; then
