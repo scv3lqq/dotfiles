@@ -425,6 +425,13 @@ fi
         self.notify("--agent", "codex")
         self.assert_notification("Codex: готово", "codex-%7")
 
+    def test_inherited_claude_desktop_env_skips_only_claude_links(self) -> None:
+        self.env["CLAUDE_CODE_ENTRYPOINT"] = "claude-desktop"
+        self.notify(script=self.home / ".claude/hooks/notify.sh")
+        self.assertEqual(self.calls("terminal-notifier"), [])
+        self.notify(script=self.home / ".codex/hooks/notify.sh")
+        self.assert_notification("Codex: готово", "codex-%7")
+
     def test_pending_task_guard_only_applies_to_claude(self) -> None:
         transcript = self.root / "transcript.jsonl"
         transcript.write_text(json.dumps({"type": "user", "message": {"content": [

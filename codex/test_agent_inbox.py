@@ -257,8 +257,16 @@ class HookTests(Fixture):
         else:
             self.set_chain(text)
 
-    def hook(self, event: str, **fields: object) -> None:
-        result = self.run_script(HOOK, payload={"hook_event_name": event, **fields})
+    def link(self, client: str) -> Path:
+        """The hook as `client` calls it, through its own link: E1 reads that path."""
+        path = self.home / f".{client}/hooks/pane-state.sh"
+        if not path.exists():
+            path.parent.mkdir(parents=True)
+            path.symlink_to(HOOK)
+        return path
+
+    def hook(self, event: str, script: Path | None = None, **fields: object) -> None:
+        result = self.run_script(script or HOOK, payload={"hook_event_name": event, **fields})
         self.assertEqual(result.stdout, "")
 
     def assert_ignored(self) -> None:
@@ -408,6 +416,32 @@ class HookTests(Fixture):
         self.set_chain("41001", "41002", self.origin)
         self.hook("Stop", last_assistant_message="final text")
         self.assertEqual(self.options().get("@agent_unseen"), "1")
+
+    def test_e1_codex_ignores_inherited_claude_desktop_env(self) -> None:
+        # A pane started from a Claude Desktop shell hands Codex its CLAUDE_* env
+        self.env["CLAUDE_CODE_ENTRYPOINT"] = "claude-desktop"
+        codex = self.link("codex")
+        self.hook("UserPromptSubmit", codex)
+        self.assertEqual(self.options().get("@claude_state"), "working")
+        self.hook("Stop", codex, last_assistant_message="final text")
+        options = self.options()
+        self.assertEqual(options.get("@claude_state"), "done")
+        self.assertEqual(options.get("@agent_unseen"), "1")
+
+    def test_e2_claude_headless_still_ignored(self) -> None:
+        self.env["CLAUDE_CODE_ENTRYPOINT"] = "claude-desktop"
+        for name, script in (("claude link", self.link("claude")), ("repo path", HOOK)):
+            with self.subTest(script=name):
+                self.hook("UserPromptSubmit", script)
+                self.hook("Stop", script, last_assistant_message="final text")
+                self.assert_ignored()
+
+    def test_e3_claude_cli_still_recorded(self) -> None:
+        self.env["CLAUDE_CODE_ENTRYPOINT"] = "cli"
+        self.hook("Stop", self.link("claude"), last_assistant_message="final text")
+        options = self.options()
+        self.assertEqual(options.get("@claude_state"), "done")
+        self.assertEqual(options.get("@agent_unseen"), "1")
 
 
 class InboxTests(Fixture):

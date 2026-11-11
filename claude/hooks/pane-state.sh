@@ -22,8 +22,13 @@
 set -u
 
 [ -n "${TMUX_PANE:-}" ] || exit 0
-# Headless runs (claude -p, SDK) inherit TMUX_PANE from the session around them
-[ "${CLAUDE_CODE_ENTRYPOINT:-cli}" = "cli" ] || exit 0
+# Codex calls this file through its own link: a pane started from Claude
+# Desktop hands Codex its CLAUDE_* env, which says nothing about Codex
+case "${BASH_SOURCE[0]}" in
+  */.codex/hooks/*) ;;
+  # Headless runs (claude -p, SDK) inherit TMUX_PANE from the session around them
+  *) [ "${CLAUDE_CODE_ENTRYPOINT:-cli}" = "cli" ] || exit 0 ;;
+esac
 command -v jq >/dev/null 2>&1 && command -v tmux >/dev/null 2>&1 || exit 0
 exec >/dev/null 2>&1
 
