@@ -80,8 +80,9 @@
   where no justfile exists, and report a missing verification command honestly.
 - Preserve configured commit signing. Use explicit file pathspecs, never stage
   unrelated changes. Prefer small, reviewable commits and trunk-based work.
-- Commit and push finished, verified authorized changes without asking again,
-  following project branch rules; check CI when present. Never force-push or
+- Complete authorized changes by committing after required checks and review pass;
+  push without asking again when authorized, following project branch rules.
+  Check CI when present. Never force-push or
   rewrite history unless explicitly requested.
 - Check fresh git status and recent commits before planning commit scope.
 - Public repo artifacts contain no personal identities, hosts, private URLs,
