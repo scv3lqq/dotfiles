@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 import re
 import shlex
 import shutil
@@ -43,36 +44,36 @@ class ActivityFixture(unittest.TestCase):
             "TMUX_PANE": "%7",
             "LC_ALL": "en_US.UTF-8",
         }
-        self.stub("date", f"print({NOW})")
-        self.stub("uname", 'print("Linux" if __import__("os").environ.get("FIXTURE_LINUX") else "Darwin")')
+        self.shell_stub("date", f"printf '%s\\n' {NOW}")
+        self.shell_stub("uname", 'if [ -n "${FIXTURE_LINUX:-}" ]; then echo Linux; else echo Darwin; fi')
         self.stub("python3", f"import os; os.execv({sys.executable!r}, [{sys.executable!r}] + sys.argv[1:])")
         jq = shutil.which("jq")
         self.assertIsNotNone(jq, "jq is required for pane-state fixtures")
         (self.bin / "jq").symlink_to(str(jq))
-        self.stub("tmux", '''
-import os
-args = sys.argv[1:]
-with open(os.environ["FIXTURE_LOG"], "a") as log:
-    log.write(json.dumps(["tmux", *args]) + "\\n")
-if args[0] == "list-panes":
-    print(Path(os.environ["FIXTURE_ROWS"]).read_text(), end="")
-elif args[0] == "list-clients":
-    print("fixture-client")
-elif args[0] == "display-message":
-    fmt = args[-1]
-    if fmt == "#{session_name}":
-        print("fixture")
-    elif fmt == "#{pane_pid}":
-        print("123")
-    elif "pane_active" in fmt:
-        print(os.environ.get("FIXTURE_PANE_VISIBILITY", "1 1 1"))
-    else:
-        print("fixture:2")
+        self.shell_stub("tmux", r'''
+jq -cn --args '$ARGS.positional' -- tmux "$@" >> "$FIXTURE_LOG"
+case "$1" in
+  list-panes) cat "$FIXTURE_ROWS" ;;
+  list-clients) echo fixture-client ;;
+  display-message)
+    for arg in "$@"; do fmt=$arg; done
+    case "$fmt" in
+      '#{session_name}') echo fixture ;;
+      '#{pane_pid}') echo 123 ;;
+      *pane_active*) printf '%s\n' "${FIXTURE_PANE_VISIBILITY-1 1 1}" ;;
+      *) echo fixture:2 ;;
+    esac ;;
+esac
 ''')
 
     def stub(self, name: str, source: str) -> None:
         path = self.bin / name
         path.write_text(f"#!{sys.executable}\nimport json, sys\nfrom pathlib import Path\n{source}\n")
+        path.chmod(0o755)
+
+    def shell_stub(self, name: str, source: str) -> None:
+        path = self.bin / name
+        path.write_text(f"#!/bin/bash\n{source}\n")
         path.chmod(0o755)
 
     def run_script(self, script: Path, *args: str, payload: dict[str, object] | None = None) -> subprocess.CompletedProcess[str]:
@@ -211,7 +212,9 @@ class PickerTests(ActivityFixture):
         tmux = shutil.which("tmux")
         self.assertIsNotNone(tmux, "tmux is required for lifecycle fixtures")
         socket = f"activity-fixture-{uuid.uuid4().hex}"
-        command = [str(tmux), "-L", socket, "-f", "/dev/null"]
+        socket_dir = os.environ.get("CODEX_TEST_TMUX_DIR")
+        flag, address = ("-S", str(Path(socket_dir) / uuid.uuid4().hex[:16])) if socket_dir else ("-L", socket)
+        command = [str(tmux), flag, address, "-f", "/dev/null"]
 
         def isolated_tmux(*args: str) -> subprocess.CompletedProcess[str]:
             return subprocess.run([*command, *args], text=True, capture_output=True,
@@ -250,13 +253,10 @@ class PickerTests(ActivityFixture):
 class NotificationTests(ActivityFixture):
     def setUp(self) -> None:
         super().setUp()
-        self.stub("ps", '''
-import os
-if len(sys.argv) != 5 or sys.argv[1:4] != ["-o", "ppid=", "-p"]:
-    sys.exit(2)
-if os.environ.get("FIXTURE_PS_EXIT"):
-    sys.exit(int(os.environ["FIXTURE_PS_EXIT"]))
-print("1" if os.environ.get("FIXTURE_DAEMON_ORIGIN") == "1" else "123")
+        self.shell_stub("ps", r'''
+[ "$#" -eq 4 ] && [ "$1" = -o ] && [ "$2" = ppid= ] && [ "$3" = -p ] || exit 2
+[ -z "${FIXTURE_PS_EXIT:-}" ] || exit "$FIXTURE_PS_EXIT"
+if [ "${FIXTURE_DAEMON_ORIGIN:-}" = 1 ]; then echo 1; else echo 123; fi
 ''')
         for name in ("terminal-notifier", "osascript", "open"):
             self.stub(name, f'''
@@ -265,13 +265,14 @@ with open(os.environ["FIXTURE_LOG"], "a") as log:
     log.write(json.dumps([{name!r}, *sys.argv[1:]]) + "\\n")
 sys.exit(int(os.environ.get("FIXTURE_NOTIFIER_EXIT", "0")) if {name!r} == "terminal-notifier" else 0)
 ''')
-        self.stub("lsappinfo", '''
-import os
-if sys.argv[1] == "front":
-    print("fixture-asn")
-else:
-    bundle = "com.mitchellh.ghostty" if os.environ.get("FIXTURE_VISIBLE") else "fixture.other"
-    print('"CFBundleIdentifier"="' + bundle + '"')
+        self.shell_stub("lsappinfo", r'''
+if [ "$1" = front ]; then
+  echo fixture-asn
+elif [ -n "${FIXTURE_VISIBLE:-}" ]; then
+  echo '"CFBundleIdentifier"="com.mitchellh.ghostty"'
+else
+  echo '"CFBundleIdentifier"="fixture.other"'
+fi
 ''')
         for client in ("codex", "claude"):
             link = self.home / f".{client}/hooks/notify.sh"
@@ -305,6 +306,27 @@ else:
         self.assertEqual(args[args.index("-group") + 1], "codex-nopane")
         self.assertEqual(args[args.index("-activate") + 1], "com.mitchellh.ghostty")
         self.assertNotIn("-execute", args)
+
+    def test_fixture_tmux_visibility_preserves_environment_value(self) -> None:
+        for value, expected in ((None, "1 1 1\n"), ("", "\n"), ("-n", "-n\n"), ("видимость", "видимость\n")):
+            with self.subTest(value=value):
+                env = self.env.copy()
+                if value is None:
+                    env.pop("FIXTURE_PANE_VISIBILITY", None)
+                else:
+                    env["FIXTURE_PANE_VISIBILITY"] = value
+                result = subprocess.run([str(self.bin / "tmux"), "display-message", "pane_active"],
+                                        text=True, capture_output=True, env=env, timeout=10, check=False)
+                self.assertEqual((result.stdout, result.stderr, result.returncode), (expected, "", 0))
+
+    def test_fixture_commands_record_arguments_and_reject_invalid_ps(self) -> None:
+        result = subprocess.run([str(self.bin / "tmux"), "select-pane", "-t", "space value"],
+                                text=True, capture_output=True, env=self.env, timeout=10, check=False)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(self.calls("tmux"), [["select-pane", "-t", "space value"]])
+        result = subprocess.run([str(self.bin / "ps"), "invalid"], text=True, capture_output=True,
+                                env=self.env, timeout=10, check=False)
+        self.assertEqual(result.returncode, 2)
 
     def test_daemon_origin_cannot_claim_inherited_tmux_pane(self) -> None:
         self.env["FIXTURE_DAEMON_ORIGIN"] = "1"

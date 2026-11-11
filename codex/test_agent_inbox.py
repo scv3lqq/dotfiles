@@ -44,21 +44,23 @@ ACCENT = " #[fg=#E6B450]●"
 # Hook cases: the front check answers from the file `front` (000 when absent), the pane
 # process from the file `pane_pid` when it exists (an empty file is a failed lookup),
 # every other call reaches the real server on the isolated socket
-HOOK_TMUX = f'''
-import os
-args = sys.argv[1:]
-pane_pid = Path(os.environ["FIXTURE_ROOT"]) / "pane_pid"
-if {FRONT_FORMAT!r} in args:
-    front = Path(os.environ["FIXTURE_ROOT"]) / "front"
-    print(front.read_text() if front.exists() else "000")
-elif {PANE_PID_FORMAT!r} in args and pane_pid.exists():
-    answer = pane_pid.read_text()
-    if not answer:
-        sys.exit(1)
-    print(answer)
-else:
-    real = os.environ["FIXTURE_TMUX"]
-    os.execv(real, [real, "-L", os.environ["FIXTURE_SOCKET"], "-f", "/dev/null", *args])
+HOOK_TMUX = f'''#!/bin/bash
+for arg in "$@"; do
+  if [ "$arg" = {FRONT_FORMAT!r} ]; then
+    if [ -f "$FIXTURE_ROOT/front" ]; then cat "$FIXTURE_ROOT/front"; else printf 000; fi
+    printf "\\n"
+    exit 0
+  fi
+done
+for arg in "$@"; do
+  if [ "$arg" = {PANE_PID_FORMAT!r} ] && [ -f "$FIXTURE_ROOT/pane_pid" ]; then
+    [ -s "$FIXTURE_ROOT/pane_pid" ] || exit 1
+    cat "$FIXTURE_ROOT/pane_pid"
+    printf "\\n"
+    exit 0
+  fi
+done
+exec "$FIXTURE_TMUX" "$FIXTURE_TMUX_FLAG" "$FIXTURE_SOCKET" -f /dev/null "$@"
 '''
 
 # Hook cases: the `ps` of the origin guard answers from the file `chain`, a JSON object of pid
@@ -201,15 +203,19 @@ class HookTests(Fixture):
         self.assertIsNotNone(jq, "jq is required for hook fixtures")
         (self.bin / "jq").symlink_to(str(jq))
         socket = f"inbox-fixture-{uuid.uuid4().hex}"
-        self.server = [str(binary), "-L", socket, "-f", "/dev/null"]
+        socket_dir = os.environ.get("CODEX_TEST_TMUX_DIR")
+        flag, address = ("-S", str(Path(socket_dir) / uuid.uuid4().hex[:16])) if socket_dir else ("-L", socket)
+        self.server = [str(binary), flag, address, "-f", "/dev/null"]
         self.socket_path: Path | None = None
         self.addCleanup(self.stop_server)
         self.tmux("new-session", "-d", "-s", "fixture", "-x", "80", "-y", "24", "/bin/sleep 300")
         self.socket_path = Path(self.tmux("display-message", "-p", "-t", "fixture", "#{socket_path}").strip())
         self.pane = self.tmux("display-message", "-p", "-t", "fixture", "#{pane_id}").strip()
         self.digits = self.pane.lstrip("%")
-        self.env.update(TMUX_PANE=self.pane, FIXTURE_TMUX=str(binary), FIXTURE_SOCKET=socket)
-        self.stub("tmux", HOOK_TMUX)
+        self.env.update(TMUX_PANE=self.pane, FIXTURE_TMUX=str(binary), FIXTURE_TMUX_FLAG=flag, FIXTURE_SOCKET=address)
+        tmux_stub = self.bin / "tmux"
+        tmux_stub.write_text(HOOK_TMUX)
+        tmux_stub.chmod(0o755)
         self.stub("ps", HOOK_PS)
         # The runner is never below the fixture pane: the first ps answer names the pane's own process
         self.origin = self.tmux("display-message", "-p", "-t", self.pane, PANE_PID_FORMAT).strip()
@@ -261,6 +267,20 @@ class HookTests(Fixture):
         for name in STOP_OPTIONS:
             self.assertNotIn(name, options)
         self.assertEqual(self.stored(), [])
+
+    def test_hook_tmux_stub_overrides_and_forwards(self) -> None:
+        def invoke(fmt: str) -> subprocess.CompletedProcess[str]:
+            return subprocess.run([str(self.bin / "tmux"), "display", "-p", "-t", self.pane, fmt],
+                                  text=True, capture_output=True, env=self.env, timeout=10, check=False)
+
+        self.assertEqual(invoke(FRONT_FORMAT).stdout.strip(), "000")
+        self.set_front("111")
+        self.assertEqual(invoke(FRONT_FORMAT).stdout.strip(), "111")
+        self.assertEqual(invoke(PANE_PID_FORMAT).stdout.strip(), self.origin)
+        (self.root / "pane_pid").write_text("")
+        self.assertNotEqual(invoke(PANE_PID_FORMAT).returncode, 0)
+        (self.root / "pane_pid").write_text("41001")
+        self.assertEqual(invoke(PANE_PID_FORMAT).stdout.strip(), "41001")
 
     def test_h1_stop_unseen(self) -> None:
         self.hook("Stop", last_assistant_message="final text")
