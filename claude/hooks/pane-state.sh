@@ -24,7 +24,7 @@ set -u
 [ -n "${TMUX_PANE:-}" ] || exit 0
 # Codex calls this file through its own link: a pane started from Claude
 # Desktop hands Codex its CLAUDE_* env, which says nothing about Codex
-case "${BASH_SOURCE[0]}" in
+case "${BASH_SOURCE[0]:-}" in
   */.codex/hooks/*) ;;
   # Headless runs (claude -p, SDK) inherit TMUX_PANE from the session around them
   *) [ "${CLAUDE_CODE_ENTRYPOINT:-cli}" = "cli" ] || exit 0 ;;
