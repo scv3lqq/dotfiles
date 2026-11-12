@@ -6,18 +6,29 @@ against a recording tmux stub. Synthetic panes, closed environment.
 
 from __future__ import annotations
 
+import hashlib
+import importlib.util
 import json
 import os
 import re
+import shlex
 import shutil
 import stat
 import subprocess
 import sys
 import tempfile
+import threading
 import unittest
 import uuid
 from dataclasses import dataclass
 from pathlib import Path
+
+_spec = importlib.util.spec_from_file_location(
+    "fixture_code_cache", Path(__file__).resolve().parent.parent / "claude/hooks/tests/fixture_code_cache.py")
+assert _spec and _spec.loader
+_cache_module = importlib.util.module_from_spec(_spec)
+_spec.loader.exec_module(_cache_module)
+cached_executable = _cache_module.cached_executable
 
 ROOT = Path(__file__).resolve().parent.parent
 HOOK = ROOT / "claude/hooks/pane-state.sh"
@@ -156,6 +167,17 @@ def mixed() -> tuple[Pane, ...]:
 
 
 class Fixture(unittest.TestCase):
+    fixture_code_dir: Path
+    fixture_code_lock: threading.Lock
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        super().setUpClass()
+        temporary = tempfile.TemporaryDirectory()
+        cls.addClassCleanup(temporary.cleanup)
+        cls.fixture_code_dir = Path(temporary.name)
+        cls.fixture_code_lock = threading.Lock()
+
     def setUp(self) -> None:
         temporary = tempfile.TemporaryDirectory()
         self.addCleanup(temporary.cleanup)
@@ -167,6 +189,8 @@ class Fixture(unittest.TestCase):
         self.reports = self.home / "state" / "agent-inbox"
         self.env = {
             "HOME": str(self.home),
+            "SHELL": "/bin/sh",
+            "ZDOTDIR": str(self.home),
             "XDG_STATE_HOME": str(self.home / "state"),
             # A closed PATH keeps fixtures away from the live tmux; Homebrew supplies jq
             "PATH": f"{self.bin}:/opt/homebrew/bin:/usr/bin:/bin",
@@ -175,13 +199,58 @@ class Fixture(unittest.TestCase):
         }
         self.set_now(NOW)
 
-    def stub(self, name: str, source: str) -> None:
+    def fixture_file(self, name: str, content: str, *, shared: bool) -> None:
         path = self.bin / name
-        path.write_text(f"#!{sys.executable}\nimport json, sys\nfrom pathlib import Path\n{source}\n")
-        path.chmod(0o755)
+        if path.is_symlink():
+            path.unlink()
+        if shared and not path.exists():
+            digest = hashlib.sha256(content.encode()).hexdigest()
+            template = self.fixture_code_dir / digest
+            with self.fixture_code_lock:
+                if not template.exists():
+                    os.link(cached_executable(content), template)
+            path.symlink_to(template)
+        else:
+            path.write_text(content)
+            path.chmod(0o755)
+
+    def stub(self, name: str, source: str) -> None:
+        content = f"#!{sys.executable}\nimport json, sys\nfrom pathlib import Path\n{source}\n"
+        if source == INBOX_PS:
+            non_ascii = shlex.quote("[^ -~]")
+            record = shlex.quote('["-A", "-o", "pid=,ppid=,comm="]')
+            python = shlex.quote(sys.executable)
+            command = (
+                'if [ "$#" = 3 ] && [ "$1" = -A ] && [ "$2" = -o ] && '
+                '[ "$3" = "pid=,ppid=,comm=" ] && [ -f "$FIXTURE_ROOT/procs" ] && '
+                '{ [ ! -e "$FIXTURE_ROOT/ps.log" ] || '
+                '{ [ -f "$FIXTURE_ROOT/ps.log" ] && [ -w "$FIXTURE_ROOT/ps.log" ]; }; }; then '
+                f'if {{ printf "%s\\n" {record} >> "$FIXTURE_ROOT/ps.log"; }} 2>/dev/null; then '
+                'snapshot=$(/usr/bin/mktemp "$FIXTURE_ROOT/.ps.XXXXXXXX") || '
+                f'{{ FIXTURE_PS_LOGGED=1 exec {python} "$0" "$@"; }}; '
+                "trap '/bin/unlink \"$snapshot\"' EXIT; "
+                'if /bin/cat "$FIXTURE_ROOT/procs" > "$snapshot" 2>/dev/null; then '
+                f'LC_ALL=C /usr/bin/grep -aq {non_ascii} "$snapshot" 2>/dev/null; '
+                'if [ "$?" = 1 ]; then /bin/cat "$snapshot"; exit "$?"; fi; '
+                f'FIXTURE_PS_LOGGED=1 FIXTURE_PS_SNAPSHOT="$snapshot" {python} "$0" "$@"; exit "$?"; fi; '
+                f'FIXTURE_PS_LOGGED=1 {python} "$0" "$@"; exit "$?"; fi; fi; '
+                f'exec {python} "$0" "$@"'
+            )
+            program = source.replace(
+                'with open(root / "ps.log", "a") as log:',
+                'with open(os.devnull if os.environ.get("FIXTURE_PS_LOGGED") else root / "ps.log", "a") as log:',
+            ).replace('procs = root / "procs"',
+                      'procs = Path(os.environ.get("FIXTURE_PS_SNAPSHOT", root / "procs"))')
+            content = f'''#!/bin/bash
+""":"; {command}; ":"""; import json, sys
+from pathlib import Path
+{program}
+'''
+        shared = source in (HOOK_PS, INBOX_PS, INBOX_TMUX, f"print({NOW})")
+        self.fixture_file(name, content, shared=shared)
 
     def set_now(self, epoch: int) -> None:
-        self.stub("date", f"print({epoch})")
+        self.fixture_file("date", f"#!/bin/bash\nprintf '%s\\n' {epoch}\n", shared=True)
 
     def run_script(self, script: Path, *args: str,
                    payload: dict[str, object] | None = None) -> subprocess.CompletedProcess[str]:
@@ -213,9 +282,7 @@ class HookTests(Fixture):
         self.pane = self.tmux("display-message", "-p", "-t", "fixture", "#{pane_id}").strip()
         self.digits = self.pane.lstrip("%")
         self.env.update(TMUX_PANE=self.pane, FIXTURE_TMUX=str(binary), FIXTURE_TMUX_FLAG=flag, FIXTURE_SOCKET=address)
-        tmux_stub = self.bin / "tmux"
-        tmux_stub.write_text(HOOK_TMUX)
-        tmux_stub.chmod(0o755)
+        self.fixture_file("tmux", HOOK_TMUX, shared=True)
         self.stub("ps", HOOK_PS)
         # The runner is never below the fixture pane: the first ps answer names the pane's own process
         self.origin = self.tmux("display-message", "-p", "-t", self.pane, PANE_PID_FORMAT).strip()

@@ -73,6 +73,22 @@ if command -v jq >/dev/null 2>&1; then
         to_entries[] | $names[.key] + "=" + ((.value // "") | tostring | @sh)
     ' 2>/dev/null) || fields=""
 fi
+if [ -z "$fields" ] && ! command -v jq >/dev/null 2>&1; then
+    helper_self="$SELF"
+    helper_steps=0
+    while [ -L "$helper_self" ] && [ "$helper_steps" -lt 40 ]; do
+        helper_link=$(readlink "$helper_self" 2>/dev/null) || break
+        case "$helper_link" in
+            /*) helper_self="$helper_link" ;;
+            *) helper_self="${helper_self%/*}/$helper_link" ;;
+        esac
+        helper_steps=$((helper_steps + 1))
+    done
+    helper="${helper_self%/*}/notify_fields.py"
+    if [ -f "$helper" ]; then
+        fields=$(printf '%s' "$payload" | python3 "$helper" 2>/dev/null) || fields=""
+    fi
+fi
 if [ -n "$fields" ]; then
     eval "$fields"
     # Command substitution previously removed trailing newlines from each field.

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import hashlib
+import importlib.util
 import json
 import os
 import re
@@ -10,10 +12,18 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import threading
 import unicodedata
 import unittest
 import uuid
 from pathlib import Path
+
+_spec = importlib.util.spec_from_file_location(
+    "fixture_code_cache", Path(__file__).resolve().parent.parent / "claude/hooks/tests/fixture_code_cache.py")
+assert _spec and _spec.loader
+_cache_module = importlib.util.module_from_spec(_spec)
+_spec.loader.exec_module(_cache_module)
+cached_executable = _cache_module.cached_executable
 
 ROOT = Path(__file__).resolve().parent.parent
 PICKER = ROOT / "tmux/session-picker.sh"
@@ -23,6 +33,22 @@ NOW = 2_000_000_000
 
 
 class ActivityFixture(unittest.TestCase):
+    uname_stub: Path
+    fixture_code_dir: Path
+    fixture_code_lock: threading.Lock
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        super().setUpClass()
+        temporary = tempfile.TemporaryDirectory()
+        cls.addClassCleanup(temporary.cleanup)
+        cls.fixture_code_dir = Path(temporary.name)
+        cls.fixture_code_lock = threading.Lock()
+        cls.uname_stub = cls.fixture_code_dir / "uname"
+        os.link(cached_executable(
+            '#!/bin/bash\nif [ -n "${FIXTURE_LINUX:-}" ]; then echo Linux; else echo Darwin; fi\n'
+        ), cls.uname_stub)
+
     def setUp(self) -> None:
         temporary = tempfile.TemporaryDirectory()
         self.addCleanup(temporary.cleanup)
@@ -37,6 +63,8 @@ class ActivityFixture(unittest.TestCase):
         # A closed PATH prevents fixtures from reaching real desktop commands.
         self.env = {
             "HOME": str(self.home),
+            "SHELL": "/bin/sh",
+            "ZDOTDIR": str(self.home),
             "PATH": f"{self.bin}:/usr/bin:/bin",
             "FIXTURE_LOG": str(self.log),
             "FIXTURE_ROWS": str(self.rows),
@@ -45,8 +73,8 @@ class ActivityFixture(unittest.TestCase):
             "LC_ALL": "en_US.UTF-8",
         }
         self.shell_stub("date", f"printf '%s\\n' {NOW}")
-        self.shell_stub("uname", 'if [ -n "${FIXTURE_LINUX:-}" ]; then echo Linux; else echo Darwin; fi')
-        self.stub("python3", f"import os; os.execv({sys.executable!r}, [{sys.executable!r}] + sys.argv[1:])")
+        (self.bin / "uname").symlink_to(self.uname_stub)
+        (self.bin / "python3").symlink_to(sys.executable)
         jq = shutil.which("jq")
         self.assertIsNotNone(jq, "jq is required for pane-state fixtures")
         (self.bin / "jq").symlink_to(str(jq))
@@ -66,15 +94,27 @@ case "$1" in
 esac
 ''')
 
-    def stub(self, name: str, source: str) -> None:
+    def fixture_file(self, name: str, content: str, *, shared: bool) -> None:
         path = self.bin / name
-        path.write_text(f"#!{sys.executable}\nimport json, sys\nfrom pathlib import Path\n{source}\n")
-        path.chmod(0o755)
+        if path.is_symlink():
+            path.unlink()
+        if shared and not path.exists():
+            digest = hashlib.sha256(content.encode()).hexdigest()
+            template = self.fixture_code_dir / digest
+            with self.fixture_code_lock:
+                if not template.exists():
+                    os.link(cached_executable(content), template)
+            path.symlink_to(template)
+        else:
+            path.write_text(content)
+            path.chmod(0o755)
+
+    def stub(self, name: str, source: str) -> None:
+        content = f"#!{sys.executable}\nimport json, sys\nfrom pathlib import Path\n{source}\n"
+        self.fixture_file(name, content, shared=name in {"python3", "terminal-notifier", "osascript", "open"})
 
     def shell_stub(self, name: str, source: str) -> None:
-        path = self.bin / name
-        path.write_text(f"#!/bin/bash\n{source}\n")
-        path.chmod(0o755)
+        self.fixture_file(name, f"#!/bin/bash\n{source}\n", shared=name in {"date", "tmux", "ps", "lsappinfo", "python3", "terminal-notifier", "osascript"})
 
     def run_script(self, script: Path, *args: str, payload: dict[str, object] | None = None) -> subprocess.CompletedProcess[str]:
         result = subprocess.run(
@@ -258,7 +298,13 @@ class NotificationTests(ActivityFixture):
 [ -z "${FIXTURE_PS_EXIT:-}" ] || exit "$FIXTURE_PS_EXIT"
 if [ "${FIXTURE_DAEMON_ORIGIN:-}" = 1 ]; then echo 1; else echo 123; fi
 ''')
-        for name in ("terminal-notifier", "osascript", "open"):
+        jq = shutil.which("jq")
+        self.assertIsNotNone(jq, "jq is required for notification fixtures")
+        self.shell_stub("terminal-notifier", f'''
+{shlex.quote(str(jq))} -cn --args '$ARGS.positional' -- terminal-notifier "$@" >> "$FIXTURE_LOG"
+exit ${{FIXTURE_NOTIFIER_EXIT:-0}}
+''')
+        for name in ("osascript", "open"):
             self.stub(name, f'''
 import os
 with open(os.environ["FIXTURE_LOG"], "a") as log:

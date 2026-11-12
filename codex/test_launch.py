@@ -2,27 +2,34 @@
 
 from __future__ import annotations
 
+import importlib.util
 import json
+import os
 import subprocess
 import sys
 import tempfile
 import unittest
 from pathlib import Path
 
+_spec = importlib.util.spec_from_file_location(
+    "fixture_code_cache", Path(__file__).resolve().parent.parent / "claude/hooks/tests/fixture_code_cache.py")
+assert _spec and _spec.loader
+_cache_module = importlib.util.module_from_spec(_spec)
+_spec.loader.exec_module(_cache_module)
+cached_executable = _cache_module.cached_executable
+
 ROOT = Path(__file__).resolve().parent.parent
 ALIASES = ROOT / "zsh/aliases.zsh"
 
 
 class LaunchTests(unittest.TestCase):
-    def setUp(self) -> None:
+    @classmethod
+    def setUpClass(cls) -> None:
+        super().setUpClass()
         temporary = tempfile.TemporaryDirectory()
-        self.addCleanup(temporary.cleanup)
-        self.root = Path(temporary.name).resolve()
-        self.bin = self.root / "bin"
-        self.bin.mkdir()
-        self.log = self.root / "argv.json"
-        executable = self.bin / "codex"
-        executable.write_text(f'''#!{sys.executable}
+        cls.addClassCleanup(temporary.cleanup)
+        cls.executable = Path(temporary.name) / "codex"
+        content = f'''#!{sys.executable}
 import json
 import os
 import sys
@@ -30,8 +37,17 @@ from pathlib import Path
 
 Path(os.environ["FIXTURE_ARGV"]).write_text(json.dumps(sys.argv[1:]))
 sys.exit(int(os.environ["FIXTURE_EXIT"]))
-''')
-        executable.chmod(0o755)
+'''
+        os.link(cached_executable(content), cls.executable)
+
+    def setUp(self) -> None:
+        temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(temporary.cleanup)
+        self.root = Path(temporary.name).resolve()
+        self.bin = self.root / "bin"
+        self.bin.mkdir()
+        self.log = self.root / "argv.json"
+        (self.bin / "codex").symlink_to(self.executable)
 
     def launch(self, *args: str, exit_code: int = 0) -> tuple[subprocess.CompletedProcess[str], list[str]]:
         result = subprocess.run(

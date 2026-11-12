@@ -7,15 +7,20 @@ import tempfile
 import textwrap
 import unittest
 import uuid
+from unittest.mock import patch
 
 RUNNER = Path(__file__).with_name("run_tests.py")
 
 
 class RunnerTests(unittest.TestCase):
-    def setUp(self):
+    def setUp(self) -> None:
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)
         self.root = Path(self.temp.name)
+        environment = patch.dict(os.environ, {"HOME": str(self.root), "SHELL": "/bin/sh",
+                                               "ZDOTDIR": str(self.root)})
+        environment.start()
+        self.addCleanup(environment.stop)
 
     def module(self, name, source):
         (self.root / (name + ".py")).write_text(textwrap.dedent(source))
@@ -132,13 +137,13 @@ class RunnerTests(unittest.TestCase):
         foreign = Path(inherited) / ("f" + uuid.uuid4().hex[:12]) if inherited else self.root / "foreign.sock"
         self.addCleanup(lambda: subprocess.run([tmux, "-S", str(foreign), "kill-server"],
                                                 capture_output=True))
-        subprocess.run([tmux, "-S", str(foreign), "new-session", "-d", "sleep 30"], check=True)
+        subprocess.run([tmux, "-S", str(foreign), "-f", "/dev/null", "new-session", "-d", "sleep 30"], check=True)
         self.module("test_server", f"""
             import os, pathlib, subprocess, time, unittest
             class Server(unittest.TestCase):
                 def test_wait(self):
                     socket = pathlib.Path(os.environ['CODEX_TEST_TMUX_DIR']) / 'owned.sock'
-                    subprocess.run([{tmux!r}, '-S', str(socket), 'new-session', '-d', 'sleep 30'], check=True)
+                    subprocess.run([{tmux!r}, '-S', str(socket), '-f', '/dev/null', 'new-session', '-d', 'sleep 30'], check=True)
                     pathlib.Path({str(self.root / 'socket-path')!r}).write_text(str(socket))
                     time.sleep(30)
         """)
@@ -245,7 +250,7 @@ class RunnerTests(unittest.TestCase):
         inherited = os.environ.get('CODEX_TEST_TMUX_DIR')
         unrelated = Path(inherited) / ('u' + uuid.uuid4().hex[:12]) if inherited else self.root / 'unrelated.sock'
         self.addCleanup(lambda: subprocess.run([tmux, '-S', str(unrelated), 'kill-server'], capture_output=True))
-        subprocess.run([tmux, '-S', str(unrelated), 'new-session', '-d', 'sleep 30'], check=True)
+        subprocess.run([tmux, '-S', str(unrelated), '-f', '/dev/null', 'new-session', '-d', 'sleep 30'], check=True)
         self.module('test_outer', f'''
             import importlib.util, os, pathlib, subprocess, time, unittest
             spec = importlib.util.spec_from_file_location('nested_checks', {str(Path(__file__).resolve())!r})
@@ -297,7 +302,7 @@ class RunnerTests(unittest.TestCase):
         inherited = os.environ.get('CODEX_TEST_TMUX_DIR')
         neighbor = Path(inherited) / ('n' + uuid.uuid4().hex[:12]) if inherited else self.root / 'neighbor.sock'
         self.addCleanup(lambda: subprocess.run([tmux, '-S', str(neighbor), 'kill-server'], capture_output=True))
-        subprocess.run([tmux, '-S', str(neighbor), 'new-session', '-d', 'sleep 30'], check=True)
+        subprocess.run([tmux, '-S', str(neighbor), '-f', '/dev/null', 'new-session', '-d', 'sleep 30'], check=True)
         self.module('test_deep', f'''
             import importlib.util, pathlib, subprocess, time, unittest
             spec = importlib.util.spec_from_file_location('nested_checks', {str(Path(__file__).resolve())!r})
