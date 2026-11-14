@@ -411,6 +411,7 @@ available on servers, and the markdown-preview.nvim build error on the first
 | `claude/CLAUDE.md`, `claude/settings.json` | `~/.claude/` | macOS only; global Claude Code instructions and settings; the personal part of the instructions is imported from `~/.claude/private/CLAUDE.md`, which stays outside the repo |
 | `claude/skills/*/` | `~/.claude/skills/` | one directory link per skill, `/feature` among them; `mac-*` skills on macOS only |
 | `claude/agents/*.md`, `claude/hooks/*`, `claude/bin/*`, `claude/statusline.sh`, `claude/themes/ayu.json` | `~/.claude/` | one link per file: the `/feature` agents, the hooks `settings.json` wires (Stop alert, picker state, guards), `settings-edit.sh`, the status line and color theme |
+| `claude/mods/ayu-theme/` | | Claude Code mod: Ayu colors for the desktop app, loaded in every session via `env.CLAUDE_CODE_PLUGIN_DIRS` in `settings.json`, not linked |
 | `.githooks/pre-commit` | | refuses staged lines that match `~/.claude/private/denylist`; `install.sh` sets `core.hooksPath` |
 | `.claude/skills/` | | shared project skill sources: `setup-dotfiles`, `docs-sync`, `readme-screenshots` |
 | `.agents/skills/` | | relative links to three shared project skills and the native `feature`/`retro` workflows |
