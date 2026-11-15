@@ -527,8 +527,9 @@ runs is `~/Library/Logs/topgrade.log`.
 display is active and reconnects it when none is (private SkyLight
 `SLSConfigureDisplayEnabled`, Apple Silicon only; design and sources in
 `plans/builtin-display-guard.md`). Commands: `status`, `on`, `off` (refuses
-without an external display), `watch`. Changes last for the login session, so
-a reboot always brings the built-in back. A launchd agent runs `watch`; like
+without an external display), `watch`, `selftest`. Changes last for the login
+session, so a reboot always brings the built-in back. The agent reverts a
+manual `on`, stop it first. A launchd agent runs `watch`; like
 topgrade's it lives outside the repo, create and load it with:
 
 ```sh

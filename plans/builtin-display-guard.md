@@ -43,15 +43,46 @@ list-monitors` goes from two monitors to Mi Monitor only and back.
   `swiftc -O`. Symbols are resolved with `dlopen`/`dlsym`, so a macOS release
   without them fails with a message (exit 2), not a dyld crash.
 - Commands: `status`, `on`, `off` (refuses without an active external
-  display), `watch`.
+  display), `watch`, `selftest` (decision table, no display access).
 - The transaction commits with `.forSession`, not `.permanently`: logout or
   reboot always brings the built-in back, so a dead agent cannot strand it.
-- `watch`: `CGDisplayRegisterReconfigurationCallback` on the main run loop,
-  debounced 1 s, plus a 30 s reconcile timer for missed callbacks. Desired
-  state: built-in off while any non-built-in display is active, on otherwise.
-  An attempt is not repeated for the same display set, so a no-op action
-  (lid closed) cannot loop. SIGTERM, SIGINT, SIGHUP re-enable the built-in
-  before exit.
+- `watch`: `CGDisplayRegisterReconfigurationCallback` serviced by an
+  `NSApplication` run loop (activation policy `.prohibited`), debounced 1 s,
+  plus a 2 s poll and an `IORegisterForSystemPower` wake hook. Every callback
+  (display, flags) and every change of the display snapshot is logged.
+- Decision (`decide`): built-in off while a real external is active, on
+  otherwise. Real external: not built-in, active, EDID size > 0, vendor not
+  `0`, `0xFFFFFFFF` or `'unkn'`. While the built-in is off, an external also
+  has to be one seen while the built-in was on (trusted set), so a display
+  that appears after the last real one left never counts, whatever it reports.
+- An attempt is not repeated for the same snapshot, so a no-op action (lid
+  closed) cannot loop. SIGTERM, SIGINT, SIGHUP re-enable the built-in before
+  exit.
+
+## Unplug bug (fixed 2026-11-15)
+
+First version: unplugging the monitor left the built-in dark, the log had
+nothing between the disable and the manual stop. Two causes:
+
+1. WindowServer activates a placeholder when the last real display goes
+   away. Unified log at the unplug: `Display 2 hot plug 0`, then
+   `VirtualDisplay::set_display_state display_id=3 ... target_state=on`,
+   `display 0x3 added ... marking main`, `display 0x2 removed`. The old rule
+   counted any active non-built-in display as external, so display 3 kept the
+   built-in off. BetterDisplay hits the same placeholder:
+   https://github.com/waydabber/betterdisplay/issues/5913
+2. `CFRunLoopRun` in a plain CLI never receives WindowServer display
+   notifications: after an `on` from another process the watcher logged no
+   callback and its poll read a stale display list for 5 s, until its own
+   SIGTERM handler called `CGBeginDisplayConfiguration`, which flushed the
+   queued callbacks. The same binary on an `NSApplication` run loop logged the
+   callback within 1 s and reacted.
+
+Checked: `selftest` (13 cases, placeholder variants included); live, an
+external `builtin-display on` is logged and reverted within 1 to 2 s;
+`kickstart -k` restores and re-disables. A real unplug cannot be simulated
+safely here (disabling the external would leave no display), so it stays a
+manual test.
 - Binary: `~/.local/bin/builtin-display` (already on PATH via `zsh/.zprofile`).
   `install.sh` builds it on macOS when `swiftc` exists.
 - Agent: `~/Library/LaunchAgents/local.builtin-display.plist`, outside the
@@ -63,12 +94,17 @@ list-monitors` goes from two monitors to Mi Monitor only and back.
 
 - Lid closed with external: macOS clamshell already removes the built-in; the
   watcher sees no active built-in and does nothing.
-- External unplugged while built-in off: active list becomes empty, the
-  watcher reconnects the built-in within ~1 s (30 s worst case).
+- External unplugged while built-in off: WindowServer's placeholder becomes
+  the only active display; it is not a trusted real external, so the watcher
+  reconnects the built-in within ~1 s (2 s poll worst case).
 - Reboot / logout: `.forSession` resets to on; the agent starts at login and
   disconnects again if the external is present.
-- Sleep/wake: reconfiguration callbacks fire on wake; the 30 s timer covers a
-  missed one.
+- Sleep/wake: the wake hook re-evaluates 1 s after power-on; the 2 s poll
+  covers a missed callback.
+- Monitor plugged in while the built-in is off (another monitor): not
+  trusted yet, so one on/off flicker.
+- Manual `builtin-display on` while the agent runs is reverted; stop the agent
+  first.
 - Agent stopped (`bootout`) or crashed: SIGTERM handler reconnects; a crash
   leaves the built-in off until the external is unplugged, lid cycled, or
   `builtin-display on` is run; KeepAlive restarts the agent anyway.
