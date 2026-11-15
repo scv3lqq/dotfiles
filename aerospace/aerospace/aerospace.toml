@@ -8,7 +8,7 @@ config-version = 2
 # to empty, so list them to keep every bound workspace alive when empty.
 persistent-workspaces = [
     '1', '2', '3', '4', '5', '6', '7', '8', '9',
-    'g', 'm', 'n', 'o', 'p', 's', 't', 'v', 'w',
+    'a', 'c', 'g', 'm', 'n', 'o', 'p', 'r', 's', 't', 'v', 'w',
 ]
 
 # You can use it to add commands that run after login to macOS user session.
@@ -142,6 +142,9 @@ alt-g = 'workspace g'
 alt-p = 'workspace p'
 alt-n = 'workspace n'
 alt-v = 'workspace v'
+alt-c = 'workspace c'
+alt-a = 'workspace a'
+alt-r = 'workspace r'
 
 
 # See: https://nikitabobko.github.io/AeroSpace/commands#move-node-to-workspace
@@ -162,6 +165,9 @@ alt-shift-o = 'move-node-to-workspace o'
 alt-shift-p = 'move-node-to-workspace p'
 alt-shift-n = 'move-node-to-workspace n'
 alt-shift-v = 'move-node-to-workspace v'
+alt-shift-c = 'move-node-to-workspace c'
+alt-shift-a = 'move-node-to-workspace a'
+alt-shift-r = 'move-node-to-workspace r'
 
 
 
@@ -223,6 +229,12 @@ m = ['secondary', 'main']
 n = ['secondary', 'main']
 
 v = ['secondary', 'main']
+
+c = ['secondary', 'main']
+
+a = ['secondary', 'main']
+
+r = ['secondary', 'main']
 
 # 'service' binding mode declaration.
 # See: https://nikitabobko.github.io/AeroSpace/guide#binding-modes
@@ -304,6 +316,19 @@ run = 'move-node-to-workspace v'
 [[on-window-detected]]
 if.app-id = 'hossin.asaadi.V2Box'
 run = 'move-node-to-workspace 2'
+
+[[on-window-detected]]
+if.app-id = 'com.anthropic.claudefordesktop'
+run = 'move-node-to-workspace c'
+
+# The ChatGPT desktop app ships under the Codex bundle id.
+[[on-window-detected]]
+if.app-id = 'com.openai.codex'
+run = 'move-node-to-workspace a'
+
+[[on-window-detected]]
+if.app-id = 'ru.weteams.desktop'
+run = 'move-node-to-workspace r'
 
 # All named workspaces live on the external monitor, so the built-in display
 # shows AeroSpace's auto-created stub (lowest free number, 10). Keep windows
