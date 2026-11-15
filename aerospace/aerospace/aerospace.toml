@@ -127,6 +127,7 @@ alt-m = 'workspace m'
 alt-o = 'workspace o'
 alt-g = 'workspace g'
 alt-p = 'workspace p'
+alt-n = 'workspace n'
 
 
 # See: https://nikitabobko.github.io/AeroSpace/commands#move-node-to-workspace
@@ -145,6 +146,7 @@ alt-shift-m = 'move-node-to-workspace m'
 alt-shift-s = 'move-node-to-workspace s'
 alt-shift-o = 'move-node-to-workspace o'
 alt-shift-p = 'move-node-to-workspace p'
+alt-shift-n = 'move-node-to-workspace n'
 
 
 
@@ -161,7 +163,6 @@ alt-shift-semicolon = 'mode service'
 alt-enter = 'exec-and-forget open -n /Applications/Ghostty.app'
 
 alt-b = 'exec-and-forget open -n /Applications/Zen.app'
-alt-n = 'exec-and-forget open -a "Notion Calendar"'
 alt-z = 'exec-and-forget open -n /Applications/Obsidian.app'
 
 [workspace-to-monitor-force-assignment]
@@ -198,6 +199,8 @@ p = ['secondary', 'main']
 g = ['secondary', 'main']
 
 m = ['secondary', 'main']
+
+n = ['secondary', 'main']
 
 # 'service' binding mode declaration.
 # See: https://nikitabobko.github.io/AeroSpace/guide#binding-modes
@@ -239,6 +242,10 @@ run = 'move-node-to-workspace o'
 [[on-window-detected]]
 if.app-id = 'com.google.Chrome'
 run = 'move-node-to-workspace g'
+
+[[on-window-detected]]
+if.app-id = 'com.cron.electron'
+run = 'move-node-to-workspace n'
 
 # All named workspaces live on the external monitor, so the built-in display
 # shows AeroSpace's auto-created stub (lowest free number, 10). Keep windows
