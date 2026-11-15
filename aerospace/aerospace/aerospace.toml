@@ -255,6 +255,10 @@ run = 'move-node-to-workspace n'
 if.app-id = 'ru.mail.messenger-biz-avocado-desktop'
 run = 'move-node-to-workspace v'
 
+[[on-window-detected]]
+if.app-id = 'hossin.asaadi.V2Box'
+run = 'move-node-to-workspace 2'
+
 # All named workspaces live on the external monitor, so the built-in display
 # shows AeroSpace's auto-created stub (lowest free number, 10). Keep windows
 # opened there on the external monitor. Must stay the last callback.
