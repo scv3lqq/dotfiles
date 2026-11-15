@@ -64,15 +64,23 @@ struct DisplayInfo: Equatable {
 
 enum Action: Equatable { case none, enable, disable }
 
+// builtinID is passed in rather than looked up: with only WindowServer's
+// placeholder active, the disabled built-in drops out of every display list
+// (SkyLight's too) and CGDisplayIsBuiltin is false for an absent ID, so a
+// lookup finds no built-in and the guard did nothing.
+//
 // trusted: externals seen while the built-in was on. With the built-in off
 // only those count, so a display that appears after the last real one left
 // (the placeholder, whatever properties it reports) never keeps it dark. A
 // monitor plugged in while the built-in is off costs one on/off flicker.
-func decide(_ displays: [DisplayInfo], trusted: Set<CGDirectDisplayID>) -> Action {
-    guard let builtin = displays.first(where: { $0.builtin }) else { return .none }
-    let hasExternal = displays.contains { $0.isRealExternal && (builtin.active || trusted.contains($0.id)) }
-    if hasExternal && builtin.active { return .disable }
-    if !hasExternal && !builtin.active { return .enable }
+func decide(_ displays: [DisplayInfo], builtinID: CGDirectDisplayID?, trusted: Set<CGDirectDisplayID>) -> Action {
+    guard let bid = builtinID ?? displays.first(where: { $0.builtin })?.id else { return .none }
+    let builtinActive = displays.contains { $0.id == bid && $0.active }
+    let hasExternal = displays.contains {
+        $0.id != bid && $0.isRealExternal && (builtinActive || trusted.contains($0.id))
+    }
+    if hasExternal && builtinActive { return .disable }
+    if !hasExternal && !builtinActive { return .enable }
     return .none
 }
 
@@ -84,8 +92,8 @@ func activeDisplays() -> [CGDirectDisplayID] {
     return Array(ids.prefix(Int(count)))
 }
 
-// CGGetOnlineDisplayList drops a display disabled through SkyLight, so the
-// built-in ID is looked up in SkyLight's own list, which keeps it.
+// CGGetOnlineDisplayList drops a display disabled through SkyLight while
+// another real display is up; SkyLight's own list keeps it then.
 func skyLightDisplays(_ sl: SkyLight) -> [CGDirectDisplayID] {
     var count: UInt32 = 0
     guard sl.getDisplayList(0, nil, &count) == .success, count > 0 else { return [] }
@@ -112,6 +120,39 @@ func describe(_ displays: [DisplayInfo]) -> String {
     displays.isEmpty ? "none" : displays.map(\.summary).joined(separator: " ")
 }
 
+// The built-in ID, learned while the panel is visible and kept on disk so a
+// restarted watcher (or `on`) can re-enable a built-in no list shows.
+struct BuiltinStore {
+    let url: URL
+
+    static func standard() -> BuiltinStore {
+        let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+        return BuiltinStore(url: base.appendingPathComponent("builtin-display/builtin-id"))
+    }
+
+    func load() -> CGDirectDisplayID? {
+        guard let text = try? String(contentsOf: url, encoding: .utf8) else { return nil }
+        return CGDirectDisplayID(text.trimmingCharacters(in: .whitespacesAndNewlines))
+    }
+
+    func save(_ id: CGDirectDisplayID) {
+        do {
+            try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+            try "\(id)\n".write(to: url, atomically: true, encoding: .utf8)
+        } catch {
+            log("store: \(error)")
+        }
+    }
+
+    // Visible built-in wins over the file, and refreshes it when it differs.
+    func resolve(_ displays: [DisplayInfo]) -> CGDirectDisplayID? {
+        let stored = load()
+        guard let seen = displays.first(where: { $0.builtin })?.id else { return stored }
+        if seen != stored { save(seen) }
+        return seen
+    }
+}
+
 enum ToolError: Error, CustomStringConvertible {
     case noBuiltin
     case noExternal
@@ -119,18 +160,14 @@ enum ToolError: Error, CustomStringConvertible {
 
     var description: String {
         switch self {
-        case .noBuiltin: return "built-in display not found"
+        case .noBuiltin: return "built-in display ID unknown (never seen and no stored ID)"
         case .noExternal: return "no active external display, refusing to disable the built-in"
         case let .cg(op, err): return "\(op) failed: CGError \(err.rawValue)"
         }
     }
 }
 
-func setBuiltin(_ sl: SkyLight, enabled: Bool) throws {
-    let displays = snapshot(sl)
-    guard let id = displays.first(where: { $0.builtin })?.id else { throw ToolError.noBuiltin }
-    if !enabled && !displays.contains(where: { $0.isRealExternal }) { throw ToolError.noExternal }
-
+func configure(_ sl: SkyLight, id: CGDirectDisplayID, enabled: Bool) throws {
     var config: CGDisplayConfigRef?
     let begin = CGBeginDisplayConfiguration(&config)
     guard begin == .success, let cfg = config else { throw ToolError.cg("CGBeginDisplayConfiguration", begin) }
@@ -145,6 +182,13 @@ func setBuiltin(_ sl: SkyLight, enabled: Bool) throws {
     guard done == .success else { throw ToolError.cg("CGCompleteDisplayConfiguration", done) }
 }
 
+func setBuiltin(_ sl: SkyLight, store: BuiltinStore, enabled: Bool) throws {
+    let displays = snapshot(sl)
+    guard let id = store.resolve(displays) else { throw ToolError.noBuiltin }
+    if !enabled && !displays.contains(where: { $0.id != id && $0.isRealExternal }) { throw ToolError.noExternal }
+    try configure(sl, id: id, enabled: enabled)
+}
+
 // IOKit message constants are function-like C macros that Swift does not import.
 let msgCanSystemSleep: natural_t = 0xE000_0270
 let msgSystemWillSleep: natural_t = 0xE000_0280
@@ -152,15 +196,20 @@ let msgSystemHasPoweredOn: natural_t = 0xE000_0300
 
 final class Watcher {
     let sl: SkyLight
+    let store: BuiltinStore
     var generation = 0
     var lastSeen: String?
-    // Snapshot for which an action was last attempted; stops a retry loop
-    // when an action does not change anything (lid closed).
-    var lastAttempt: String?
+    // Snapshot for which a disable was last attempted; stops a retry loop
+    // when it does not change anything (lid closed). Enable has no such
+    // limit: it is retried on every poll until the built-in is back.
+    var lastDisable: String?
     var rootPort: io_connect_t = 0
     var trusted: Set<CGDirectDisplayID> = []
 
-    init(sl: SkyLight) { self.sl = sl }
+    init(sl: SkyLight, store: BuiltinStore) {
+        self.sl = sl
+        self.store = store
+    }
 
     func schedule(after delay: Double) {
         generation += 1
@@ -173,26 +222,36 @@ final class Watcher {
 
     func reconcile() {
         let displays = snapshot(sl)
+        let builtinID = store.resolve(displays)
         let seen = describe(displays)
         if seen != lastSeen {
-            log("state \(seen)")
+            log("state \(seen) builtin-id=\(builtinID.map(String.init) ?? "unknown")")
             lastSeen = seen
         }
-        if displays.contains(where: { $0.builtin && $0.active }) {
-            trusted = Set(displays.filter(\.isRealExternal).map(\.id))
+        guard let bid = builtinID else { return }
+        if displays.contains(where: { $0.id == bid && $0.active }) {
+            trusted = Set(displays.filter { $0.id != bid && $0.isRealExternal }.map(\.id))
         }
-        let action = decide(displays, trusted: trusted)
-        guard action != .none else {
-            lastAttempt = nil
-            return
-        }
-        guard seen != lastAttempt else { return }
-        lastAttempt = seen
-        do {
-            try setBuiltin(sl, enabled: action == .enable)
-            log("built-in \(action == .enable ? "enabled" : "disabled")")
-        } catch {
-            log("reconcile: \(error)")
+        switch decide(displays, builtinID: bid, trusted: trusted) {
+        case .none:
+            lastDisable = nil
+        case .enable:
+            lastDisable = nil
+            do {
+                try configure(sl, id: bid, enabled: true)
+                log("enable \(bid): ok")
+            } catch {
+                log("enable \(bid): \(error)")
+            }
+        case .disable:
+            guard seen != lastDisable else { return }
+            lastDisable = seen
+            do {
+                try configure(sl, id: bid, enabled: false)
+                log("disable \(bid): ok")
+            } catch {
+                log("disable \(bid): \(error)")
+            }
         }
     }
 
@@ -202,7 +261,7 @@ final class Watcher {
             IOAllowPowerChange(rootPort, Int(bitPattern: argument))
         case msgSystemHasPoweredOn:
             log("power: woke")
-            lastAttempt = nil
+            lastDisable = nil
             schedule(after: 1.0)
         default:
             break
@@ -211,8 +270,8 @@ final class Watcher {
 
     func restoreAndExit(_ sig: Int32) -> Never {
         let displays = snapshot(sl)
-        if let builtin = displays.first(where: { $0.builtin }), !builtin.active {
-            do { try setBuiltin(sl, enabled: true); log("signal \(sig): built-in enabled") } catch { log("signal \(sig): \(error)") }
+        if let bid = store.resolve(displays), !displays.contains(where: { $0.id == bid && $0.active }) {
+            do { try configure(sl, id: bid, enabled: true); log("signal \(sig): enable \(bid): ok") } catch { log("signal \(sig): enable \(bid): \(error)") }
         } else {
             log("signal \(sig): exit")
         }
@@ -221,7 +280,7 @@ final class Watcher {
 }
 
 func runWatch(_ sl: SkyLight) -> Never {
-    let watcher = Watcher(sl: sl)
+    let watcher = Watcher(sl: sl, store: .standard())
     var sources: [DispatchSourceSignal] = []
     for sig in [SIGTERM, SIGINT, SIGHUP] {
         signal(sig, SIG_IGN)
@@ -285,8 +344,17 @@ func selftest() -> Never {
     let noEdid = DisplayInfo(id: 5, builtin: false, active: true, vendor: 0x61A9, widthMM: 0)
     // A placeholder that reports monitor-like properties: only trust stops it.
     let lookalike = DisplayInfo(id: 3, builtin: false, active: true, vendor: 0x61A9, widthMM: 602)
+    // The 2026-11-15 16:44:41 unplug: the built-in is in no list, only the
+    // placeholder (4, 'unkn', 677 mm) is active.
+    let stub = DisplayInfo(id: 4, builtin: false, active: true, vendor: 0x756E_6B6E, widthMM: 677)
+    // Disabled built-in still listed: CGDisplayScreenSize reports 0 mm.
+    let builtinOff0 = DisplayInfo(id: 1, builtin: true, active: false, vendor: 0x610, widthMM: 0)
     let seen: Set<CGDirectDisplayID> = [2]
     let cases: [(String, [DisplayInfo], Set<CGDirectDisplayID>, Action)] = [
+        ("logged unplug: stub only, built-in absent", [stub], seen, .enable),
+        ("placeholder only, built-in absent", [placeholder], seen, .enable),
+        ("empty snapshot", [], seen, .enable),
+        ("replug, built-in listed at 0 mm", [builtinOff0, monitor], seen, .none),
         ("external plugged, built-in on", [builtinOn, monitor], [], .disable),
         ("external plugged, built-in off", [builtinOff, monitor], seen, .none),
         ("external unplugged, placeholder active", [builtinOff, placeholder], seen, .enable),
@@ -299,16 +367,20 @@ func selftest() -> Never {
         ("placeholder only, built-in on", [builtinOn, placeholder], [], .none),
         ("monitor without EDID size", [builtinOn, noEdid], [], .none),
         ("real external next to placeholder", [builtinOn, monitor, placeholder], [], .disable),
-        ("no built-in (desktop Mac)", [monitor], seen, .none),
     ]
     var failed = 0
-    for (name, displays, trusted, want) in cases {
-        let got = decide(displays, trusted: trusted)
+    var all = cases.map { ($0.0, $0.1, $0.2, $0.3, CGDirectDisplayID?.some(1)) }
+    all.append(("no built-in ever seen (desktop Mac)", [monitor], seen, .none, nil))
+    all.append(("ID unknown, built-in visible", [builtinOn, monitor], [], .disable, nil))
+    for (name, displays, trusted, want, bid) in all {
+        // The ID comes from the store, so these hold whether or not the
+        // built-in is in the snapshot.
+        let got = decide(displays, builtinID: bid, trusted: trusted)
         let ok = got == want
         if !ok { failed += 1 }
         print("\(ok ? "ok  " : "FAIL") \(name): \(got)\(ok ? "" : ", want \(want)")")
     }
-    print(failed == 0 ? "PASS \(cases.count)" : "FAILED \(failed)/\(cases.count)")
+    print(failed == 0 ? "PASS \(all.count)" : "FAILED \(failed)/\(all.count)")
     exit(failed == 0 ? 0 : 1)
 }
 
@@ -327,11 +399,13 @@ guard let sl = SkyLight.load() else {
 switch cmd {
 case "status":
     let displays = snapshot(sl)
+    let bid = BuiltinStore.standard().resolve(displays)
     print(describe(displays))
+    print("builtin-id: \(bid.map(String.init) ?? "unknown")")
     // A one-shot command trusts what is active now; watch tracks it over time.
-    print("action: \(decide(displays, trusted: Set(displays.map(\.id))))")
+    print("action: \(decide(displays, builtinID: bid, trusted: Set(displays.map(\.id))))")
 case "on", "off":
-    do { try setBuiltin(sl, enabled: cmd == "on") } catch {
+    do { try setBuiltin(sl, store: .standard(), enabled: cmd == "on") } catch {
         log("\(cmd): \(error)")
         exit(2)
     }

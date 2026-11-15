@@ -78,7 +78,22 @@ nothing between the disable and the manual stop. Two causes:
    queued callbacks. The same binary on an `NSApplication` run loop logged the
    callback within 1 s and reacted.
 
-Checked: `selftest` (13 cases, placeholder variants included); live, an
+Second unplug test (16:44:41) still left it dark: the snapshot was only
+`4:virtual:on:v756e6b6e:677mm`. With only the placeholder up, the disabled
+built-in is in no list (SkyLight's included) and `CGDisplayIsBuiltin` is
+false for an absent ID, so `decide` hit its "no built-in" guard and returned
+`none`. Fix: the built-in ID is learned while visible and stored in
+`~/Library/Application Support/builtin-display/builtin-id`; `decide` takes
+that ID and never needs the built-in in the snapshot; enable goes straight to
+`SLSConfigureDisplayEnabled(stored ID, true)` and is retried on every 2 s
+poll, each attempt logged with its CGError (disable keeps the no-repeat rule).
+Open question: for an ID WindowServer does not know, `SLSConfigureDisplayEnabled`
+returns 0 and `CGCompleteDisplayConfiguration` returns 1001 (probe with ID 99);
+whether a known but unlisted built-in commits is only provable by a real
+unplug. If the log shows `enable 1: ... CGError 1001`, enabling while absent
+is impossible and the fallback is the lid cycle.
+
+Checked: `selftest` (18 cases, the logged unplug state included); live, an
 external `builtin-display on` is logged and reverted within 1 to 2 s;
 `kickstart -k` restores and re-disables. A real unplug cannot be simulated
 safely here (disabling the external would leave no display), so it stays a
