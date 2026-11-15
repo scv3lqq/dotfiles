@@ -161,7 +161,7 @@ alt-shift-semicolon = 'mode service'
 alt-enter = 'exec-and-forget open -n /Applications/Ghostty.app'
 
 alt-b = 'exec-and-forget open -n /Applications/Zen.app'
-# alt-n = 'exec-and-forget open -n /Applications/Telegram.app'
+alt-n = 'exec-and-forget open -a "Notion Calendar"'
 alt-z = 'exec-and-forget open -n /Applications/Obsidian.app'
 
 [workspace-to-monitor-force-assignment]
