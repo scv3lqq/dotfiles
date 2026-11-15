@@ -156,6 +156,11 @@ alt-shift-v = 'move-node-to-workspace v'
 # See: https://nikitabobko.github.io/AeroSpace/commands#move-workspace-to-monitor
 alt-shift-tab = 'move-workspace-to-monitor --wrap-around next'
 
+# See: https://nikitabobko.github.io/AeroSpace/commands#focus-monitor
+# See: https://nikitabobko.github.io/AeroSpace/commands#move-node-to-monitor
+alt-backtick = 'focus-monitor --wrap-around next'
+alt-shift-backtick = 'move-node-to-monitor --wrap-around --focus-follows-window next'
+
 alt-tab = 'workspace-back-and-forth'
 
 # See: https://nikitabobko.github.io/AeroSpace/commands#mode
