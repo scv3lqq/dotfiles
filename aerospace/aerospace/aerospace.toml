@@ -240,3 +240,10 @@ run = 'move-node-to-workspace o'
 if.app-id = 'com.google.Chrome'
 run = 'move-node-to-workspace g'
 
+# All named workspaces live on the external monitor, so the built-in display
+# shows AeroSpace's auto-created stub (lowest free number, 10). Keep windows
+# opened there on the external monitor. Must stay the last callback.
+[[on-window-detected]]
+if.workspace = '10'
+run = 'move-node-to-workspace 1'
+
