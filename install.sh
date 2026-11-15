@@ -350,6 +350,16 @@ mkdir -p ~/.config/yazi
 if [[ "$OS" == "Darwin" ]]; then
   rm -rf ~/.config/karabiner
   stow --restow --target ~/.config ghostty aerospace karabiner topgrade
+
+  # A compiled binary, not a link: the launchd agent (outside the repo, see
+  # README) runs it, and swiftc comes with the Xcode command line tools.
+  if command -v swiftc >/dev/null 2>&1; then
+    echo "Building builtin-display..."
+    mkdir -p ~/.local/bin
+    swiftc -O -o ~/.local/bin/builtin-display "$DOTFILES/builtin-display/builtin-display.swift"
+  else
+    echo "Skipping builtin-display: no swiftc, run xcode-select --install and rerun"
+  fi
 fi
 
 stow --restow --target ~/.config/nvim nvim

@@ -404,6 +404,7 @@ available on servers, and the markdown-preview.nvim build error on the first
 | (none) | `~/.zshenv` | written (not linked) by `install.sh`: `export ZDOTDIR="$HOME/.config/zsh"` |
 | `yazi/` | `~/.config/yazi` | file manager |
 | `ghostty/`, `aerospace/`, `karabiner/`, `topgrade/` | `~/.config/*` | macOS only, via Stow |
+| `builtin-display/builtin-display.swift` | `~/.local/bin/builtin-display` | macOS only; compiled (not linked) by `install.sh`, see [Built-in display](#built-in-display) |
 | `starship/starship.toml` | `~/.config/starship.toml` | prompt |
 | `tmux/tmux.conf` | `~/.tmux.conf` | TPM cloned into `~/.tmux/plugins/tpm` |
 | `anki/terminal_theme/` | `Anki2/addons21/terminal_theme` | Anki add-on; symlinked by hand, not by `install.sh` (`anki/cards/` holds card templates) |
@@ -519,6 +520,51 @@ launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/local.topgrade.plist
 
 Run the first update by hand in a terminal (`topgrade`); the log of the daily
 runs is `~/Library/Logs/topgrade.log`.
+
+### Built-in display
+
+`builtin-display` disconnects the MacBook built-in display while an external
+display is active and reconnects it when none is (private SkyLight
+`SLSConfigureDisplayEnabled`, Apple Silicon only; design and sources in
+`plans/builtin-display-guard.md`). Commands: `status`, `on`, `off` (refuses
+without an external display), `watch`. Changes last for the login session, so
+a reboot always brings the built-in back. A launchd agent runs `watch`; like
+topgrade's it lives outside the repo, create and load it with:
+
+```sh
+mkdir -p ~/Library/LaunchAgents
+cat > ~/Library/LaunchAgents/local.builtin-display.plist <<EOF
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>Label</key>
+	<string>local.builtin-display</string>
+	<key>ProgramArguments</key>
+	<array>
+		<string>$HOME/.local/bin/builtin-display</string>
+		<string>watch</string>
+	</array>
+	<key>RunAtLoad</key>
+	<true/>
+	<key>KeepAlive</key>
+	<true/>
+	<key>ThrottleInterval</key>
+	<integer>10</integer>
+	<key>ProcessType</key>
+	<string>Interactive</string>
+	<key>StandardOutPath</key>
+	<string>$HOME/Library/Logs/builtin-display.log</string>
+	<key>StandardErrorPath</key>
+	<string>$HOME/Library/Logs/builtin-display.log</string>
+</dict>
+</plist>
+EOF
+launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/local.builtin-display.plist
+```
+
+Stop it with `launchctl bootout gui/$(id -u)/local.builtin-display`; the agent
+reconnects the built-in on exit.
 
 ---
 
